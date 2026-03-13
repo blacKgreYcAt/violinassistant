@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Video, VideoOff, Download, Camera, StopCircle } from 'lucide-react';
+import { Video, VideoOff, Download, Camera, StopCircle, Share2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface VideoRecorderProps {
@@ -155,6 +155,41 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
     }, 100);
   };
 
+  const shareVideo = async () => {
+    if (recordedChunks.length === 0 && !previewUrl) {
+      alert("尚未取得錄影資料。");
+      return;
+    }
+
+    try {
+      const mimeType = mediaRecorderRef.current?.mimeType || 'video/mp4';
+      const blob = new Blob(recordedChunks, { type: mimeType });
+      
+      const date = new Date().toISOString().split('T')[0];
+      let extension = 'mp4';
+      if (mimeType.includes('webm')) extension = 'webm';
+      if (mimeType.includes('quicktime')) extension = 'mov';
+      
+      const fileName = `${date}_${activeScoreName || '練習錄影'}.${extension}`;
+      const file = new File([blob], fileName, { type: mimeType });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: '練習錄影',
+          text: `這是我的提琴練習錄影：${activeScoreName || ''}`,
+        });
+      } else {
+        downloadVideo();
+      }
+    } catch (error) {
+      console.error("Share video failed:", error);
+      if ((error as any).name !== 'AbortError') {
+        downloadVideo();
+      }
+    }
+  };
+
   return (
     <div className={cn(
       "bg-surface-warm backdrop-blur-md rounded-3xl shadow-xl border border-white/5 transition-all overflow-hidden", 
@@ -278,15 +313,27 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
               )}
 
               {previewUrl && !isRecording && (
-                <button 
-                  onClick={downloadVideo}
-                  className={cn(
-                    "bg-emerald-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-600/20",
-                    isMinimized ? "py-2 text-xs w-full" : "px-6 py-4"
-                  )}
-                >
-                  <Download size={isMinimized ? 16 : 20} /> {isMinimized ? '下載' : '下載影片'}
-                </button>
+                <div className={cn("flex gap-2", isMinimized ? "w-full flex-col" : "flex-1")}>
+                  <button 
+                    onClick={shareVideo}
+                    className={cn(
+                      "bg-accent-warm text-bg-warm rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-lg",
+                      isMinimized ? "py-2 text-xs w-full" : "flex-1 py-4"
+                    )}
+                    title="分享或儲存到相簿"
+                  >
+                    <Share2 size={isMinimized ? 16 : 20} /> {isMinimized ? '分享' : '分享/存入相簿'}
+                  </button>
+                  <button 
+                    onClick={downloadVideo}
+                    className={cn(
+                      "bg-emerald-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-600/20",
+                      isMinimized ? "py-2 text-xs w-full" : "px-6 py-4"
+                    )}
+                  >
+                    <Download size={isMinimized ? 16 : 20} /> {isMinimized ? '下載' : '下載影片'}
+                  </button>
+                </div>
               )}
             </div>
             
