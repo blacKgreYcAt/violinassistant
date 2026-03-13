@@ -5,7 +5,7 @@ import { cn } from '../lib/utils';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Set up the worker for pdf.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 interface Score {
   id: string;
@@ -32,17 +32,19 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
   const [isLoading, setIsLoading] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pdfDocRef = useRef<any>(null);
+  const renderTaskRef = useRef<any>(null);
 
   const pages = Array.isArray(score.data) ? score.data : [score.data];
   const totalImagePages = pages.length;
   const isPDF = pages[currentPage].startsWith('data:application/pdf');
 
-  // PDF Rendering Logic
+  // Load PDF Document once
   useEffect(() => {
-    if (!isPDF || !canvasRef.current) return;
+    if (!isPDF) return;
 
     let isMounted = true;
-    const renderPdf = async () => {
+    const loadPdf = async () => {
       setIsLoading(true);
       try {
         const base64Data = pages[currentPage].split(',')[1];
@@ -55,22 +57,54 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
         const loadingTask = pdfjsLib.getDocument({ data: bytes });
         const pdf = await loadingTask.promise;
         
-        if (!isMounted) return;
-        setNumPages(pdf.numPages);
+        if (isMounted) {
+          pdfDocRef.current = pdf;
+          setNumPages(pdf.numPages);
+          // Reset page to 1 when a new PDF is loaded
+          setPdfPage(1);
+        }
+      } catch (error) {
+        console.error('PDF loading error:', error);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
 
-        // Ensure pdfPage is within bounds
+    loadPdf();
+    return () => {
+      isMounted = false;
+      if (pdfDocRef.current) {
+        pdfDocRef.current.destroy();
+        pdfDocRef.current = null;
+      }
+    };
+  }, [isPDF, currentPage, pages]);
+
+  // Render PDF Page
+  useEffect(() => {
+    if (!isPDF || !pdfDocRef.current || !canvasRef.current) return;
+
+    const renderPage = async () => {
+      // Cancel previous render task if any
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+      }
+
+      setIsLoading(true);
+      try {
+        const pdf = pdfDocRef.current;
         const pageToRender = Math.min(Math.max(pdfPage, 1), pdf.numPages);
         const page = await pdf.getPage(pageToRender);
         
-        if (!isMounted) return;
-
-        const viewport = page.getViewport({ scale: 2 * zoom }); // Render at 2x for sharpness
+        // Use a slightly lower scale for mobile stability (1.5x instead of 2x)
+        const viewport = page.getViewport({ scale: 1.5 * zoom });
         const canvas = canvasRef.current;
         if (!canvas) return;
 
         const context = canvas.getContext('2d');
         if (!context) return;
 
+        // Set canvas dimensions
         canvas.height = viewport.height;
         canvas.width = viewport.width;
 
@@ -79,20 +113,26 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
           viewport: viewport,
         };
 
-        await page.render(renderContext).promise;
-      } catch (error) {
+        const renderTask = page.render(renderContext);
+        renderTaskRef.current = renderTask;
+
+        await renderTask.promise;
+      } catch (error: any) {
+        if (error.name === 'RenderingCancelledException') {
+          // Expected when a new render starts
+          return;
+        }
         console.error('PDF rendering error:', error);
       } finally {
-        if (isMounted) setIsLoading(false);
+        setIsLoading(false);
       }
     };
 
-    renderPdf();
-    return () => { isMounted = false; };
-  }, [isPDF, currentPage, pdfPage, zoom, pages]);
+    renderPage();
+  }, [isPDF, pdfPage, zoom]);
 
   const handleZoom = (delta: number) => {
-    setZoom(prev => Math.min(Math.max(prev + delta, 0.2), 5));
+    setZoom(prev => Math.min(Math.max(prev + delta, 0.2), 3)); // Cap zoom at 3x for memory
   };
 
   const toggleFullscreen = () => {

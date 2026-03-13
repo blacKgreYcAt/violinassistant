@@ -147,7 +147,7 @@ export default function App() {
           <div className="p-4 border-t border-white/5 flex flex-col gap-2">
             <div className="px-4 py-2 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v1.4.0 (PDF 引擎升級)</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v1.4.1 (PDF 穩定性優化)</p>
             </div>
           </div>
         </div>
