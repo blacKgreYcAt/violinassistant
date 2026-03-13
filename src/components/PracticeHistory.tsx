@@ -2,8 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Calendar, Plus, Share2 } from 'lucide-react';
 import { getPracticeHistory, addPracticeSession, PracticeSession } from '../lib/storage';
+import { cn } from '../lib/utils';
 
-export const PracticeHistory: React.FC = () => {
+interface PracticeHistoryProps {
+  className?: string;
+}
+
+export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) => {
   const [history, setHistory] = useState<PracticeSession[]>([]);
   const [manualMinutes, setManualMinutes] = useState<number>(30);
   const [isAdding, setIsAdding] = useState(false);
@@ -96,97 +101,99 @@ export const PracticeHistory: React.FC = () => {
   const totalMinutes = chartData.reduce((acc, curr) => acc + curr.minutes, 0);
 
   return (
-    <div className="bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2 h-8">
-          <Calendar size={20} className="text-text-muted" />
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">練習紀錄</h3>
-        </div>
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={shareHistory}
-            className="flex items-center gap-1 text-xs font-bold text-text-muted bg-white/5 px-3 py-1.5 rounded-lg hover:bg-white/10 hover:text-text-warm transition-colors"
-            title="分享或發送郵件"
-          >
-            <Share2 size={14} />
-            分享
-          </button>
-          <button 
-            onClick={() => setIsAdding(!isAdding)}
-            className="flex items-center gap-1 text-xs font-bold text-accent-warm bg-accent-warm/10 px-3 py-1.5 rounded-lg hover:bg-accent-warm/20 transition-colors"
-          >
-            <Plus size={14} />
-            手動補登
-          </button>
-        </div>
-      </div>
-
-      {isAdding && (
-        <div className="mb-6 p-4 bg-white/5 rounded-2xl flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
-          <div className="flex-1">
-            <label className="text-xs text-text-muted font-bold uppercase tracking-wider block mb-2">本次練習時間 (分鐘)</label>
-            <input 
-              type="number" 
-              value={manualMinutes}
-              onChange={(e) => setManualMinutes(Number(e.target.value))}
-              min="1"
-              className="w-full bg-bg-warm border border-white/10 rounded-xl px-4 py-2 text-text-warm font-bold outline-none focus:border-accent-warm"
-            />
+    <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5", className)}>
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between h-8">
+          <div className="flex items-center gap-2">
+            <Calendar size={20} className="text-text-muted" />
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">練習紀錄</h3>
           </div>
-          <button 
-            onClick={handleManualAdd}
-            className="mt-6 bg-accent-warm text-bg-warm px-6 py-2 rounded-xl font-bold hover:opacity-90 transition-all active:scale-95"
-          >
-            儲存
-          </button>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-          <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mb-1">今日練習</div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-bold font-mono text-text-warm">{todayMinutes}</span>
-            <span className="text-xs text-text-muted font-bold">分鐘</span>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={shareHistory}
+              className="flex items-center gap-1 text-xs font-bold text-text-muted bg-white/5 px-3 py-1.5 rounded-lg hover:bg-white/10 hover:text-text-warm transition-colors"
+              title="分享或發送郵件"
+            >
+              <Share2 size={14} />
+              分享
+            </button>
+            <button 
+              onClick={() => setIsAdding(!isAdding)}
+              className="flex items-center gap-1 text-xs font-bold text-accent-warm bg-accent-warm/10 px-3 py-1.5 rounded-lg hover:bg-accent-warm/20 transition-colors"
+            >
+              <Plus size={14} />
+              手動補登
+            </button>
           </div>
         </div>
-        <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-          <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mb-1">近七天累計</div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-bold font-mono text-accent-warm">{totalMinutes}</span>
-            <span className="text-xs text-text-muted font-bold">分鐘</span>
+
+        {isAdding && (
+          <div className="p-4 bg-white/5 rounded-2xl flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
+            <div className="flex-1">
+              <label className="text-xs text-text-muted font-bold uppercase tracking-wider block mb-2">本次練習時間 (分鐘)</label>
+              <input 
+                type="number" 
+                value={manualMinutes}
+                onChange={(e) => setManualMinutes(Number(e.target.value))}
+                min="1"
+                className="w-full bg-bg-warm border border-white/10 rounded-xl px-4 py-2 text-text-warm font-bold outline-none focus:border-accent-warm"
+              />
+            </div>
+            <button 
+              onClick={handleManualAdd}
+              className="mt-6 bg-accent-warm text-bg-warm px-6 py-2 rounded-xl font-bold hover:opacity-90 transition-all active:scale-95"
+            >
+              儲存
+            </button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+            <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mb-1">今日練習</div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-3xl font-bold font-mono text-text-warm">{todayMinutes}</span>
+              <span className="text-xs text-text-muted font-bold">分鐘</span>
+            </div>
+          </div>
+          <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+            <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mb-1">近七天累計</div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-3xl font-bold font-mono text-accent-warm">{totalMinutes}</span>
+              <span className="text-xs text-text-muted font-bold">分鐘</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex-1 w-full min-h-[200px] mt-auto">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
-            <XAxis 
-              dataKey="name" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#8E9299', fontSize: 10, fontWeight: 'bold' }} 
-              dy={10}
-            />
-            <YAxis 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#8E9299', fontSize: 10, fontWeight: 'bold' }} 
-            />
-            <Tooltip 
-              cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-              contentStyle={{ backgroundColor: '#151619', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontWeight: 'bold' }}
-              itemStyle={{ color: '#F27D26' }}
-              formatter={(value: number) => [`${value} 分鐘`, '練習時間']}
-            />
-            <Bar dataKey="minutes" radius={[4, 4, 0, 0]}>
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={index === chartData.length - 1 ? '#F27D26' : 'rgba(242, 125, 38, 0.4)'} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="w-full h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
+              <XAxis 
+                dataKey="name" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#8E9299', fontSize: 10, fontWeight: 'bold' }} 
+                dy={10}
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#8E9299', fontSize: 10, fontWeight: 'bold' }} 
+              />
+              <Tooltip 
+                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                contentStyle={{ backgroundColor: '#151619', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontWeight: 'bold' }}
+                itemStyle={{ color: '#F27D26' }}
+                formatter={(value: number) => [`${value} 分鐘`, '練習時間']}
+              />
+              <Bar dataKey="minutes" radius={[4, 4, 0, 0]}>
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={index === chartData.length - 1 ? '#F27D26' : 'rgba(242, 125, 38, 0.4)'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );

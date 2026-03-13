@@ -204,16 +204,18 @@ export default function App() {
               <div className="w-full">
                 <ScoreLibrary onSelectScore={setActiveScore} />
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="flex flex-col gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <Metronome className="w-full" />
                   <Timer className="w-full" />
                 </div>
-                <div className="lg:col-span-1">
-                  <PracticeHistory />
-                </div>
+                {!activeScore && (
+                  <>
+                    <VideoRecorder activeScoreName={activeScore?.name} className="w-full" />
+                    <PracticeHistory className="w-full" />
+                  </>
+                )}
               </div>
-              {!activeScore && <VideoRecorder activeScoreName={activeScore?.name} className="w-full" />}
             </div>
           ) : (
             <div className="flex flex-col gap-8">
@@ -227,16 +229,16 @@ export default function App() {
                 </div>
               </header>
               <div className="flex flex-col gap-6">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <Metronome className="w-full" />
-                    <Timer className="w-full" />
-                  </div>
-                  <div className="lg:col-span-1">
-                    <PracticeHistory />
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <Metronome className="w-full" />
+                  <Timer className="w-full" />
                 </div>
-                {!activeScore && <VideoRecorder activeScoreName={activeScore?.name} className="w-full" />}
+                {!activeScore && (
+                  <>
+                    <VideoRecorder activeScoreName={activeScore?.name} className="w-full" />
+                    <PracticeHistory className="w-full" />
+                  </>
+                )}
               </div>
             </div>
           )}
