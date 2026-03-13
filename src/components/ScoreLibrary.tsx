@@ -24,8 +24,6 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState('');
   
   const saveScores = (newScores: Score[]) => {
     try {

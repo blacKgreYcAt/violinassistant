@@ -224,10 +224,11 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
             </p>
           </div>
         ) : pages[currentPage].startsWith('data:application/pdf') ? (
-          <div className="w-full h-full flex flex-col bg-white">
+          <div className="w-full h-full bg-white overflow-hidden">
             <iframe 
-              src={`${pages[currentPage]}#page=${pdfPage}&view=FitH`}
-              className="flex-1 w-full border-none"
+              src={`${pages[currentPage]}#page=${pdfPage}&view=Fit`}
+              className="w-full h-full border-none"
+              style={{ display: 'block' }}
               title={score.name}
             />
           </div>
