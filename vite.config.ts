@@ -1,3 +1,4 @@
+// SYNC_VERSION_3
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import {defineConfig, loadEnv} from 'vite';
@@ -14,7 +15,7 @@ export default defineConfig(({mode}) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
         manifest: {
-          name: '中提練習小幫手',
+          name: '提琴練習小幫手',
           short_name: '練習小幫手',
           description: '您的專屬音樂練習輔助工具',
           theme_color: '#1a1a1a',
