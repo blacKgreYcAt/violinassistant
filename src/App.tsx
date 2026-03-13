@@ -46,7 +46,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen lg:h-screen bg-bg-warm text-text-warm font-sans selection:bg-accent-warm selection:text-bg-warm flex flex-col lg:overflow-hidden">
+    <div className="min-h-screen md:h-screen bg-bg-warm text-text-warm font-sans selection:bg-accent-warm selection:text-bg-warm flex flex-col md:overflow-hidden">
       {/* First Time Setup Overlay */}
       {isEditingTitle && !appTitle && (
         <div className="fixed inset-0 z-[100] bg-bg-warm/95 backdrop-blur-xl flex items-center justify-center p-6">
@@ -129,22 +129,22 @@ export default function App() {
       </header>
 
       {/* Main Content - Bento Grid */}
-      <main className="flex-1 min-h-0 p-4 md:p-6 lg:p-8 overflow-y-auto lg:overflow-hidden bg-bg-warm">
-        <div className="max-w-[1600px] mx-auto w-full h-full flex flex-col lg:grid lg:grid-cols-12 gap-6">
+      <main className="flex-1 min-h-0 p-4 md:p-6 lg:p-8 overflow-y-auto md:overflow-hidden bg-bg-warm">
+        <div className="max-w-[1600px] mx-auto w-full h-full flex flex-col md:grid md:grid-cols-2 md:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-3 lg:grid-rows-1 gap-6">
           
           {/* Column 1: Library */}
-          <div className="lg:col-span-5 xl:col-span-4 flex flex-col min-h-[500px] lg:min-h-0 lg:h-full">
+          <div className="md:col-span-2 lg:col-span-1 flex flex-col min-h-[500px] md:min-h-0 h-full">
             <ScoreLibrary onSelectScore={setActiveScore} className="flex-1 h-full" />
           </div>
 
           {/* Column 2: Metronome & Timer */}
-          <div className="lg:col-span-4 xl:col-span-4 flex flex-col gap-6 lg:min-h-0 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-2">
+          <div className="flex flex-col gap-6 min-h-0 h-full overflow-y-auto custom-scrollbar md:pr-2">
             <Metronome className="shrink-0" />
             <Timer className="shrink-0" />
           </div>
 
           {/* Column 3: Video & History */}
-          <div className="lg:col-span-3 xl:col-span-4 flex flex-col gap-6 lg:min-h-0 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-2 pb-8 lg:pb-0">
+          <div className="flex flex-col gap-6 min-h-0 h-full overflow-y-auto custom-scrollbar md:pr-2 pb-8 md:pb-0">
             {!activeScore && (
               <>
                 <VideoRecorder activeScoreName={activeScore?.name} className="shrink-0" />

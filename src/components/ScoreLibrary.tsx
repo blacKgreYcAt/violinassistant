@@ -232,7 +232,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
   };
 
   return (
-    <div className={cn("flex flex-col gap-6 h-full", className)}>
+    <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5 flex flex-col gap-6 h-full", className)}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <h2 className="text-2xl font-bold tracking-tight text-text-warm">樂譜圖書館</h2>
         <div className="flex flex-wrap items-center gap-2">
