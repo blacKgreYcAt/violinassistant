@@ -53,8 +53,18 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
     },
     {
       icon: <Video className="text-accent-warm" />,
-      title: "錄影存檔功能",
-      content: "在練習時錄製影片。錄製完成後可即時預覽，並支援下載或直接分享至相簿。"
+      title: "錄影與相機自訂",
+      content: "錄影時可自由拖曳相機畫面至「四個角落」。點擊相機畫面還能「切換大小」，確保不遮擋樂譜重要部分。"
+    },
+    {
+      icon: <BookOpen className="text-accent-warm" />,
+      title: "多頁樂譜切換",
+      content: "若上傳多張照片，閱覽模式下方會出現「頁碼提示」。點擊數字或左右滑動即可快速切換不同頁面。"
+    },
+    {
+      icon: <Share2 className="text-accent-warm" />,
+      title: "存入相簿 (iOS/Android)",
+      content: "錄影結束後點擊「分享/存入相簿」，在系統選單選擇「儲存影片」，即可直接存入手機相簿。"
     }
   ];
 
