@@ -267,7 +267,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
         <div 
           {...getRootProps()} 
           className={cn(
-            "flex-1 border-2 border-dashed rounded-3xl p-4 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer min-h-0",
+            "flex-1 border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-4 transition-all cursor-pointer min-h-0",
             isDragActive ? "border-accent-warm bg-white/5" : "border-white/10 hover:border-accent-warm/50 hover:bg-white/5"
           )}
         >

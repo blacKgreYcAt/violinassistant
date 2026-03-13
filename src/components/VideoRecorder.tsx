@@ -219,10 +219,10 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
 
         {!isCameraOn ? (
           <div className={cn(
-            "flex flex-col items-center justify-center gap-4 border-2 border-dashed border-white/10 rounded-2xl bg-white/5",
-            isMinimized ? "py-4" : "py-8"
+            "flex-1 flex flex-col items-center justify-center gap-4 border-2 border-dashed border-white/10 rounded-2xl bg-white/5 min-h-0",
+            isMinimized ? "p-4" : "p-6"
           )}>
-            <div className={cn("bg-white/5 rounded-full flex items-center justify-center text-text-muted", isMinimized ? "w-10 h-10" : "w-16 h-16")}>
+            <div className={cn("bg-white/5 rounded-full flex items-center justify-center text-text-muted shrink-0", isMinimized ? "w-10 h-10" : "w-16 h-16")}>
               <Video size={isMinimized ? 20 : 32} />
             </div>
             {!isMinimized && (

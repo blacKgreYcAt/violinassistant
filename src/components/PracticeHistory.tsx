@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Calendar, Plus, Share2 } from 'lucide-react';
+import { Calendar, Plus, Share2, Pen } from 'lucide-react';
 import { getPracticeHistory, addPracticeSession, PracticeSession } from '../lib/storage';
 import { cn } from '../lib/utils';
 
@@ -108,21 +108,20 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
             <Calendar size={20} className="text-accent-warm" />
             <h2 className="text-lg font-bold tracking-tight text-text-warm">練習紀錄</h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button 
               onClick={shareHistory}
-              className="flex items-center gap-1 text-xs font-bold text-text-muted bg-white/5 px-3 py-1.5 rounded-lg hover:bg-white/10 hover:text-text-warm transition-colors"
+              className="p-2 hover:bg-white/5 rounded-full transition-colors text-text-muted hover:text-text-warm"
               title="分享或發送郵件"
             >
-              <Share2 size={14} />
-              分享
+              <Share2 size={20} />
             </button>
             <button 
               onClick={() => setIsAdding(!isAdding)}
-              className="flex items-center gap-1 text-xs font-bold text-accent-warm bg-accent-warm/10 px-3 py-1.5 rounded-lg hover:bg-accent-warm/20 transition-colors"
+              className="p-2 hover:bg-accent-warm/10 rounded-full transition-colors text-accent-warm"
+              title="手動補登"
             >
-              <Plus size={14} />
-              手動補登
+              <Pen size={20} />
             </button>
           </div>
         </div>
@@ -148,18 +147,18 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-            <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mb-1">今日練習</div>
+        <div className="flex flex-col gap-2">
+          <div className="bg-white/5 px-4 py-3 rounded-2xl border border-white/5 flex items-center justify-between">
+            <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">今日練習</div>
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-bold font-mono text-text-warm">{todayMinutes}</span>
+              <span className="text-2xl font-bold font-mono text-text-warm">{todayMinutes}</span>
               <span className="text-xs text-text-muted font-bold">分鐘</span>
             </div>
           </div>
-          <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-            <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mb-1">近七天累計</div>
+          <div className="bg-white/5 px-4 py-3 rounded-2xl border border-white/5 flex items-center justify-between">
+            <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">近七天累計</div>
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-bold font-mono text-accent-warm">{totalMinutes}</span>
+              <span className="text-2xl font-bold font-mono text-accent-warm">{totalMinutes}</span>
               <span className="text-xs text-text-muted font-bold">分鐘</span>
             </div>
           </div>
