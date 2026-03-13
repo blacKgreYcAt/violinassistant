@@ -1,11 +1,6 @@
-import {StrictMode} from 'react';
-// App Entry Point - v1.1.8
-import {createRoot} from 'react-dom/client';
-import App from './App.tsx';
-import './index.css';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
