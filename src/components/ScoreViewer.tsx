@@ -21,6 +21,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
   const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
+  const [recorderPosition, setRecorderPosition] = useState<'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'>('top-right');
+  const [isRecorderMinimized, setIsRecorderMinimized] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [displayMode, setDisplayMode] = useState<'fit-width' | 'fit-page'>('fit-page');
   
@@ -134,15 +136,55 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
             )}
           >
             <Camera size={18} />
-            <span className="text-[10px] font-bold hidden sm:block">錄影模式</span>
+            <span className="text-[10px] font-bold hidden sm:block">{showRecorder ? '關閉錄影' : '錄影模式'}</span>
           </button>
+
+          {showRecorder && (
+            <div className="flex items-center bg-white/5 rounded-xl p-1 gap-1 ml-2">
+              <button 
+                onClick={() => {
+                  const positions: ('top-right' | 'top-left' | 'bottom-right' | 'bottom-left')[] = ['top-right', 'bottom-right', 'bottom-left', 'top-left'];
+                  const currentIndex = positions.indexOf(recorderPosition);
+                  setRecorderPosition(positions[(currentIndex + 1) % positions.length]);
+                }}
+                className="p-1.5 text-text-muted hover:text-text-warm transition-all"
+                title="切換位置"
+              >
+                <LayoutDashboard size={14} />
+              </button>
+              <button 
+                onClick={() => setIsRecorderMinimized(!isRecorderMinimized)}
+                className={cn(
+                  "p-1.5 rounded-lg transition-all",
+                  isRecorderMinimized ? "text-accent-warm" : "text-text-muted hover:text-text-warm"
+                )}
+                title={isRecorderMinimized ? "展開" : "縮小"}
+              >
+                {isRecorderMinimized ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Recorder Overlay */}
       {showRecorder && (
-        <div className="absolute top-20 right-4 z-[70] w-full max-w-[320px] animate-in slide-in-from-right-4">
-          <VideoRecorder activeScoreName={score.name} className="shadow-2xl border-accent-warm/20" />
+        <div className={cn(
+          "absolute z-[70] transition-all duration-300 ease-in-out",
+          recorderPosition === 'top-right' && "top-20 right-4",
+          recorderPosition === 'top-left' && "top-20 left-4",
+          recorderPosition === 'bottom-right' && "bottom-24 right-4",
+          recorderPosition === 'bottom-left' && "bottom-24 left-4",
+          isRecorderMinimized ? "w-48" : "w-full max-w-[320px]"
+        )}>
+          <VideoRecorder 
+            activeScoreName={score.name} 
+            className={cn(
+              "shadow-2xl border-accent-warm/20",
+              isRecorderMinimized && "p-2"
+            )} 
+            isMinimized={isRecorderMinimized}
+          />
         </div>
       )}
 
