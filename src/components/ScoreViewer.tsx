@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, LayoutDashboard } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, LayoutDashboard, Loader2 } from 'lucide-react';
 import { VideoRecorder } from './VideoRecorder';
 import { cn } from '../lib/utils';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Set up the worker for pdf.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 interface Score {
   id: string;
@@ -21,13 +25,71 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
   const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pdfPage, setPdfPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0); // For multi-image scores
+  const [pdfPage, setPdfPage] = useState(1); // For PDF scores
+  const [numPages, setNumPages] = useState(0); // Total pages in PDF
   const [displayMode, setDisplayMode] = useState<'fit-width' | 'fit-height' | 'fit-page'>('fit-page');
+  const [isLoading, setIsLoading] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const pages = Array.isArray(score.data) ? score.data : [score.data];
-  const totalPages = pages.length;
+  const totalImagePages = pages.length;
   const isPDF = pages[currentPage].startsWith('data:application/pdf');
+
+  // PDF Rendering Logic
+  useEffect(() => {
+    if (!isPDF || !canvasRef.current) return;
+
+    let isMounted = true;
+    const renderPdf = async () => {
+      setIsLoading(true);
+      try {
+        const base64Data = pages[currentPage].split(',')[1];
+        const binaryString = window.atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        const loadingTask = pdfjsLib.getDocument({ data: bytes });
+        const pdf = await loadingTask.promise;
+        
+        if (!isMounted) return;
+        setNumPages(pdf.numPages);
+
+        // Ensure pdfPage is within bounds
+        const pageToRender = Math.min(Math.max(pdfPage, 1), pdf.numPages);
+        const page = await pdf.getPage(pageToRender);
+        
+        if (!isMounted) return;
+
+        const viewport = page.getViewport({ scale: 2 * zoom }); // Render at 2x for sharpness
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const context = canvas.getContext('2d');
+        if (!context) return;
+
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport,
+        };
+
+        await page.render(renderContext).promise;
+      } catch (error) {
+        console.error('PDF rendering error:', error);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    renderPdf();
+    return () => { isMounted = false; };
+  }, [isPDF, currentPage, pdfPage, zoom, pages]);
 
   const handleZoom = (delta: number) => {
     setZoom(prev => Math.min(Math.max(prev + delta, 0.2), 5));
@@ -47,9 +109,9 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
 
   const nextPage = () => {
     if (isPDF) {
-      setPdfPage(prev => prev + 1);
+      setPdfPage(prev => Math.min(prev + 1, numPages));
     } else {
-      setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
+      setCurrentPage(prev => Math.min(prev + 1, totalImagePages - 1));
     }
   };
 
@@ -59,20 +121,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
     } else {
       setCurrentPage(prev => Math.max(prev - 1, 0));
     }
-  };
-
-  // Construct PDF viewer URL with parameters
-  const getPdfViewerUrl = () => {
-    const base64 = pages[currentPage];
-    const params = [
-      `page=${pdfPage}`,
-      displayMode === 'fit-width' ? 'view=FitH' : (displayMode === 'fit-height' ? 'view=FitV' : 'view=Fit'),
-      'toolbar=0',
-      'navpanes=0',
-      'scrollbar=1',
-      `zoom=${Math.round(zoom * 100)}`
-    ];
-    return `${base64}#${params.join('&')}`;
   };
 
   const openInNewTab = () => {
@@ -224,7 +272,16 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
       )}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-hidden bg-bg-warm relative">
+      <div className="flex-1 overflow-hidden bg-bg-warm relative" ref={containerRef}>
+        {isLoading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-bg-warm/50 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="w-8 h-8 text-accent-warm animate-spin" />
+              <p className="text-xs font-bold text-text-muted uppercase tracking-widest">渲染樂譜中...</p>
+            </div>
+          </div>
+        )}
+
         {score.type === 'link' ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 sm:p-12 text-center gap-4 sm:gap-6 bg-white">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400">
@@ -249,12 +306,15 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
             </p>
           </div>
         ) : isPDF ? (
-          <div className="absolute inset-0 bg-white">
-            <iframe 
-              src={getPdfViewerUrl()}
-              className="w-full h-full border-none"
-              title={score.name}
-              key={`${currentPage}-${pdfPage}-${displayMode}`}
+          <div className="absolute inset-0 overflow-auto flex justify-center p-4 scrollbar-hide">
+            <canvas 
+              ref={canvasRef}
+              className={cn(
+                "shadow-2xl bg-white transition-all duration-200",
+                displayMode === 'fit-width' && "w-full h-auto",
+                displayMode === 'fit-height' && "h-full w-auto",
+                displayMode === 'fit-page' && "max-w-full max-h-full object-contain"
+              )}
             />
           </div>
         ) : (
@@ -289,11 +349,11 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
       </div>
 
       {/* Page Controls (Floating) */}
-      {(totalPages > 1 || isPDF) && (
+      {(totalImagePages > 1 || isPDF) && (
         <div className="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 sm:gap-4 bg-surface-warm/80 backdrop-blur-md border border-white/5 p-1.5 sm:p-2 rounded-2xl shadow-2xl z-[60]">
           <button 
             onClick={prevPage}
-            disabled={!isPDF && currentPage === 0}
+            disabled={isPDF ? pdfPage === 1 : currentPage === 0}
             className="p-2 sm:p-3 text-text-warm hover:bg-white/5 rounded-xl transition-all disabled:opacity-30"
           >
             <ChevronLeft size={24} />
@@ -303,12 +363,12 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
               {isPDF ? 'PDF 頁碼' : '圖片頁碼'}
             </span>
             <span className="text-xs sm:text-sm font-bold text-text-warm">
-              {isPDF ? `第 ${pdfPage} 頁` : `第 ${currentPage + 1} / ${totalPages} 頁`}
+              {isPDF ? `第 ${pdfPage} / ${numPages || '?'} 頁` : `第 ${currentPage + 1} / ${totalImagePages} 頁`}
             </span>
           </div>
           <button 
             onClick={nextPage}
-            disabled={!isPDF && currentPage === totalPages - 1}
+            disabled={isPDF ? pdfPage === numPages : currentPage === totalImagePages - 1}
             className="p-2 sm:p-3 text-text-warm hover:bg-white/5 rounded-xl transition-all disabled:opacity-30"
           >
             <ChevronRight size={24} />
