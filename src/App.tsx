@@ -48,7 +48,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-warm text-text-warm font-sans selection:bg-accent-warm selection:text-bg-warm flex flex-col md:flex-row">
+    <div className="min-h-screen md:h-screen bg-bg-warm text-text-warm font-sans selection:bg-accent-warm selection:text-bg-warm flex flex-col md:flex-row md:overflow-hidden">
       {/* First Time Setup Overlay */}
       {isEditingTitle && !appTitle && (
         <div className="fixed inset-0 z-[100] bg-bg-warm/95 backdrop-blur-xl flex items-center justify-center p-6">
@@ -156,8 +156,8 @@ export default function App() {
             </button>
           </nav>
 
-          <div className="p-4 border-t border-white/5 flex flex-col gap-2">
-            <div className="px-4 py-2 flex items-center gap-2">
+          <div className="h-14 border-t border-white/5 flex items-center px-6 shrink-0">
+            <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v1.8.0 (新增練習紀錄與大容量儲存)</p>
             </div>
@@ -197,29 +197,28 @@ export default function App() {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 min-h-screen pb-24 md:pb-0 bg-bg-warm">
-        <div className="max-w-5xl mx-auto p-6 md:p-12">
-          {activeTab === 'library' ? (
-            <div className="flex flex-col gap-8">
-              <div className="w-full">
-                <ScoreLibrary onSelectScore={setActiveScore} />
-              </div>
-              <div className="flex flex-col gap-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <Metronome className="w-full" />
-                  <Timer className="w-full" />
+      <main className="flex-1 md:h-full flex flex-col bg-bg-warm min-w-0 pb-24 md:pb-0">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 flex flex-col md:min-h-0">
+          <div className="max-w-7xl mx-auto w-full md:h-full flex flex-col md:min-h-0">
+            {activeTab === 'library' ? (
+              <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 md:min-h-0">
+                <div className="md:h-full md:min-h-0 flex flex-col">
+                  <ScoreLibrary onSelectScore={setActiveScore} className="h-full" />
+                </div>
+                <div className="md:h-full md:min-h-0 flex flex-col gap-6 md:overflow-y-auto custom-scrollbar pb-6 xl:pb-0 pr-2">
+                  <Metronome className="shrink-0 w-full" />
+                  <Timer className="shrink-0 w-full" />
                 </div>
                 {!activeScore && (
-                  <>
-                    <VideoRecorder activeScoreName={activeScore?.name} className="w-full" />
-                    <PracticeHistory className="w-full" />
-                  </>
+                  <div className="md:h-full md:min-h-0 flex flex-col gap-6 md:overflow-y-auto custom-scrollbar pb-6 xl:pb-0 pr-2">
+                    <VideoRecorder activeScoreName={activeScore?.name} className="shrink-0 w-full" />
+                    <PracticeHistory className="shrink-0 w-full" />
+                  </div>
                 )}
               </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-8">
-              <header className="flex items-center justify-between">
+            ) : (
+            <div className="flex-1 flex flex-col md:min-h-0">
+              <header className="shrink-0 mb-8 flex items-center justify-between">
                 <div>
                   <h2 className="text-3xl font-bold tracking-tight text-text-warm">練習控制台</h2>
                   <p className="text-text-muted text-sm mt-1">幫助您掌握曲目的專業工具。</p>
@@ -228,34 +227,35 @@ export default function App() {
                   <Music size={24} />
                 </div>
               </header>
-              <div className="flex flex-col gap-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <Metronome className="w-full" />
-                  <Timer className="w-full" />
+              <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 md:min-h-0">
+                <div className="md:h-full md:min-h-0 flex flex-col gap-6 md:overflow-y-auto custom-scrollbar pb-6 pr-2">
+                  <Metronome className="shrink-0 w-full" />
+                  <Timer className="shrink-0 w-full" />
                 </div>
                 {!activeScore && (
-                  <>
-                    <VideoRecorder activeScoreName={activeScore?.name} className="w-full" />
-                    <PracticeHistory className="w-full" />
-                  </>
+                  <div className="md:h-full md:min-h-0 flex flex-col gap-6 md:overflow-y-auto custom-scrollbar pb-6 pr-2">
+                    <VideoRecorder activeScoreName={activeScore?.name} className="shrink-0 w-full" />
+                    <PracticeHistory className="shrink-0 w-full" />
+                  </div>
                 )}
               </div>
             </div>
           )}
-
-          {/* Footer */}
-          <footer className="mt-16 pt-8 border-t border-white/5 text-center pb-8">
-            <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mb-2">
-              © 2026 BERK STUDIO 提琴小幫手 - Concept by Rex CHU
-            </p>
-            <a 
-              href="mailto:glitch.remover_1i@icloud.com"
-              className="text-[10px] font-bold text-accent-warm hover:text-accent-warm/80 transition-colors uppercase tracking-widest"
-            >
-              聯絡信箱
-            </a>
-          </footer>
+          </div>
         </div>
+
+        {/* Main Footer */}
+        <footer className="h-14 border-t border-white/5 flex items-center justify-between px-6 md:px-8 shrink-0 bg-surface-warm/30">
+          <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+            © 2026 BERK STUDIO 提琴小幫手 - Concept by Rex CHU
+          </p>
+          <a 
+            href="mailto:glitch.remover_1i@icloud.com"
+            className="text-[10px] font-bold text-accent-warm hover:text-accent-warm/80 transition-colors uppercase tracking-widest"
+          >
+            聯絡信箱
+          </a>
+        </footer>
       </main>
 
       {/* Score Viewer Modal */}
