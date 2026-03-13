@@ -184,6 +184,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
               isRecorderMinimized && "p-2"
             )} 
             isMinimized={isRecorderMinimized}
+            isFloating={true}
           />
         </div>
       )}

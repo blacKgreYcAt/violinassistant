@@ -6,9 +6,10 @@ interface VideoRecorderProps {
   activeScoreName?: string;
   className?: string;
   isMinimized?: boolean;
+  isFloating?: boolean;
 }
 
-export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, className, isMinimized }) => {
+export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, className, isMinimized, isFloating }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
@@ -242,10 +243,10 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
             </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex-1 flex flex-col gap-4 min-h-0">
             <div className={cn(
-              "relative bg-black rounded-2xl overflow-hidden border border-white/10",
-              isMinimized ? "aspect-square" : "aspect-[3/4] sm:aspect-[9/16]"
+              "relative bg-black rounded-2xl overflow-hidden border border-white/10 flex-1 min-h-0",
+              isMinimized ? "aspect-square mx-auto w-full" : (isFloating ? "aspect-[3/4] sm:aspect-[9/16]" : "")
             )}>
               {previewUrl ? (
                 <video 
@@ -285,7 +286,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
               )}
             </div>
 
-            <div className={cn("flex gap-2", isMinimized ? "flex-col" : "flex-row")}>
+            <div className={cn("flex gap-2 shrink-0", isMinimized ? "flex-col" : "flex-row")}>
               {!isRecording ? (
                 <button 
                   onClick={() => {
