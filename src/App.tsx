@@ -4,7 +4,8 @@ import { Timer } from './components/Timer';
 import { VideoRecorder } from './components/VideoRecorder';
 import { ScoreLibrary } from './components/ScoreLibrary';
 import { ScoreViewer } from './components/ScoreViewer';
-import { Music, Info, LayoutDashboard, Library, Edit2, Check } from 'lucide-react';
+import { UserGuide } from './components/UserGuide';
+import { Music, Info, LayoutDashboard, Library, Edit2, Check, HelpCircle } from 'lucide-react';
 import { cn } from './lib/utils';
 
 interface Score {
@@ -22,6 +23,7 @@ export default function App() {
   const [appTitle, setAppTitle] = useState<string>('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState('');
+  const [guideOpen, setGuideOpen] = useState(false);
 
   useEffect(() => {
     const savedTitle = localStorage.getItem('app_title');
@@ -142,6 +144,15 @@ export default function App() {
               <LayoutDashboard size={24} />
               {sidebarOpen && <span className="font-bold">練習工具箱</span>}
             </button>
+            <button 
+              onClick={() => setGuideOpen(true)}
+              className={cn(
+                "flex items-center gap-4 p-4 rounded-2xl transition-all group hover:bg-white/5 text-text-muted hover:text-text-warm"
+              )}
+            >
+              <HelpCircle size={24} />
+              {sidebarOpen && <span className="font-bold">使用說明</span>}
+            </button>
           </nav>
 
           <div className="p-4 border-t border-white/5 flex flex-col gap-2">
@@ -174,6 +185,13 @@ export default function App() {
         >
           <LayoutDashboard size={24} />
           <span className="text-[10px] font-bold">工具箱</span>
+        </button>
+        <button 
+          onClick={() => setGuideOpen(true)}
+          className="flex flex-col items-center gap-1 p-2 text-text-muted"
+        >
+          <HelpCircle size={24} />
+          <span className="text-[10px] font-bold">說明</span>
         </button>
       </nav>
 
@@ -234,6 +252,12 @@ export default function App() {
           onClose={() => setActiveScore(null)} 
         />
       )}
+
+      {/* User Guide Modal */}
+      <UserGuide 
+        isOpen={guideOpen} 
+        onClose={() => setGuideOpen(false)} 
+      />
     </div>
   );
 }
