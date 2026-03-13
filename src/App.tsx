@@ -147,7 +147,7 @@ export default function App() {
           <div className="p-4 border-t border-white/5 flex flex-col gap-2">
             <div className="px-4 py-2 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v1.7.2 (優化錄影視窗位置與縮放功能)</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v1.7.3 (修復閱覽模式錄影畫面衝突問題)</p>
             </div>
           </div>
         </div>
@@ -189,7 +189,7 @@ export default function App() {
                 <Metronome />
                 <Timer />
               </div>
-              <VideoRecorder activeScoreName={activeScore?.name} className="w-full" />
+              {!activeScore && <VideoRecorder activeScoreName={activeScore?.name} className="w-full" />}
             </div>
           ) : (
             <div className="flex flex-col gap-8">
@@ -207,7 +207,7 @@ export default function App() {
                   <Metronome className="w-full" />
                   <Timer className="w-full" />
                 </div>
-                <VideoRecorder activeScoreName={activeScore?.name} className="w-full" />
+                {!activeScore && <VideoRecorder activeScoreName={activeScore?.name} className="w-full" />}
               </div>
             </div>
           )}

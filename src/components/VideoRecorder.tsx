@@ -26,6 +26,15 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
     }
   }, [stream, isCameraOn]);
 
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
+
   const startCamera = async () => {
     try {
       // More flexible constraints to avoid failures on some devices
