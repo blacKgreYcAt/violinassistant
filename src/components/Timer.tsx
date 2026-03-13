@@ -96,14 +96,14 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-2 h-12">
           {[15, 30, 45, 60].map((mins) => (
             <button
               key={mins}
               onClick={() => handlePresetClick(mins)}
               disabled={isActive}
               className={cn(
-                "py-2 rounded-xl text-xs font-bold transition-all border",
+                "h-full rounded-xl text-xs font-bold transition-all border",
                 inputMinutes === mins && !isActive
                   ? "bg-accent-warm text-bg-warm border-accent-warm"
                   : "bg-white/5 text-text-muted border-white/5 hover:bg-white/10"

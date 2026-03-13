@@ -145,7 +145,7 @@ export const Metronome: React.FC<MetronomeProps> = ({ className }) => {
           </button>
         </div>
 
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-4 h-12">
           <div className="flex gap-2">
             {[...Array(beatsPerMeasure)].map((_, i) => (
               <div 
