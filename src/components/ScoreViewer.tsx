@@ -199,67 +199,67 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
       )}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-auto bg-bg-warm p-2 sm:p-4 md:p-8 flex justify-center items-center scrollbar-hide">
-        <div 
-          className={cn(
-            "transition-all duration-200 shadow-2xl bg-white flex items-center justify-center relative",
-            displayMode === 'fit-width' && "w-full h-auto",
-            displayMode === 'fit-height' && "h-full w-auto",
-            displayMode === 'fit-page' && "max-w-full max-h-full"
-          )}
-          style={{ 
-            width: displayMode === 'fit-width' ? `${zoom * 100}%` : 'auto',
-            height: displayMode === 'fit-height' ? `${zoom * 100}%` : 'auto',
-            maxWidth: '100%',
-            maxHeight: displayMode === 'fit-page' ? '100%' : 'none',
-            aspectRatio: pages[currentPage].startsWith('data:application/pdf') ? 'auto' : '1 / 1.414',
-          }}
-        >
-          {score.type === 'link' ? (
-            <div className="w-full h-full flex flex-col items-center justify-center p-6 sm:p-12 text-center gap-4 sm:gap-6 bg-white">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400">
-                <ExternalLink size={32} />
-              </div>
-              <div className="max-w-xs">
-                <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-2">外部樂譜連結</h3>
-                <p className="text-neutral-500 text-xs sm:text-sm">
-                  由於版權與安全限制，某些外部樂譜（如 IMSLP）無法直接在 App 內顯示。
-                </p>
-              </div>
-              <a 
-                href={score.data as string} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto px-6 py-3 sm:px-8 sm:py-4 bg-neutral-900 text-white rounded-2xl font-bold hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
-              >
-                在新分頁開啟樂譜 <ExternalLink size={18} />
-              </a>
-              <p className="text-[9px] sm:text-[10px] text-neutral-400 uppercase tracking-widest">
-                開啟後請尋找 "Download" 或 "PDF" 按鈕
+      <div className="flex-1 overflow-hidden bg-bg-warm flex justify-center items-center relative">
+        {score.type === 'link' ? (
+          <div className="w-full h-full flex flex-col items-center justify-center p-6 sm:p-12 text-center gap-4 sm:gap-6 bg-white">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400">
+              <ExternalLink size={32} />
+            </div>
+            <div className="max-w-xs">
+              <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-2">外部樂譜連結</h3>
+              <p className="text-neutral-500 text-xs sm:text-sm">
+                由於版權與安全限制，某些外部樂譜（如 IMSLP）無法直接在 App 內顯示。
               </p>
             </div>
-          ) : pages[currentPage].startsWith('data:application/pdf') ? (
+            <a 
+              href={score.data as string} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto px-6 py-3 sm:px-8 sm:py-4 bg-neutral-900 text-white rounded-2xl font-bold hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
+            >
+              在新分頁開啟樂譜 <ExternalLink size={18} />
+            </a>
+            <p className="text-[9px] sm:text-[10px] text-neutral-400 uppercase tracking-widest">
+              開啟後請尋找 "Download" 或 "PDF" 按鈕
+            </p>
+          </div>
+        ) : pages[currentPage].startsWith('data:application/pdf') ? (
+          <div className="w-full h-full flex flex-col bg-white">
             <iframe 
-              src={`${pages[currentPage]}#page=${pdfPage}&view=Fit`}
-              className="w-full h-full border-none bg-white"
-              style={{ 
-                minHeight: '80vh',
-                width: '100%',
-              }}
+              src={`${pages[currentPage]}#page=${pdfPage}&view=FitH`}
+              className="flex-1 w-full border-none"
               title={score.name}
             />
-          ) : (
-            <img 
-              src={pages[currentPage]} 
-              alt={`${score.name} - Page ${currentPage + 1}`}
+          </div>
+        ) : (
+          <div className="w-full h-full overflow-auto flex justify-center items-center p-4 scrollbar-hide">
+            <div 
               className={cn(
-                "object-contain bg-white",
-                displayMode === 'fit-page' ? "max-w-full max-h-full" : (displayMode === 'fit-height' ? "h-full w-auto" : "w-full h-auto")
+                "transition-all duration-200 shadow-2xl bg-white flex items-center justify-center relative",
+                displayMode === 'fit-width' && "w-full h-auto",
+                displayMode === 'fit-height' && "h-full w-auto",
+                displayMode === 'fit-page' && "max-w-full max-h-full"
               )}
-              referrerPolicy="no-referrer"
-            />
-          )}
-        </div>
+              style={{ 
+                width: displayMode === 'fit-width' ? `${zoom * 100}%` : 'auto',
+                height: displayMode === 'fit-height' ? `${zoom * 100}%` : 'auto',
+                maxWidth: '100%',
+                maxHeight: displayMode === 'fit-page' ? '100%' : 'none',
+                aspectRatio: '1 / 1.414',
+              }}
+            >
+              <img 
+                src={pages[currentPage]} 
+                alt={`${score.name} - Page ${currentPage + 1}`}
+                className={cn(
+                  "object-contain bg-white",
+                  displayMode === 'fit-page' ? "max-w-full max-h-full" : (displayMode === 'fit-height' ? "h-full w-auto" : "w-full h-auto")
+                )}
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Page Controls (Floating) */}

@@ -24,9 +24,8 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [pendingPhotos, setPendingPhotos] = useState<string[]>([]);
-  const [showCapturePreview, setShowCapturePreview] = useState(false);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
   
   const saveScores = (newScores: Score[]) => {
     try {
@@ -85,7 +84,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
     });
   };
 
-  const processFiles = async (files: File[], isCapture = false) => {
+  const processFiles = async (files: File[]) => {
     if (files.length === 0) return;
     setIsUploading(true);
 
@@ -110,21 +109,16 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
 
       const results = await Promise.all(filePromises);
       
-      if (isCapture) {
-        setPendingPhotos(prev => [...prev, ...results]);
-        setShowCapturePreview(true);
-      } else {
-        const newScore: Score = {
-          id: Math.random().toString(36).substr(2, 9),
-          name: sortedFiles.length > 1 
-            ? sortedFiles[0].name.replace(/\.[^/.]+$/, "") + " (多頁)"
-            : sortedFiles[0].name.replace(/\.[^/.]+$/, ""),
-          type: 'file',
-          data: results.length === 1 ? results[0] : results,
-          date: Date.now(),
-        };
-        saveScores([newScore, ...scores]);
-      }
+      const newScore: Score = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: sortedFiles.length > 1 
+          ? sortedFiles[0].name.replace(/\.[^/.]+$/, "") + " (多頁)"
+          : sortedFiles[0].name.replace(/\.[^/.]+$/, ""),
+        type: 'file',
+        data: results.length === 1 ? results[0] : results,
+        date: Date.now(),
+      };
+      saveScores([newScore, ...scores]);
     } catch (error) {
       console.error("Processing failed:", error);
     } finally {
@@ -132,31 +126,9 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
     }
   };
 
-  const handleSaveCapture = () => {
-    if (pendingPhotos.length === 0) return;
-    
-    const newScore: Score = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: `新掃描樂譜 ${new Date().toLocaleTimeString()} (${pendingPhotos.length} 頁)`,
-      type: 'file',
-      data: pendingPhotos.length === 1 ? pendingPhotos[0] : pendingPhotos,
-      date: Date.now(),
-    };
-    
-    saveScores([newScore, ...scores]);
-    setPendingPhotos([]);
-    setShowCapturePreview(false);
-  };
-
   const onDrop = useCallback((acceptedFiles: File[]) => {
     processFiles(acceptedFiles);
   }, [scores]);
-
-  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      processFiles(Array.from(e.target.files), true);
-    }
-  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop,
@@ -201,121 +173,29 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
         <h2 className="text-2xl font-bold tracking-tight text-text-warm">樂譜圖書館</h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {/* 檔案上傳區 */}
         <div 
           {...getRootProps()} 
           className={cn(
-            "border-2 border-dashed rounded-3xl p-6 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer",
+            "border-2 border-dashed rounded-3xl p-10 flex flex-col items-center justify-center gap-4 transition-all cursor-pointer",
             isDragActive ? "border-accent-warm bg-white/5" : "border-white/10 hover:border-accent-warm/50 hover:bg-white/5"
           )}
         >
           <input {...getInputProps()} />
-          <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-text-muted">
+          <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center text-text-muted group-hover:text-accent-warm transition-all">
             {isUploading ? (
-              <div className="w-5 h-5 border-2 border-accent-warm border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-3 border-accent-warm border-t-transparent rounded-full animate-spin" />
             ) : (
-              <Upload size={20} />
+              <Upload size={32} />
             )}
           </div>
           <div className="text-center">
-            <p className="text-sm font-bold text-text-warm">上傳樂譜</p>
-            <p className="text-[10px] text-text-muted mt-0.5">PDF 或圖片</p>
+            <p className="text-lg font-bold text-text-warm">點擊或拖曳上傳樂譜</p>
+            <p className="text-sm text-text-muted mt-1">支援 PDF、JPG、PNG 格式</p>
           </div>
         </div>
-
-        {/* 相機拍照區 */}
-        <button 
-          onClick={() => cameraInputRef.current?.click()}
-          className="border-2 border-dashed border-white/10 hover:border-accent-warm/50 hover:bg-white/5 rounded-3xl p-6 flex flex-col items-center justify-center gap-3 transition-all"
-        >
-          <input 
-            type="file" 
-            accept="image/*" 
-            capture="environment" 
-            className="hidden" 
-            ref={cameraInputRef}
-            onChange={handleCameraCapture}
-            multiple
-          />
-          <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-text-muted">
-            <Camera size={20} />
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-bold text-text-warm">拍照掃描</p>
-            <p className="text-[10px] text-accent-warm flex items-center gap-1 justify-center">
-              <Wand2 size={10} /> 自動黑白強化
-            </p>
-          </div>
-        </button>
       </div>
-
-      {/* 拍照預覽與多頁管理 */}
-      {showCapturePreview && (
-        <div className="fixed inset-0 z-[100] bg-bg-warm/95 backdrop-blur-xl flex flex-col p-4 sm:p-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-bold text-text-warm">掃描預覽</h2>
-              <p className="text-xs text-text-muted uppercase tracking-widest font-bold">已拍攝 {pendingPhotos.length} 頁</p>
-            </div>
-            <button 
-              onClick={() => {
-                setPendingPhotos([]);
-                setShowCapturePreview(false);
-              }}
-              className="p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
-            >
-              <X size={24} />
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-x-auto flex gap-4 pb-4 scrollbar-hide items-center">
-            {pendingPhotos.map((photo, idx) => (
-              <div key={idx} className="relative shrink-0 group">
-                <img 
-                  src={photo} 
-                  alt={`Page ${idx + 1}`} 
-                  className="h-[40vh] sm:h-[50vh] rounded-2xl shadow-2xl border border-white/10"
-                />
-                <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10px] font-bold">
-                  第 {idx + 1} 頁
-                </div>
-                <button 
-                  onClick={() => setPendingPhotos(prev => prev.filter((_, i) => i !== idx))}
-                  className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-            
-            <button 
-              onClick={() => cameraInputRef.current?.click()}
-              className="h-[40vh] sm:h-[50vh] aspect-[3/4] border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-3 text-text-muted hover:border-accent-warm hover:text-text-warm transition-all group"
-            >
-              <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center group-hover:bg-accent-warm group-hover:text-bg-warm transition-all">
-                <Camera size={24} />
-              </div>
-              <p className="text-xs font-bold uppercase tracking-widest">繼續拍攝下一頁</p>
-            </button>
-          </div>
-
-          <div className="mt-8 flex gap-4">
-            <button 
-              onClick={() => cameraInputRef.current?.click()}
-              className="flex-1 py-4 bg-white/5 text-text-warm rounded-2xl font-bold hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-            >
-              <Camera size={20} /> 繼續拍攝
-            </button>
-            <button 
-              onClick={handleSaveCapture}
-              className="flex-[2] py-4 bg-accent-warm text-bg-warm rounded-2xl font-bold hover:shadow-lg hover:shadow-accent-warm/20 transition-all flex items-center justify-center gap-2"
-            >
-              <Check size={20} /> 完成並存檔 ({pendingPhotos.length} 頁)
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-3">
         <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted mt-2">您的樂譜</h3>
