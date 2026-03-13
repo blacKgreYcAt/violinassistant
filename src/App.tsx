@@ -5,6 +5,7 @@ import { VideoRecorder } from './components/VideoRecorder';
 import { ScoreLibrary } from './components/ScoreLibrary';
 import { ScoreViewer } from './components/ScoreViewer';
 import { UserGuide } from './components/UserGuide';
+import { PracticeHistory } from './components/PracticeHistory';
 import { Music, Info, LayoutDashboard, Library, Edit2, Check, HelpCircle } from 'lucide-react';
 import { cn } from './lib/utils';
 
@@ -158,7 +159,7 @@ export default function App() {
           <div className="p-4 border-t border-white/5 flex flex-col gap-2">
             <div className="px-4 py-2 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v1.7.4 (新增錄影分享與存入相簿功能)</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v1.8.0 (新增練習紀錄與大容量儲存)</p>
             </div>
           </div>
         </div>
@@ -203,9 +204,14 @@ export default function App() {
               <div className="w-full">
                 <ScoreLibrary onSelectScore={setActiveScore} />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <Metronome />
-                <Timer />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <Metronome className="w-full" />
+                  <Timer className="w-full" />
+                </div>
+                <div className="lg:col-span-1">
+                  <PracticeHistory />
+                </div>
               </div>
               {!activeScore && <VideoRecorder activeScoreName={activeScore?.name} className="w-full" />}
             </div>
@@ -221,9 +227,14 @@ export default function App() {
                 </div>
               </header>
               <div className="flex flex-col gap-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <Metronome className="w-full" />
-                  <Timer className="w-full" />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <Metronome className="w-full" />
+                    <Timer className="w-full" />
+                  </div>
+                  <div className="lg:col-span-1">
+                    <PracticeHistory />
+                  </div>
                 </div>
                 {!activeScore && <VideoRecorder activeScoreName={activeScore?.name} className="w-full" />}
               </div>

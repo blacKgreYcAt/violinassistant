@@ -13,7 +13,8 @@ import {
   Settings,
   Smartphone,
   Edit2,
-  UploadCloud
+  UploadCloud,
+  Calendar
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -28,13 +29,18 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
   const sections = [
     {
       icon: <Library className="text-accent-warm" />,
-      title: "樂譜圖書館",
-      content: "您可以上傳 JPG 或 PNG 格式的樂譜照片。若您的樂譜是 PDF，建議先截圖後再上傳。點擊樂譜即可進入「閱覽模式」。"
+      title: "大容量樂譜圖書館",
+      content: "全新升級大容量儲存空間！您可以上傳大量 JPG 或 PNG 格式的樂譜照片。若您的樂譜是 PDF，建議先截圖後再上傳。"
     },
     {
       icon: <Edit2 className="text-accent-warm" />,
       title: "編輯樂譜名稱",
       content: "上傳照片後，點擊樂譜右側的「鉛筆圖示」即可自訂樂譜名稱，方便您快速分類與尋找。"
+    },
+    {
+      icon: <Calendar className="text-accent-warm" />,
+      title: "練習紀錄與統計",
+      content: "計時器結束後會自動記錄練習時間，您也可以手動補登。系統會繪製近七天的練習圖表，並支援將紀錄透過郵件分享。"
     },
     {
       icon: <UploadCloud className="text-accent-warm" />,
@@ -84,7 +90,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h2 className="text-xl font-bold">使用說明指南</h2>
-              <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v1.7.4</p>
+              <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v1.8.0</p>
             </div>
           </div>
           <button 

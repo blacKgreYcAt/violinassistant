@@ -1,15 +1,8 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, Music, FileText, Trash2, Edit2, Check, X, Camera, Wand2, Download, UploadCloud, Share2 } from 'lucide-react';
 import { cn } from '../lib/utils';
-
-interface Score {
-  id: string;
-  name: string;
-  type: 'file' | 'link';
-  data: string | string[]; // base64 for file, URL for link, or array for multi-page
-  date: number;
-}
+import { Score, getScores, saveScores as saveScoresToDb } from '../lib/storage';
 
 interface ScoreLibraryProps {
   onSelectScore: (score: Score) => void;
@@ -17,21 +10,26 @@ interface ScoreLibraryProps {
 }
 
 export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, className }) => {
-  const [scores, setScores] = useState<Score[]>(() => {
-    const saved = localStorage.getItem('viola-scores');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [scores, setScores] = useState<Score[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   
-  const saveScores = (newScores: Score[]) => {
+  useEffect(() => {
+    const loadScores = async () => {
+      const loadedScores = await getScores();
+      setScores(loadedScores);
+    };
+    loadScores();
+  }, []);
+
+  const saveScores = async (newScores: Score[]) => {
     try {
+      await saveScoresToDb(newScores);
       setScores(newScores);
-      localStorage.setItem('viola-scores', JSON.stringify(newScores));
     } catch (error) {
       console.error("Failed to save scores:", error);
-      alert("儲存失敗：可能是因為樂譜檔案太大，導致瀏覽器空間不足。請嘗試刪除一些舊樂譜或減少拍照張數。");
+      alert("儲存失敗：設備空間可能不足。");
     }
   };
 
@@ -116,7 +114,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
         data: results.length === 1 ? results[0] : results,
         date: Date.now(),
       };
-      saveScores([newScore, ...scores]);
+      await saveScores([newScore, ...scores]);
     } catch (error) {
       console.error("Processing failed:", error);
     } finally {
@@ -176,12 +174,12 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const importedScores = JSON.parse(event.target?.result as string);
         if (Array.isArray(importedScores)) {
           if (confirm(`確定要匯入 ${importedScores.length} 份樂譜嗎？這將會取代目前的圖書館。`)) {
-            saveScores(importedScores);
+            await saveScores(importedScores);
             alert("匯入成功！");
           }
         } else {
@@ -216,21 +214,21 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
     setEditingName('');
   };
 
-  const saveRename = (e: React.MouseEvent | React.KeyboardEvent, id: string) => {
+  const saveRename = async (e: React.MouseEvent | React.KeyboardEvent, id: string) => {
     e.stopPropagation();
     if (!editingName.trim()) return;
     
     const newScores = scores.map(s => 
       s.id === id ? { ...s, name: editingName.trim() } : s
     );
-    saveScores(newScores);
+    await saveScores(newScores);
     setEditingId(null);
     setEditingName('');
   };
 
-  const deleteScore = (id: string, e: React.MouseEvent) => {
+  const deleteScore = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    saveScores(scores.filter(s => s.id !== id));
+    await saveScores(scores.filter(s => s.id !== id));
   };
 
   return (

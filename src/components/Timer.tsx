@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Timer as TimerIcon, Play, Pause, RotateCcw, Bell } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { addPracticeSession } from '../lib/storage';
 
 interface TimerProps {
   className?: string;
@@ -11,6 +12,7 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
   const [remainingSeconds, setRemainingSeconds] = useState(30 * 60);
   const [isActive, setIsActive] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
+  const [practicedSeconds, setPracticedSeconds] = useState(0);
   
   const timerRef = useRef<number | null>(null);
 
@@ -25,6 +27,7 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
           }
           return prev - 1;
         });
+        setPracticedSeconds(prev => prev + 1);
       }, 1000);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -34,6 +37,19 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
     };
   }, [isActive, remainingSeconds]);
 
+  useEffect(() => {
+    if (isFinished && practicedSeconds > 0) {
+      logPracticeSession();
+    }
+  }, [isFinished]);
+
+  const logPracticeSession = async () => {
+    if (practicedSeconds >= 60) { // 至少練習 1 分鐘才記錄
+      await addPracticeSession(practicedSeconds);
+    }
+    setPracticedSeconds(0);
+  };
+
   const formatTime = (totalSeconds: number) => {
     const hrs = Math.floor(totalSeconds / 3600);
     const mins = Math.floor((totalSeconds % 3600) / 60);
@@ -42,6 +58,9 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
   };
 
   const resetTimer = () => {
+    if (practicedSeconds > 0) {
+      logPracticeSession();
+    }
     setIsActive(false);
     setIsFinished(false);
     setRemainingSeconds(inputMinutes * 60);
