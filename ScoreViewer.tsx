@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, LayoutDashboard } from 'lucide-react';
 import { VideoRecorder } from './VideoRecorder';
 import { cn } from '../lib/utils';
 
@@ -22,13 +22,15 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const [displayMode, setDisplayMode] = useState<'fit-width' | 'fit-height'>('fit-height');
+  const [pdfPage, setPdfPage] = useState(1);
+  const [displayMode, setDisplayMode] = useState<'fit-width' | 'fit-height' | 'fit-page'>('fit-page');
 
   const pages = Array.isArray(score.data) ? score.data : [score.data];
   const totalPages = pages.length;
+  const isPDF = pages[currentPage].startsWith('data:application/pdf');
 
   const handleZoom = (delta: number) => {
-    setZoom(prev => Math.min(Math.max(prev + delta, 0.5), 3));
+    setZoom(prev => Math.min(Math.max(prev + delta, 0.2), 5));
   };
 
   const toggleFullscreen = () => {
@@ -43,8 +45,21 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
     }
   };
 
-  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
-  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 0));
+  const nextPage = () => {
+    if (isPDF) {
+      setPdfPage(prev => prev + 1);
+    } else {
+      setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
+    }
+  };
+
+  const prevPage = () => {
+    if (isPDF) {
+      setPdfPage(prev => Math.max(prev - 1, 1));
+    } else {
+      setCurrentPage(prev => Math.max(prev - 1, 0));
+    }
+  };
 
   return (
     <div className={cn(
@@ -61,21 +76,53 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
             <X size={24} />
           </button>
           <div className="h-6 w-px bg-white/10 hidden sm:block" />
-          <h2 className="text-text-warm font-bold tracking-tight truncate max-w-[120px] sm:max-w-md text-sm sm:text-base">
+          <h2 className="text-text-warm font-bold tracking-tight truncate max-w-[100px] sm:max-w-md text-sm sm:text-base">
             {score.name}
           </h2>
         </div>
 
         <div className="flex items-center gap-1 md:gap-2">
-          {/* iPad Optimization Toggle */}
+          {/* Display Mode Toggles */}
+          <div className="hidden sm:flex items-center bg-white/5 rounded-xl p-1 gap-1">
+            <button 
+              onClick={() => setDisplayMode('fit-page')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
+                displayMode === 'fit-page' ? "bg-accent-warm text-bg-warm" : "text-text-muted hover:text-text-warm"
+              )}
+            >
+              符合頁面
+            </button>
+            <button 
+              onClick={() => setDisplayMode('fit-width')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
+                displayMode === 'fit-width' ? "bg-accent-warm text-bg-warm" : "text-text-muted hover:text-text-warm"
+              )}
+            >
+              符合寬度
+            </button>
+            <button 
+              onClick={() => setDisplayMode('fit-height')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
+                displayMode === 'fit-height' ? "bg-accent-warm text-bg-warm" : "text-text-muted hover:text-text-warm"
+              )}
+            >
+              符合高度
+            </button>
+          </div>
+
+          {/* Mobile Display Mode Toggle */}
           <button 
-            onClick={() => setDisplayMode(displayMode === 'fit-height' ? 'fit-width' : 'fit-height')}
-            className="hidden sm:flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-text-muted hover:text-text-warm"
-            title={displayMode === 'fit-height' ? '切換至符合寬度' : '切換至符合高度'}
+            onClick={() => {
+              const modes: ('fit-page' | 'fit-width' | 'fit-height')[] = ['fit-page', 'fit-width', 'fit-height'];
+              const nextIndex = (modes.indexOf(displayMode) + 1) % modes.length;
+              setDisplayMode(modes[nextIndex]);
+            }}
+            className="sm:hidden p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
           >
-            <span className="text-[10px] font-bold uppercase tracking-widest">
-              {displayMode === 'fit-height' ? '符合高度' : '符合寬度'}
-            </span>
+            <LayoutDashboard size={18} />
           </button>
 
           <div className="h-6 w-px bg-white/10 mx-1 md:mx-2 hidden sm:block" />
@@ -144,17 +191,20 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
       )}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-auto bg-bg-warm p-2 sm:p-4 md:p-8 flex justify-center items-start scrollbar-hide">
+      <div className="flex-1 overflow-auto bg-bg-warm p-2 sm:p-4 md:p-8 flex justify-center items-center scrollbar-hide">
         <div 
           className={cn(
             "transition-all duration-200 shadow-2xl bg-white flex items-center justify-center relative",
-            displayMode === 'fit-height' ? "h-full w-auto" : "w-full h-auto"
+            displayMode === 'fit-width' && "w-full h-auto",
+            displayMode === 'fit-height' && "h-full w-auto",
+            displayMode === 'fit-page' && "max-w-full max-h-full"
           )}
           style={{ 
             width: displayMode === 'fit-width' ? `${zoom * 100}%` : 'auto',
             height: displayMode === 'fit-height' ? `${zoom * 100}%` : 'auto',
-            maxWidth: displayMode === 'fit-width' ? '100%' : 'none',
-            minWidth: displayMode === 'fit-height' ? 'auto' : '100%',
+            maxWidth: '100%',
+            maxHeight: displayMode === 'fit-page' ? '100%' : 'none',
+            aspectRatio: pages[currentPage].startsWith('data:application/pdf') ? 'auto' : '1 / 1.414',
           }}
         >
           {score.type === 'link' ? (
@@ -182,12 +232,13 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
             </div>
           ) : pages[currentPage].startsWith('data:application/pdf') ? (
             <iframe 
-              src={`${pages[currentPage]}#toolbar=0&navpanes=0&scrollbar=0`}
+              src={`${pages[currentPage]}#page=${pdfPage}&view=FitH`}
               className="w-full border-none bg-white"
               style={{ 
-                height: displayMode === 'fit-height' ? '100%' : '1000px', // Fallback height for vertical scroll
-                minHeight: '80vh',
-                width: '100%'
+                height: displayMode === 'fit-height' ? '100%' : (displayMode === 'fit-page' ? '85vh' : '1000px'),
+                width: displayMode === 'fit-page' ? '75vw' : '100%',
+                maxWidth: '1000px',
+                aspectRatio: '1 / 1.414'
               }}
               title={score.name}
             />
@@ -197,7 +248,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
               alt={`${score.name} - Page ${currentPage + 1}`}
               className={cn(
                 "object-contain bg-white",
-                displayMode === 'fit-height' ? "h-full w-auto" : "w-full h-auto"
+                displayMode === 'fit-page' ? "max-w-full max-h-full" : (displayMode === 'fit-height' ? "h-full w-auto" : "w-full h-auto")
               )}
               referrerPolicy="no-referrer"
             />
@@ -206,22 +257,27 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
       </div>
 
       {/* Page Controls (Floating) */}
-      {totalPages > 1 && (
+      {(totalPages > 1 || isPDF) && (
         <div className="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 sm:gap-4 bg-surface-warm/80 backdrop-blur-md border border-white/5 p-1.5 sm:p-2 rounded-2xl shadow-2xl z-[60]">
           <button 
             onClick={prevPage}
-            disabled={currentPage === 0}
-            className="p-2 sm:p-3 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+            disabled={!isPDF && currentPage === 0}
+            className="p-2 sm:p-3 text-text-warm hover:bg-white/5 rounded-xl transition-all disabled:opacity-30"
           >
             <ChevronLeft size={24} />
           </button>
-          <span className="text-[10px] sm:text-sm font-bold text-text-warm px-2 sm:px-4">
-            第 {currentPage + 1} / {totalPages} 頁
-          </span>
+          <div className="flex flex-col items-center px-2 sm:px-4">
+            <span className="text-[10px] sm:text-xs font-bold text-text-muted uppercase tracking-widest mb-0.5">
+              {isPDF ? 'PDF 頁碼' : '圖片頁碼'}
+            </span>
+            <span className="text-xs sm:text-sm font-bold text-text-warm">
+              {isPDF ? `第 ${pdfPage} 頁` : `第 ${currentPage + 1} / ${totalPages} 頁`}
+            </span>
+          </div>
           <button 
             onClick={nextPage}
-            disabled={currentPage === totalPages - 1}
-            className="p-2 sm:p-3 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+            disabled={!isPDF && currentPage === totalPages - 1}
+            className="p-2 sm:p-3 text-text-warm hover:bg-white/5 rounded-xl transition-all disabled:opacity-30"
           >
             <ChevronRight size={24} />
           </button>
