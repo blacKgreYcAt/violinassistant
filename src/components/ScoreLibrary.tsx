@@ -305,12 +305,9 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
             <div 
               key={score.id}
               onClick={() => onSelectScore(score)}
-              className="group flex items-center gap-4 p-4 bg-surface-warm border border-white/5 rounded-2xl hover:border-accent-warm hover:shadow-lg hover:shadow-accent-warm/5 transition-all cursor-pointer"
+              className="group flex items-center gap-3 p-3 bg-surface-warm border border-white/5 rounded-2xl hover:border-accent-warm hover:shadow-lg hover:shadow-accent-warm/5 transition-all cursor-pointer"
             >
-              <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-text-muted group-hover:bg-accent-warm group-hover:text-bg-warm transition-colors">
-                <FileText size={20} />
-              </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 flex flex-col justify-center">
                 {editingId === score.id ? (
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <input
@@ -322,25 +319,25 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
                         if (e.key === 'Enter') saveRename(e, score.id);
                         if (e.key === 'Escape') cancelEditing(e as any);
                       }}
-                      className="flex-1 bg-bg-warm border border-white/10 rounded-lg px-2 py-1 text-sm font-bold text-text-warm outline-none focus:ring-2 focus:ring-accent-warm/20"
+                      className="flex-1 bg-bg-warm border border-white/10 rounded-lg px-2 py-1.5 text-sm font-bold text-text-warm outline-none focus:ring-2 focus:ring-accent-warm/20 min-w-0"
                     />
                     <button 
                       onClick={(e) => saveRename(e, score.id)}
-                      className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-colors"
+                      className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-colors shrink-0"
                     >
                       <Check size={16} />
                     </button>
                     <button 
                       onClick={cancelEditing}
-                      className="p-1 text-text-muted hover:bg-white/5 rounded-md transition-colors"
+                      className="p-1.5 text-text-muted hover:bg-white/5 rounded-md transition-colors shrink-0"
                     >
                       <X size={16} />
                     </button>
                   </div>
                 ) : (
-                  <>
-                    <p className="font-bold text-text-warm truncate">{score.name}</p>
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-1">
+                    <p className="text-sm font-bold text-text-warm line-clamp-2 leading-tight group-hover:text-accent-warm transition-colors pr-2">{score.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
                       <p className="text-[10px] text-text-muted uppercase font-bold tracking-tighter">
                         {new Date(score.date).toLocaleDateString()}
                       </p>
@@ -350,23 +347,23 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
                         </span>
                       )}
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5 shrink-0">
                 {editingId !== score.id && (
                   <button 
                     onClick={(e) => startEditing(e, score)}
-                    className="p-2 text-text-muted hover:text-text-warm transition-colors"
+                    className="p-1.5 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-lg transition-colors"
                   >
-                    <Edit2 size={18} />
+                    <Edit2 size={16} />
                   </button>
                 )}
                 <button 
                   onClick={(e) => deleteScore(score.id, e)}
-                  className="p-2 text-text-muted hover:text-red-400 transition-colors"
+                  className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                 >
-                  <Trash2 size={18} />
+                  <Trash2 size={16} />
                 </button>
               </div>
             </div>
