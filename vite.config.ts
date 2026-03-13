@@ -1,41 +1,20 @@
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
-import {defineConfig, loadEnv} from 'vite';
-import { VitePWA } from 'vite-plugin-pwa';
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
 
-export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
-  return {
-    plugins: [
-      react(), 
-      tailwindcss(),
-      /*
-      VitePWA({
-        registerType: 'autoUpdate',
-        includeAssets: [],
-        manifest: {
-          name: '中提練習小幫手',
-          short_name: '練習小幫手',
-          description: '您的專屬音樂練習輔助工具',
-          theme_color: '#1a1a1a',
-          icons: [
-            {
-              src: 'https://picsum.photos/seed/music/192/192',
-              sizes: '192x192',
-              type: 'image/png'
-            },
-            {
-              src: 'https://picsum.photos/seed/music/512/512',
-              sizes: '512x512',
-              type: 'image/png'
-            }
-          ]
-        }
-      })
-      */
-    ],
-    server: {
-      hmr: process.env.DISABLE_HMR !== 'true',
-    },
-  };
-});
+# Run and deploy your AI Studio app
+
+This contains everything you need to run your app locally.
+
+View your app in AI Studio: https://ai.studio/apps/bc32216b-c6d8-420e-83a7-ce949a609cd4
+
+## Run Locally
+
+**Prerequisites:**  Node.js
+
+
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
