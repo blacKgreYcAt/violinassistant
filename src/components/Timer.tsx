@@ -62,40 +62,30 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
   return (
     <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5", className)}>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <TimerIcon size={20} className="text-text-muted" />
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">練習倒數計時</h3>
-          </div>
-          
-          <div className="grid grid-cols-4 gap-2">
-            {[15, 30, 45, 60].map((mins) => (
-              <button
-                key={mins}
-                onClick={() => handlePresetClick(mins)}
-                disabled={isActive}
-                className={cn(
-                  "py-2 rounded-xl text-xs font-bold transition-all border",
-                  inputMinutes === mins && !isActive
-                    ? "bg-accent-warm text-bg-warm border-accent-warm"
-                    : "bg-white/5 text-text-muted border-white/5 hover:bg-white/10"
-                )}
-              >
-                {mins}m
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center gap-2 h-8">
+          <TimerIcon size={20} className="text-text-muted" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">練習倒數計時</h3>
         </div>
 
-        <div className="relative flex flex-col items-center justify-center py-4">
+        <div className="relative flex flex-col items-center justify-center h-32">
           <div className={cn(
-            "text-5xl font-bold font-mono tracking-tighter transition-colors duration-300",
+            "text-6xl font-bold font-mono tracking-tighter transition-colors duration-300",
             remainingSeconds === 0 ? "text-emerald-400" : "text-text-warm"
           )}>
             {formatTime(remainingSeconds)}
           </div>
+          <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mt-1">REMAINING</div>
           
-          <div className="w-full h-1.5 bg-white/10 rounded-full mt-6 overflow-hidden">
+          {isFinished && (
+            <div className="absolute top-0 right-0 flex items-center gap-1 text-emerald-400 animate-bounce">
+              <Bell size={14} fill="currentColor" />
+              <span className="text-[10px] font-bold">練習完成！</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center h-12">
+          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
             <div 
               className={cn(
                 "h-full transition-all duration-1000",
@@ -104,13 +94,24 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
               style={{ width: `${progress}%` }}
             />
           </div>
-          
-          {isFinished && (
-            <div className="absolute -top-2 right-0 flex items-center gap-1 text-emerald-400 animate-bounce">
-              <Bell size={14} fill="currentColor" />
-              <span className="text-[10px] font-bold">練習完成！</span>
-            </div>
-          )}
+        </div>
+
+        <div className="grid grid-cols-4 gap-2">
+          {[15, 30, 45, 60].map((mins) => (
+            <button
+              key={mins}
+              onClick={() => handlePresetClick(mins)}
+              disabled={isActive}
+              className={cn(
+                "py-2 rounded-xl text-xs font-bold transition-all border",
+                inputMinutes === mins && !isActive
+                  ? "bg-accent-warm text-bg-warm border-accent-warm"
+                  : "bg-white/5 text-text-muted border-white/5 hover:bg-white/10"
+              )}
+            >
+              {mins}m
+            </button>
+          ))}
         </div>
 
         <div className="flex gap-3">
@@ -122,21 +123,21 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
             }}
             disabled={remainingSeconds === 0}
             className={cn(
-              "flex-1 py-3 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95 disabled:opacity-50 disabled:scale-100",
+              "flex-1 py-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-95 disabled:opacity-50 disabled:scale-100",
               isActive 
                 ? "bg-white/10 text-text-warm" 
                 : "bg-accent-warm text-bg-warm shadow-lg shadow-accent-warm/20"
             )}
           >
-            {isActive ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+            {isActive ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
             {isActive ? '暫停' : '開始'}
           </button>
           
           <button 
             onClick={resetTimer}
-            className="p-3 bg-white/5 hover:bg-white/10 text-text-muted rounded-2xl transition-all active:scale-95"
+            className="w-14 h-14 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-muted rounded-2xl transition-all active:scale-95"
           >
-            <RotateCcw size={20} />
+            <RotateCcw size={24} />
           </button>
         </div>
       </div>

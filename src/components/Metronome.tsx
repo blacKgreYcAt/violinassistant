@@ -101,7 +101,7 @@ export const Metronome: React.FC<MetronomeProps> = ({ className }) => {
       className
     )}>
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between h-8">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">節拍器</h3>
           <button 
             onClick={() => setIsMuted(!isMuted)}
@@ -111,35 +111,37 @@ export const Metronome: React.FC<MetronomeProps> = ({ className }) => {
           </button>
         </div>
 
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center justify-center h-32">
           <div className="text-6xl font-bold font-mono tracking-tighter text-text-warm">
             {bpm}
           </div>
-          <div className="text-sm font-medium text-text-muted uppercase tracking-widest">BPM</div>
+          <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mt-1">BPM</div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 h-12">
           <button 
             onClick={() => handleBpmChange(bpm - 1)}
-            className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-2xl transition-all active:scale-95"
+            className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95"
           >
-            <Minus size={24} />
+            <Minus size={20} />
           </button>
           
-          <input 
-            type="range" 
-            min="30" 
-            max="300" 
-            value={bpm} 
-            onChange={(e) => handleBpmChange(parseInt(e.target.value))}
-            className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent-warm"
-          />
+          <div className="flex-1 flex items-center h-full">
+            <input 
+              type="range" 
+              min="30" 
+              max="300" 
+              value={bpm} 
+              onChange={(e) => handleBpmChange(parseInt(e.target.value))}
+              className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-accent-warm"
+            />
+          </div>
 
           <button 
             onClick={() => handleBpmChange(bpm + 1)}
-            className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-2xl transition-all active:scale-95"
+            className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95"
           >
-            <Plus size={24} />
+            <Plus size={20} />
           </button>
         </div>
 
