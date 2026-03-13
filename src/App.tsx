@@ -145,8 +145,9 @@ export default function App() {
           </nav>
 
           <div className="p-4 border-t border-white/5 flex flex-col gap-2">
-            <div className="px-4 py-2">
-              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v1.2.0</p>
+            <div className="px-4 py-2 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v1.2.5 (已更新)</p>
             </div>
           </div>
         </div>
