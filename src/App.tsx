@@ -6,7 +6,7 @@ import { ScoreLibrary } from './components/ScoreLibrary';
 import { ScoreViewer } from './components/ScoreViewer';
 import { UserGuide } from './components/UserGuide';
 import { PracticeHistory } from './components/PracticeHistory';
-import { Music, Info, LayoutDashboard, Library, Edit2, Check, HelpCircle } from 'lucide-react';
+import { Music, Info, LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail } from 'lucide-react';
 import { cn } from './lib/utils';
 
 interface Score {
@@ -114,10 +114,6 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v1.8.0</span>
-          </div>
           <button 
             onClick={() => setGuideOpen(true)} 
             className="p-2 text-text-muted hover:text-text-warm transition-colors rounded-lg hover:bg-white/5 flex items-center gap-2"
@@ -142,6 +138,27 @@ export default function App() {
           )}
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="shrink-0 border-t border-white/5 py-3 px-4 md:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-muted bg-surface-warm/30 z-10">
+        <div>
+          &copy; 2026 BERK STUDIO 提琴小幫手 - Concept by Rex CHU
+        </div>
+        <div className="flex items-center gap-4">
+          <a 
+            href="mailto:glitch.remover_1i@icloud.com" 
+            className="hover:text-text-warm transition-colors flex items-center gap-1.5"
+          >
+            <Mail size={14} />
+            <span className="font-bold">聯繫我們</span>
+          </a>
+          <div className="w-px h-3 bg-white/10" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-bold uppercase tracking-widest">v1.8.0</span>
+          </div>
+        </div>
+      </footer>
 
       {/* Score Viewer Modal */}
       {activeScore && (
