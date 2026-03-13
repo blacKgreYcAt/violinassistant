@@ -29,8 +29,13 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
   const cameraInputRef = useRef<HTMLInputElement>(null);
   
   const saveScores = (newScores: Score[]) => {
-    setScores(newScores);
-    localStorage.setItem('viola-scores', JSON.stringify(newScores));
+    try {
+      setScores(newScores);
+      localStorage.setItem('viola-scores', JSON.stringify(newScores));
+    } catch (error) {
+      console.error("Failed to save scores:", error);
+      alert("儲存失敗：可能是因為樂譜檔案太大，導致瀏覽器空間不足。請嘗試刪除一些舊樂譜或減少拍照張數。");
+    }
   };
 
   // 影像處理：彩色對比強化 (Color Contrast Enhancement)
@@ -45,27 +50,36 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
           return;
         }
 
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
+        // 縮小圖片尺寸以節省空間 (Max width 1600px)
+        const MAX_WIDTH = 1600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
 
-        // 對比度係數 (1.5 表示增加 50% 對比)
+        // 對比度係數 (1.4 表示增加 40% 對比)
         const contrast = 1.4; 
         const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
 
         for (let i = 0; i < data.length; i += 4) {
-          // 針對 R, G, B 分別進行對比強化，保留色彩
           data[i] = factor * (data[i] - 128) + 128;     // R
           data[i + 1] = factor * (data[i + 1] - 128) + 128; // G
           data[i + 2] = factor * (data[i + 2] - 128) + 128; // B
-          // Alpha (data[i+3]) 保持不變
         }
 
         ctx.putImageData(imageData, 0, 0);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
+        // 降低品質至 0.6 以顯著減少檔案大小
+        resolve(canvas.toDataURL('image/jpeg', 0.6));
       };
       img.src = base64;
     });

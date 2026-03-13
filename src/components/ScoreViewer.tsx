@@ -241,12 +241,10 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
           ) : pages[currentPage].startsWith('data:application/pdf') ? (
             <iframe 
               src={`${pages[currentPage]}#page=${pdfPage}&view=Fit`}
-              className="w-full border-none bg-white"
+              className="w-full h-full border-none bg-white"
               style={{ 
-                height: displayMode === 'fit-height' ? '100%' : (displayMode === 'fit-page' ? '85vh' : '1000px'),
-                width: displayMode === 'fit-page' ? '75vw' : '100%',
-                maxWidth: '1000px',
-                aspectRatio: '1 / 1.414'
+                minHeight: '80vh',
+                width: '100%',
               }}
               title={score.name}
             />
