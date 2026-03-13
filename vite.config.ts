@@ -9,6 +9,7 @@ export default defineConfig(({mode}) => {
     plugins: [
       react(), 
       tailwindcss(),
+      /*
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: [],
@@ -31,6 +32,7 @@ export default defineConfig(({mode}) => {
           ]
         }
       })
+      */
     ],
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
