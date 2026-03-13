@@ -232,67 +232,68 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
   };
 
   return (
-    <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5 flex flex-col gap-6 h-full", className)}>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
-        <h2 className="text-2xl font-bold tracking-tight text-text-warm">樂譜圖書館</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all cursor-pointer">
-            <UploadCloud size={16} />
-            <span className="hidden lg:inline">匯入備份</span>
-            <input type="file" accept=".json" onChange={importLibrary} className="hidden" />
-          </label>
-          <button 
-            onClick={shareLibrary}
-            className="flex items-center gap-2 px-4 py-2 bg-accent-warm/10 hover:bg-accent-warm/20 text-accent-warm rounded-xl text-xs font-bold transition-all"
-            title="分享備份 (可發送郵件)"
-          >
-            <Share2 size={16} />
-            <span className="hidden sm:inline">分享/郵件</span>
-          </button>
-          <button 
-            onClick={exportLibrary}
-            className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all"
-          >
-            <Download size={16} />
-            <span className="hidden lg:inline">下載備份</span>
-          </button>
+    <div className="contents">
+      {/* Top Card: Upload */}
+      <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5", className)}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 mb-4">
+          <h2 className="text-xl font-bold tracking-tight text-text-warm">新增樂譜</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all cursor-pointer">
+              <UploadCloud size={16} />
+              <span className="hidden xl:inline">匯入</span>
+              <input type="file" accept=".json" onChange={importLibrary} className="hidden" />
+            </label>
+            <button 
+              onClick={shareLibrary}
+              className="flex items-center gap-2 px-3 py-1.5 bg-accent-warm/10 hover:bg-accent-warm/20 text-accent-warm rounded-xl text-xs font-bold transition-all"
+              title="分享備份"
+            >
+              <Share2 size={16} />
+              <span className="hidden xl:inline">分享</span>
+            </button>
+            <button 
+              onClick={exportLibrary}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all"
+            >
+              <Download size={16} />
+              <span className="hidden xl:inline">下載</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="shrink-0">
-        {/* 檔案上傳區 */}
         <div 
           {...getRootProps()} 
           className={cn(
-            "border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center gap-4 transition-all cursor-pointer",
+            "flex-1 border-2 border-dashed rounded-3xl p-4 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer min-h-0",
             isDragActive ? "border-accent-warm bg-white/5" : "border-white/10 hover:border-accent-warm/50 hover:bg-white/5"
           )}
         >
           <input {...getInputProps()} />
-          <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-text-muted group-hover:text-accent-warm transition-all">
+          <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-text-muted group-hover:text-accent-warm transition-all shrink-0">
             {isUploading ? (
               <div className="w-6 h-6 border-3 border-accent-warm border-t-transparent rounded-full animate-spin" />
             ) : (
               <Upload size={24} />
             )}
           </div>
-          <div className="text-center">
-            <p className="text-base font-bold text-text-warm">點擊或拖曳上傳樂譜照片</p>
-            <p className="text-xs text-text-muted mt-1">支援 JPG、PNG 格式</p>
+          <div className="text-center overflow-hidden">
+            <p className="text-sm font-bold text-text-warm truncate">點擊或拖曳上傳</p>
+            <p className="text-xs text-text-muted mt-1 truncate">支援 JPG、PNG</p>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-3 min-h-[200px]">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted shrink-0">您的樂譜</h3>
-
-        {scores.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-text-muted gap-2">
-            <Music size={48} strokeWidth={1} />
-            <p className="text-sm font-medium">圖書館中尚無樂譜</p>
-          </div>
-        ) : (
-          scores.map(score => (
+      {/* Bottom Card: Library List */}
+      <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5", className)}>
+        <h2 className="text-xl font-bold tracking-tight text-text-warm shrink-0 mb-4">樂譜圖書館</h2>
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-3 min-h-0">
+          {scores.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-text-muted gap-2">
+              <Music size={32} strokeWidth={1} />
+              <p className="text-sm font-medium">尚無樂譜</p>
+            </div>
+          ) : (
+            scores.map(score => (
             <div 
               key={score.id}
               onClick={() => onSelectScore(score)}
@@ -363,6 +364,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
             </div>
           ))
         )}
+        </div>
       </div>
     </div>
   );
