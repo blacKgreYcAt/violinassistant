@@ -4,8 +4,9 @@ import { VideoRecorder } from './VideoRecorder';
 import { cn } from '../lib/utils';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Use a reliable CDN for the worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+// Use a reliable CDN for the worker - fixed version to match package.json
+const PDFJS_VERSION = '4.0.379';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.mjs`;
 
 interface Score {
   id: string;
@@ -32,9 +33,10 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
   const [isLoading, setIsLoading] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [renderedImageUrl, setRenderedImageUrl] = useState<string | null>(null);
+  const [useNativeViewer, setUseNativeViewer] = useState(false);
   
   const pdfDocRef = useRef<any>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const renderTaskRef = useRef<any>(null);
 
   const pages = Array.isArray(score.data) ? score.data : [score.data];
   const totalImagePages = pages.length;
@@ -42,7 +44,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
 
   // Load PDF Document
   useEffect(() => {
-    if (!isPDF) return;
+    if (!isPDF || useNativeViewer) return;
 
     let isMounted = true;
     const loadPdf = async () => {
@@ -58,8 +60,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
 
         const loadingTask = pdfjsLib.getDocument({ 
           data: bytes,
-          stopAtErrors: false,
-          isEvalSupported: false 
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/cmaps/`,
+          cMapPacked: true,
         });
         
         const pdf = await loadingTask.promise;
@@ -71,7 +73,10 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
         }
       } catch (error: any) {
         console.error('PDF loading error:', error);
-        if (isMounted) setRenderError("無法讀取 PDF 檔案，請確認檔案是否損壞。");
+        if (isMounted) {
+          setRenderError("無法讀取 PDF 檔案。這可能是因為瀏覽器限制或檔案過大。");
+          // If loading fails, suggest native viewer
+        }
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -85,27 +90,30 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
         pdfDocRef.current = null;
       }
     };
-  }, [isPDF, pages]);
+  }, [isPDF, pages, useNativeViewer]);
 
   // Render PDF Page to Image
   useEffect(() => {
-    if (!isPDF || !pdfDocRef.current) return;
+    if (!isPDF || !pdfDocRef.current || useNativeViewer) return;
 
     let isMounted = true;
     const renderPageToImage = async () => {
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+      }
+
       setIsLoading(true);
       try {
         const pdf = pdfDocRef.current;
         const pageToRender = Math.min(Math.max(pdfPage, 1), pdf.numPages);
         const page = await pdf.getPage(pageToRender);
         
-        // Use a hidden canvas for rendering
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         if (!context) return;
 
-        // Render at a fixed high quality, then scale via CSS
-        const viewport = page.getViewport({ scale: 1.5 });
+        // Render at a higher scale for better quality on iPad
+        const viewport = page.getViewport({ scale: 2.0 });
         canvas.height = viewport.height;
         canvas.width = viewport.width;
 
@@ -114,15 +122,20 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
           viewport: viewport,
         };
 
-        await page.render(renderContext).promise;
+        const renderTask = page.render(renderContext);
+        renderTaskRef.current = renderTask;
+        
+        await renderTask.promise;
         
         if (isMounted) {
-          const imageUrl = canvas.toDataURL('image/jpeg', 0.85);
+          const imageUrl = canvas.toDataURL('image/jpeg', 0.8);
           setRenderedImageUrl(imageUrl);
+          setRenderError(null);
         }
       } catch (error: any) {
+        if (error.name === 'RenderingCancelledException') return;
         console.error('PDF rendering error:', error);
-        if (isMounted) setRenderError("渲染頁面時發生錯誤。");
+        if (isMounted) setRenderError("頁面渲染失敗。請嘗試使用「原生模式」查看。");
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -130,7 +143,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
 
     renderPageToImage();
     return () => { isMounted = false; };
-  }, [isPDF, pdfPage, numPages]);
+  }, [isPDF, pdfPage, numPages, useNativeViewer]);
 
   const handleZoom = (delta: number) => {
     setZoom(prev => Math.min(Math.max(prev + delta, 0.5), 3));
@@ -227,6 +240,31 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
           <div className="h-6 w-px bg-white/10 mx-1 md:mx-2 hidden sm:block" />
           
           {isPDF && (
+            <div className="flex items-center bg-white/5 rounded-xl p-1 gap-1">
+              <button 
+                onClick={() => setUseNativeViewer(false)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
+                  !useNativeViewer ? "bg-accent-warm text-bg-warm" : "text-text-muted hover:text-text-warm"
+                )}
+              >
+                圖片模式
+              </button>
+              <button 
+                onClick={() => setUseNativeViewer(true)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
+                  useNativeViewer ? "bg-accent-warm text-bg-warm" : "text-text-muted hover:text-text-warm"
+                )}
+              >
+                原生模式
+              </button>
+            </div>
+          )}
+
+          <div className="h-6 w-px bg-white/10 mx-1 md:mx-2 hidden sm:block" />
+          
+          {isPDF && !useNativeViewer && (
             <button 
               onClick={openInNewTab}
               className="p-1 md:p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all flex items-center gap-2"
@@ -237,21 +275,25 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
             </button>
           )}
 
-          <button 
-            onClick={() => handleZoom(-0.1)}
-            className="p-1 md:p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
-          >
-            <ZoomOut size={18} />
-          </button>
-          <span className="text-[10px] md:text-xs font-bold text-text-muted w-8 md:w-12 text-center">
-            {Math.round(zoom * 100)}%
-          </span>
-          <button 
-            onClick={() => handleZoom(0.1)}
-            className="p-1 md:p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
-          >
-            <ZoomIn size={18} />
-          </button>
+          {!useNativeViewer && (
+            <>
+              <button 
+                onClick={() => handleZoom(-0.1)}
+                className="p-1 md:p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
+              >
+                <ZoomOut size={18} />
+              </button>
+              <span className="text-[10px] md:text-xs font-bold text-text-muted w-8 md:w-12 text-center">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button 
+                onClick={() => handleZoom(0.1)}
+                className="p-1 md:p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
+              >
+                <ZoomIn size={18} />
+              </button>
+            </>
+          )}
           
           <div className="h-6 w-px bg-white/10 mx-1 md:mx-2" />
           
@@ -330,6 +372,14 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
               在新分頁開啟樂譜 <ExternalLink size={18} />
             </a>
           </div>
+        ) : useNativeViewer ? (
+          <div className="absolute inset-0 bg-white">
+            <iframe 
+              src={pages[0]} 
+              className="w-full h-full border-none"
+              title="Native PDF Viewer"
+            />
+          </div>
         ) : (
           <div className="absolute inset-0 overflow-auto flex justify-center items-center p-4 scrollbar-hide">
             <div 
@@ -360,7 +410,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
       </div>
 
       {/* Page Controls (Floating) */}
-      {(totalImagePages > 1 || (isPDF && numPages > 1)) && (
+      {!useNativeViewer && (totalImagePages > 1 || (isPDF && numPages > 1)) && (
         <div className="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 sm:gap-4 bg-surface-warm/80 backdrop-blur-md border border-white/5 p-1.5 sm:p-2 rounded-2xl shadow-2xl z-[60]">
           <button 
             onClick={prevPage}
