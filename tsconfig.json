@@ -1,13 +1,16 @@
 {
   "name": "viola-practice-assistant-v2",
   "private": true,
-  "version": "1.0.5",
+  "version": "1.0.6",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.0.0",
