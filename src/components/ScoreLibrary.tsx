@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, Music, FileText, Trash2, Edit2, Check, X, Camera, Wand2 } from 'lucide-react';
+import { Upload, Music, FileText, Trash2, Edit2, Check, X, Camera, Wand2, Download, UploadCloud, Share2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface Score {
@@ -128,10 +128,78 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
     processFiles(acceptedFiles);
   }, [scores]);
 
+  const exportLibrary = () => {
+    try {
+      const dataStr = JSON.stringify(scores);
+      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+      
+      const exportFileDefaultName = `viola-scores-backup-${new Date().toISOString().split('T')[0]}.json`;
+      
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("匯出失敗，請稍後再試。");
+    }
+  };
+
+  const shareLibrary = async () => {
+    try {
+      const dataStr = JSON.stringify(scores);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const fileName = `viola-scores-backup-${new Date().toISOString().split('T')[0]}.json`;
+      const file = new File([blob], fileName, { type: 'application/json' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: '樂譜圖書館備份',
+          text: '這是我的提琴練習小幫手樂譜備份檔案。',
+        });
+      } else {
+        // Fallback to download if sharing is not supported
+        exportLibrary();
+      }
+    } catch (error) {
+      console.error("Share failed:", error);
+      // If user cancels or error occurs, don't necessarily alert unless it's a real error
+      if ((error as any).name !== 'AbortError') {
+        exportLibrary();
+      }
+    }
+  };
+
+  const importLibrary = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const importedScores = JSON.parse(event.target?.result as string);
+        if (Array.isArray(importedScores)) {
+          if (confirm(`確定要匯入 ${importedScores.length} 份樂譜嗎？這將會取代目前的圖書館。`)) {
+            saveScores(importedScores);
+            alert("匯入成功！");
+          }
+        } else {
+          alert("無效的備份檔案格式。");
+        }
+      } catch (error) {
+        console.error("Import failed:", error);
+        alert("匯入失敗：檔案格式錯誤。");
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    e.target.value = '';
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop,
     accept: {
-      'application/pdf': ['.pdf'],
       'image/*': ['.png', '.jpg', '.jpeg']
     }
   });
@@ -167,8 +235,30 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
 
   return (
     <div className={cn("flex flex-col gap-6 h-full", className)}>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-2xl font-bold tracking-tight text-text-warm">樂譜圖書館</h2>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all cursor-pointer">
+            <UploadCloud size={16} />
+            <span className="hidden lg:inline">匯入備份</span>
+            <input type="file" accept=".json" onChange={importLibrary} className="hidden" />
+          </label>
+          <button 
+            onClick={shareLibrary}
+            className="flex items-center gap-2 px-4 py-2 bg-accent-warm/10 hover:bg-accent-warm/20 text-accent-warm rounded-xl text-xs font-bold transition-all"
+            title="分享備份 (可發送郵件)"
+          >
+            <Share2 size={16} />
+            <span>分享/郵件</span>
+          </button>
+          <button 
+            onClick={exportLibrary}
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all"
+          >
+            <Download size={16} />
+            <span className="hidden lg:inline">下載備份</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
@@ -189,8 +279,8 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
             )}
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold text-text-warm">點擊或拖曳上傳樂譜</p>
-            <p className="text-sm text-text-muted mt-1">支援 PDF、JPG、PNG 格式</p>
+            <p className="text-lg font-bold text-text-warm">點擊或拖曳上傳樂譜照片</p>
+            <p className="text-sm text-text-muted mt-1">支援 JPG、PNG 格式 (建議先將 PDF 截圖後上傳)</p>
           </div>
         </div>
       </div>
