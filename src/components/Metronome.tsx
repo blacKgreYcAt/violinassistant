@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Square, Plus, Minus, Volume2, VolumeX } from 'lucide-react';
+import { Play, Square, Plus, Minus, Volume2, VolumeX, Activity } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface MetronomeProps {
@@ -100,9 +100,12 @@ export const Metronome: React.FC<MetronomeProps> = ({ className }) => {
       isPlaying && currentBeat === 1 ? "ring-2 ring-accent-warm/50 scale-[1.01]" : "",
       className
     )}>
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between h-8">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">節拍器</h3>
+      <div className="flex flex-col gap-6 h-full">
+        <div className="flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <Activity size={20} className="text-accent-warm" />
+            <h2 className="text-lg font-bold tracking-tight text-text-warm">節拍設定</h2>
+          </div>
           <button 
             onClick={() => setIsMuted(!isMuted)}
             className="p-2 hover:bg-white/5 rounded-full transition-colors"

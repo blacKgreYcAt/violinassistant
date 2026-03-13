@@ -102,11 +102,11 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
 
   return (
     <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5", className)}>
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between h-8">
+      <div className="flex flex-col gap-6 h-full">
+        <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <Calendar size={20} className="text-text-muted" />
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">練習紀錄</h3>
+            <Calendar size={20} className="text-accent-warm" />
+            <h2 className="text-lg font-bold tracking-tight text-text-warm">練習紀錄</h2>
           </div>
           <div className="flex items-center gap-2">
             <button 

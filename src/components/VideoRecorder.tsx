@@ -196,12 +196,12 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
       isMinimized ? "p-2" : "p-6",
       className
     )}>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-6 h-full">
         {!isMinimized && (
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
-              <Camera size={20} className="text-text-muted" />
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">練習錄影作業</h3>
+              <Camera size={20} className="text-accent-warm" />
+              <h2 className="text-lg font-bold tracking-tight text-text-warm">錄影作業</h2>
             </div>
             {isCameraOn && (
               <button 

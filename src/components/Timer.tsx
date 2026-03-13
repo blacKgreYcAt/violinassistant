@@ -80,10 +80,12 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
 
   return (
     <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5", className)}>
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center gap-2 h-8">
-          <TimerIcon size={20} className="text-text-muted" />
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">練習倒數計時</h3>
+      <div className="flex flex-col gap-6 h-full">
+        <div className="flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <TimerIcon size={20} className="text-accent-warm" />
+            <h2 className="text-lg font-bold tracking-tight text-text-warm">練習計時</h2>
+          </div>
         </div>
 
         <div className="relative flex flex-col items-center justify-center h-32">

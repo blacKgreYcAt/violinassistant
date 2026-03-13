@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, Music, FileText, Trash2, Edit2, Check, X, Camera, Wand2, Download, UploadCloud, Share2 } from 'lucide-react';
+import { Upload, Music, FileText, Trash2, Edit2, Check, X, Camera, Wand2, Download, UploadCloud, Share2, Library } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Score, getScores, saveScores as saveScoresToDb } from '../lib/storage';
 
@@ -234,10 +234,13 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
   return (
     <div className="contents">
       {/* Top Card: Upload */}
-      <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5", className)}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 mb-4">
-          <h2 className="text-xl font-bold tracking-tight text-text-warm">新增樂譜</h2>
-          <div className="flex flex-wrap items-center gap-2">
+      <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5 flex flex-col gap-6", className)}>
+        <div className="flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <UploadCloud size={20} className="text-accent-warm" />
+            <h2 className="text-lg font-bold tracking-tight text-text-warm">新增樂譜</h2>
+          </div>
+          <div className="flex items-center gap-2">
             <label className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all cursor-pointer">
               <UploadCloud size={16} />
               <span className="hidden xl:inline">匯入</span>
@@ -284,8 +287,13 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
       </div>
 
       {/* Bottom Card: Library List */}
-      <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5", className)}>
-        <h2 className="text-xl font-bold tracking-tight text-text-warm shrink-0 mb-4">樂譜圖書館</h2>
+      <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5 flex flex-col gap-6", className)}>
+        <div className="flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <Library size={20} className="text-accent-warm" />
+            <h2 className="text-lg font-bold tracking-tight text-text-warm">樂譜清單</h2>
+          </div>
+        </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-3 min-h-0">
           {scores.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-text-muted gap-2">
