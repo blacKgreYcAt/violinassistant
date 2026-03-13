@@ -33,7 +33,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
     localStorage.setItem('viola-scores', JSON.stringify(newScores));
   };
 
-  // 影像處理：黑白強化 (Grayscale + Thresholding)
+  // 影像處理：彩色對比強化 (Color Contrast Enhancement)
   const enhanceImage = (base64: string): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -52,19 +52,20 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
 
+        // 對比度係數 (1.5 表示增加 50% 對比)
+        const contrast = 1.4; 
+        const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
         for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          const brightness = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-          const v = brightness > 150 ? 255 : 0;
-          data[i] = v;
-          data[i + 1] = v;
-          data[i + 2] = v;
+          // 針對 R, G, B 分別進行對比強化，保留色彩
+          data[i] = factor * (data[i] - 128) + 128;     // R
+          data[i + 1] = factor * (data[i + 1] - 128) + 128; // G
+          data[i + 2] = factor * (data[i + 2] - 128) + 128; // B
+          // Alpha (data[i+3]) 保持不變
         }
 
         ctx.putImageData(imageData, 0, 0);
-        resolve(canvas.toDataURL('image/jpeg', 0.8));
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
       };
       img.src = base64;
     });
