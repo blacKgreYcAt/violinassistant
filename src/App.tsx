@@ -19,8 +19,6 @@ interface Score {
 
 export default function App() {
   const [activeScore, setActiveScore] = useState<Score | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<'library' | 'dashboard'>('library');
   const [appTitle, setAppTitle] = useState<string>('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState('');
@@ -48,7 +46,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen md:h-screen bg-bg-warm text-text-warm font-sans selection:bg-accent-warm selection:text-bg-warm flex flex-col md:flex-row md:overflow-hidden">
+    <div className="min-h-screen lg:h-screen bg-bg-warm text-text-warm font-sans selection:bg-accent-warm selection:text-bg-warm flex flex-col lg:overflow-hidden">
       {/* First Time Setup Overlay */}
       {isEditingTitle && !appTitle && (
         <div className="fixed inset-0 z-[100] bg-bg-warm/95 backdrop-blur-xl flex items-center justify-center p-6">
@@ -80,182 +78,82 @@ export default function App() {
         </div>
       )}
 
-      {/* Sidebar - Hidden on mobile/portrait, shown on desktop landscape */}
-      <aside className={cn(
-        "hidden md:flex flex-col bg-surface-warm border-r border-white/5 transition-all duration-300 z-40 shrink-0",
-        sidebarOpen ? "w-72" : "w-20"
-      )}>
-        <div className="flex flex-col h-full sticky top-0">
-          <div className="p-6 flex items-center gap-4">
-            <div className="w-10 h-10 bg-accent-warm rounded-xl flex items-center justify-center text-bg-warm shrink-0">
-              <Music size={24} />
-            </div>
-            {sidebarOpen && (
-              <div className="flex-1 min-w-0 group relative">
-                {isEditingTitle && appTitle ? (
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="text"
-                      value={tempTitle}
-                      onChange={(e) => setTempTitle(e.target.value)}
-                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm font-bold w-full focus:outline-none focus:border-accent-warm"
-                      autoFocus
-                      onBlur={saveTitle}
-                      onKeyDown={(e) => e.key === 'Enter' && saveTitle()}
-                    />
-                    <button onClick={saveTitle} className="text-accent-warm"><Check size={16} /></button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <h1 className="font-bold text-lg tracking-tight leading-tight text-text-warm break-words">
-                      {appTitle.split('\n').map((line, i) => (
-                        <React.Fragment key={i}>{line}<br/></React.Fragment>
-                      ))}
-                    </h1>
-                    <button 
-                      onClick={startEditing}
-                      className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-accent-warm transition-all"
-                    >
-                      <Edit2 size={14} />
-                    </button>
-                  </div>
-                )}
+      {/* Top Header */}
+      <header className="h-16 shrink-0 border-b border-white/5 flex items-center justify-between px-4 md:px-6 bg-surface-warm/50 backdrop-blur-md z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-accent-warm rounded-lg flex items-center justify-center text-bg-warm shrink-0">
+            <Music size={18} />
+          </div>
+          <div className="group relative">
+            {isEditingTitle && appTitle ? (
+              <div className="flex items-center gap-2">
+                <input 
+                  type="text"
+                  value={tempTitle}
+                  onChange={(e) => setTempTitle(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm font-bold w-48 focus:outline-none focus:border-accent-warm"
+                  autoFocus
+                  onBlur={saveTitle}
+                  onKeyDown={(e) => e.key === 'Enter' && saveTitle()}
+                />
+                <button onClick={saveTitle} className="text-accent-warm"><Check size={16} /></button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h1 className="font-bold text-lg tracking-tight text-text-warm truncate max-w-[200px] sm:max-w-xs">
+                  {appTitle}
+                </h1>
+                <button 
+                  onClick={startEditing}
+                  className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-accent-warm transition-all"
+                >
+                  <Edit2 size={14} />
+                </button>
               </div>
             )}
           </div>
-
-          <nav className="flex-1 px-4 py-4 flex flex-col gap-2">
-            <button 
-              onClick={() => setActiveTab('library')}
-              className={cn(
-                "flex items-center gap-4 p-4 rounded-2xl transition-all group",
-                activeTab === 'library' ? "bg-accent-warm text-bg-warm" : "hover:bg-white/5 text-text-muted hover:text-text-warm"
-              )}
-            >
-              <Library size={24} />
-              {sidebarOpen && <span className="font-bold">樂譜圖書館</span>}
-            </button>
-            <button 
-              onClick={() => setActiveTab('dashboard')}
-              className={cn(
-                "flex items-center gap-4 p-4 rounded-2xl transition-all group",
-                activeTab === 'dashboard' ? "bg-accent-warm text-bg-warm" : "hover:bg-white/5 text-text-muted hover:text-text-warm"
-              )}
-            >
-              <LayoutDashboard size={24} />
-              {sidebarOpen && <span className="font-bold">練習工具箱</span>}
-            </button>
-            <button 
-              onClick={() => setGuideOpen(true)}
-              className={cn(
-                "flex items-center gap-4 p-4 rounded-2xl transition-all group hover:bg-white/5 text-text-muted hover:text-text-warm"
-              )}
-            >
-              <HelpCircle size={24} />
-              {sidebarOpen && <span className="font-bold">使用說明</span>}
-            </button>
-          </nav>
-
-          <div className="h-14 border-t border-white/5 flex items-center px-6 shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v1.8.0 (新增練習紀錄與大容量儲存)</p>
-            </div>
-          </div>
         </div>
-      </aside>
-
-      {/* Bottom Navigation for Mobile/Portrait */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-surface-warm border-t border-white/5 px-6 py-3 flex justify-around items-center z-50 pb-safe">
-        <button 
-          onClick={() => setActiveTab('library')}
-          className={cn(
-            "flex flex-col items-center gap-1 p-2 transition-all",
-            activeTab === 'library' ? "text-accent-warm" : "text-text-muted"
-          )}
-        >
-          <Library size={24} />
-          <span className="text-[10px] font-bold">圖書館</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('dashboard')}
-          className={cn(
-            "flex flex-col items-center gap-1 p-2 transition-all",
-            activeTab === 'dashboard' ? "text-accent-warm" : "text-text-muted"
-          )}
-        >
-          <LayoutDashboard size={24} />
-          <span className="text-[10px] font-bold">工具箱</span>
-        </button>
-        <button 
-          onClick={() => setGuideOpen(true)}
-          className="flex flex-col items-center gap-1 p-2 text-text-muted"
-        >
-          <HelpCircle size={24} />
-          <span className="text-[10px] font-bold">說明</span>
-        </button>
-      </nav>
-
-      {/* Main Content */}
-      <main className="flex-1 md:h-full flex flex-col bg-bg-warm min-w-0 pb-24 md:pb-0">
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 flex flex-col md:min-h-0">
-          <div className="max-w-7xl mx-auto w-full md:h-full flex flex-col md:min-h-0">
-            {activeTab === 'library' ? (
-              <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 md:min-h-0">
-                <div className="md:h-full md:min-h-0 flex flex-col">
-                  <ScoreLibrary onSelectScore={setActiveScore} className="h-full" />
-                </div>
-                <div className="md:h-full md:min-h-0 flex flex-col gap-6 md:overflow-y-auto custom-scrollbar pb-6 xl:pb-0 pr-2">
-                  <Metronome className="shrink-0 w-full" />
-                  <Timer className="shrink-0 w-full" />
-                </div>
-                {!activeScore && (
-                  <div className="md:h-full md:min-h-0 flex flex-col gap-6 md:overflow-y-auto custom-scrollbar pb-6 xl:pb-0 pr-2">
-                    <VideoRecorder activeScoreName={activeScore?.name} className="shrink-0 w-full" />
-                    <PracticeHistory className="shrink-0 w-full" />
-                  </div>
-                )}
-              </div>
-            ) : (
-            <div className="flex-1 flex flex-col md:min-h-0">
-              <header className="shrink-0 mb-8 flex items-center justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold tracking-tight text-text-warm">練習控制台</h2>
-                  <p className="text-text-muted text-sm mt-1">幫助您掌握曲目的專業工具。</p>
-                </div>
-                <div className="w-12 h-12 bg-accent-warm rounded-xl flex items-center justify-center text-bg-warm md:hidden">
-                  <Music size={24} />
-                </div>
-              </header>
-              <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 md:min-h-0">
-                <div className="md:h-full md:min-h-0 flex flex-col gap-6 md:overflow-y-auto custom-scrollbar pb-6 pr-2">
-                  <Metronome className="shrink-0 w-full" />
-                  <Timer className="shrink-0 w-full" />
-                </div>
-                {!activeScore && (
-                  <div className="md:h-full md:min-h-0 flex flex-col gap-6 md:overflow-y-auto custom-scrollbar pb-6 pr-2">
-                    <VideoRecorder activeScoreName={activeScore?.name} className="shrink-0 w-full" />
-                    <PracticeHistory className="shrink-0 w-full" />
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v1.8.0</span>
           </div>
-        </div>
-
-        {/* Main Footer */}
-        <footer className="h-14 border-t border-white/5 flex items-center justify-between px-6 md:px-8 shrink-0 bg-surface-warm/30">
-          <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
-            © 2026 BERK STUDIO 提琴小幫手 - Concept by Rex CHU
-          </p>
-          <a 
-            href="mailto:glitch.remover_1i@icloud.com"
-            className="text-[10px] font-bold text-accent-warm hover:text-accent-warm/80 transition-colors uppercase tracking-widest"
+          <button 
+            onClick={() => setGuideOpen(true)} 
+            className="p-2 text-text-muted hover:text-text-warm transition-colors rounded-lg hover:bg-white/5 flex items-center gap-2"
           >
-            聯絡信箱
-          </a>
-        </footer>
+            <HelpCircle size={20} />
+            <span className="hidden sm:inline text-xs font-bold">使用說明</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content - Bento Grid */}
+      <main className="flex-1 min-h-0 p-4 md:p-6 lg:p-8 overflow-y-auto lg:overflow-hidden bg-bg-warm">
+        <div className="max-w-[1600px] mx-auto w-full h-full flex flex-col lg:grid lg:grid-cols-12 gap-6">
+          
+          {/* Column 1: Library */}
+          <div className="lg:col-span-5 xl:col-span-4 flex flex-col min-h-[500px] lg:min-h-0 lg:h-full">
+            <ScoreLibrary onSelectScore={setActiveScore} className="flex-1 h-full" />
+          </div>
+
+          {/* Column 2: Metronome & Timer */}
+          <div className="lg:col-span-4 xl:col-span-4 flex flex-col gap-6 lg:min-h-0 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-2">
+            <Metronome className="shrink-0" />
+            <Timer className="shrink-0" />
+          </div>
+
+          {/* Column 3: Video & History */}
+          <div className="lg:col-span-3 xl:col-span-4 flex flex-col gap-6 lg:min-h-0 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-2 pb-8 lg:pb-0">
+            {!activeScore && (
+              <>
+                <VideoRecorder activeScoreName={activeScore?.name} className="shrink-0" />
+                <PracticeHistory className="shrink-0" />
+              </>
+            )}
+          </div>
+
+        </div>
       </main>
 
       {/* Score Viewer Modal */}
@@ -274,3 +172,4 @@ export default function App() {
     </div>
   );
 }
+

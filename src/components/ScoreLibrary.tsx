@@ -233,9 +233,9 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
 
   return (
     <div className={cn("flex flex-col gap-6 h-full", className)}>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <h2 className="text-2xl font-bold tracking-tight text-text-warm">樂譜圖書館</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all cursor-pointer">
             <UploadCloud size={16} />
             <span className="hidden lg:inline">匯入備份</span>
@@ -247,7 +247,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
             title="分享備份 (可發送郵件)"
           >
             <Share2 size={16} />
-            <span>分享/郵件</span>
+            <span className="hidden sm:inline">分享/郵件</span>
           </button>
           <button 
             onClick={exportLibrary}
@@ -259,32 +259,33 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
+      <div className="shrink-0">
         {/* 檔案上傳區 */}
         <div 
           {...getRootProps()} 
           className={cn(
-            "border-2 border-dashed rounded-3xl p-10 flex flex-col items-center justify-center gap-4 transition-all cursor-pointer",
+            "border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center gap-4 transition-all cursor-pointer",
             isDragActive ? "border-accent-warm bg-white/5" : "border-white/10 hover:border-accent-warm/50 hover:bg-white/5"
           )}
         >
           <input {...getInputProps()} />
-          <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center text-text-muted group-hover:text-accent-warm transition-all">
+          <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-text-muted group-hover:text-accent-warm transition-all">
             {isUploading ? (
-              <div className="w-8 h-8 border-3 border-accent-warm border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-3 border-accent-warm border-t-transparent rounded-full animate-spin" />
             ) : (
-              <Upload size={32} />
+              <Upload size={24} />
             )}
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold text-text-warm">點擊或拖曳上傳樂譜照片</p>
-            <p className="text-sm text-text-muted mt-1">支援 JPG、PNG 格式 (建議先將 PDF 截圖後上傳)</p>
+            <p className="text-base font-bold text-text-warm">點擊或拖曳上傳樂譜照片</p>
+            <p className="text-xs text-text-muted mt-1">支援 JPG、PNG 格式</p>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-3">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted mt-2">您的樂譜</h3>
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-3 min-h-[200px]">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted shrink-0">您的樂譜</h3>
+
         {scores.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-text-muted gap-2">
             <Music size={48} strokeWidth={1} />
