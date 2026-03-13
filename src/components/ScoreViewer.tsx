@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, LayoutDashboard } from 'lucide-react';
 import { VideoRecorder } from './VideoRecorder';
 import { cn } from '../lib/utils';
@@ -24,33 +24,10 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
   const [currentPage, setCurrentPage] = useState(0);
   const [pdfPage, setPdfPage] = useState(1);
   const [displayMode, setDisplayMode] = useState<'fit-width' | 'fit-height' | 'fit-page'>('fit-page');
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   const pages = Array.isArray(score.data) ? score.data : [score.data];
   const totalPages = pages.length;
   const isPDF = pages[currentPage].startsWith('data:application/pdf');
-
-  // Convert Base64 PDF to Blob URL for better performance and compatibility
-  useEffect(() => {
-    if (isPDF) {
-      try {
-        const base64Data = pages[currentPage].split(',')[1];
-        const binaryString = window.atob(base64Data);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        setPdfUrl(url);
-        return () => URL.revokeObjectURL(url);
-      } catch (e) {
-        console.error("PDF conversion failed:", e);
-      }
-    } else {
-      setPdfUrl(null);
-    }
-  }, [currentPage, pages, isPDF]);
 
   const handleZoom = (delta: number) => {
     setZoom(prev => Math.min(Math.max(prev + delta, 0.2), 5));
@@ -86,7 +63,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
 
   // Construct PDF viewer URL with parameters
   const getPdfViewerUrl = () => {
-    if (!pdfUrl) return '';
+    const base64 = pages[currentPage];
     const params = [
       `page=${pdfPage}`,
       displayMode === 'fit-width' ? 'view=FitH' : (displayMode === 'fit-height' ? 'view=FitV' : 'view=Fit'),
@@ -95,7 +72,23 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
       'scrollbar=1',
       `zoom=${Math.round(zoom * 100)}`
     ];
-    return `${pdfUrl}#${params.join('&')}`;
+    return `${base64}#${params.join('&')}`;
+  };
+
+  const openInNewTab = () => {
+    const base64 = pages[currentPage];
+    const win = window.open();
+    if (win) {
+      win.document.write(`
+        <html>
+          <head><title>${score.name}</title></head>
+          <body style="margin:0; padding:0; overflow:hidden;">
+            <iframe src="${base64}" frameborder="0" style="width:100%; height:100%; border:none;" allowfullscreen></iframe>
+          </body>
+        </html>
+      `);
+      win.document.close();
+    }
   };
 
   return (
@@ -174,11 +167,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
           
           {isPDF && (
             <button 
-              onClick={() => {
-                if (pdfUrl) {
-                  window.open(pdfUrl, '_blank');
-                }
-              }}
+              onClick={openInNewTab}
               className="p-1 md:p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all flex items-center gap-2"
               title="在新分頁開啟 PDF"
             >
@@ -235,9 +224,9 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
       )}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-hidden bg-bg-warm flex justify-center items-center relative">
+      <div className="flex-1 overflow-hidden bg-bg-warm relative">
         {score.type === 'link' ? (
-          <div className="w-full h-full flex flex-col items-center justify-center p-6 sm:p-12 text-center gap-4 sm:gap-6 bg-white">
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 sm:p-12 text-center gap-4 sm:gap-6 bg-white">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400">
               <ExternalLink size={32} />
             </div>
@@ -260,28 +249,16 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
             </p>
           </div>
         ) : isPDF ? (
-          <div className="w-full h-full bg-white flex flex-col">
-            {pdfUrl ? (
-              <object 
-                data={getPdfViewerUrl()}
-                type="application/pdf"
-                className="flex-1 w-full h-full border-none"
-              >
-                <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-4">
-                  <p className="text-neutral-500">您的瀏覽器無法直接顯示 PDF</p>
-                  <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-accent-warm text-bg-warm rounded-xl font-bold">
-                    下載樂譜或在新分頁開啟
-                  </a>
-                </div>
-              </object>
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="w-8 h-8 border-3 border-accent-warm border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
+          <div className="absolute inset-0 bg-white">
+            <iframe 
+              src={getPdfViewerUrl()}
+              className="w-full h-full border-none"
+              title={score.name}
+              key={`${currentPage}-${pdfPage}-${displayMode}`}
+            />
           </div>
         ) : (
-          <div className="w-full h-full overflow-auto flex justify-center items-center p-4 scrollbar-hide">
+          <div className="absolute inset-0 overflow-auto flex justify-center items-center p-4 scrollbar-hide">
             <div 
               className={cn(
                 "transition-all duration-200 shadow-2xl bg-white flex items-center justify-center relative",
