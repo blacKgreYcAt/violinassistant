@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, Loader2, AlertCircle, LayoutDashboard, Smile } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, Loader2, AlertCircle, LayoutDashboard, Smile, Activity } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
 import { cn } from '../lib/utils';
@@ -36,6 +36,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
   const requestRef = useRef<number>();
   const lastTurnTimeRef = useRef<number>(0);
+  const sequenceStateRef = useRef<'IDLE' | 'LOOK_RIGHT' | 'LOOK_RIGHT_DOWN' | 'LOOK_LEFT' | 'LOOK_LEFT_UP'>('IDLE');
+  const sequenceTimerRef = useRef<number>(0);
 
   const pages = Array.isArray(score.data) ? score.data : [score.data];
   const totalPages = pages.length;
@@ -93,23 +95,79 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
 
       if (results.faceLandmarks && results.faceLandmarks.length > 0) {
         const landmarks = results.faceLandmarks[0];
-        // 33 is left eye, 263 is right eye (from user's perspective)
-        const leftEye = landmarks[33];
-        const rightEye = landmarks[263];
         
-        const dy = rightEye.y - leftEye.y;
-        const dx = rightEye.x - leftEye.x;
-        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        // MediaPipe Face Mesh Landmarks
+        const nose = landmarks[1];
+        const leftEar = landmarks[234];
+        const rightEar = landmarks[454];
+        const topHead = landmarks[10];
+        const chin = landmarks[152];
 
-        // Cooldown check (2 seconds)
-        if (nowInMs - lastTurnTimeRef.current > 2000) {
-          if (angle > 15) { // Tilt Right -> Next Page
-            setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
-            lastTurnTimeRef.current = nowInMs;
-          } else if (angle < -15) { // Tilt Left -> Prev Page
-            setCurrentPage(prev => Math.max(prev - 1, 0));
-            lastTurnTimeRef.current = nowInMs;
-          }
+        const centerX = (leftEar.x + rightEar.x) / 2;
+        const centerY = (topHead.y + chin.y) / 2;
+        const faceWidth = Math.abs(rightEar.x - leftEar.x);
+        const faceHeight = Math.abs(chin.y - topHead.y);
+
+        // Calculate Yaw and Pitch ratios
+        const yaw = (nose.x - centerX) / faceWidth;
+        const pitch = (nose.y - centerY) / faceHeight;
+
+        // Mirrored camera: looking right means nose moves to the left side of the image (smaller X)
+        const isLookingRight = yaw < -0.10;
+        const isLookingLeft = yaw > 0.10;
+        const isLookingDown = pitch > 0.08;
+        const isLookingUp = pitch < -0.08;
+        const isCenter = Math.abs(yaw) < 0.08 && Math.abs(pitch) < 0.08;
+
+        // Reset sequence if it takes too long (3 seconds)
+        if (sequenceStateRef.current !== 'IDLE' && nowInMs - sequenceTimerRef.current > 3000) {
+          sequenceStateRef.current = 'IDLE';
+        }
+
+        switch (sequenceStateRef.current) {
+          case 'IDLE':
+            if (isLookingRight) {
+              sequenceStateRef.current = 'LOOK_RIGHT';
+              sequenceTimerRef.current = nowInMs;
+            } else if (isLookingLeft) {
+              sequenceStateRef.current = 'LOOK_LEFT';
+              sequenceTimerRef.current = nowInMs;
+            }
+            break;
+          case 'LOOK_RIGHT':
+            if (isLookingDown) {
+              sequenceStateRef.current = 'LOOK_RIGHT_DOWN';
+              sequenceTimerRef.current = nowInMs;
+            } else if (isCenter) {
+              sequenceStateRef.current = 'IDLE';
+            }
+            break;
+          case 'LOOK_RIGHT_DOWN':
+            if (isCenter) {
+              if (nowInMs - lastTurnTimeRef.current > 2000) {
+                setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
+                lastTurnTimeRef.current = nowInMs;
+              }
+              sequenceStateRef.current = 'IDLE';
+            }
+            break;
+          case 'LOOK_LEFT':
+            if (isLookingUp) {
+              sequenceStateRef.current = 'LOOK_LEFT_UP';
+              sequenceTimerRef.current = nowInMs;
+            } else if (isCenter) {
+              sequenceStateRef.current = 'IDLE';
+            }
+            break;
+          case 'LOOK_LEFT_UP':
+            if (isCenter) {
+              if (nowInMs - lastTurnTimeRef.current > 2000) {
+                setCurrentPage(prev => Math.max(prev - 1, 0));
+                lastTurnTimeRef.current = nowInMs;
+              }
+              sequenceStateRef.current = 'IDLE';
+            }
+            break;
         }
       }
 
@@ -253,7 +311,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
               "p-1 md:p-2 rounded-xl transition-all flex items-center gap-2",
               isAutoTurnEnabled ? "bg-emerald-500 text-white" : "text-text-muted hover:text-text-warm hover:bg-white/5"
             )}
-            title="智能翻頁 (頭部傾斜)"
+            title="智能翻頁 (頭部組合動作)"
           >
             {isModelLoading ? <Loader2 size={18} className="animate-spin" /> : <Smile size={18} />}
             <span className="text-[10px] font-bold hidden sm:block">{isAutoTurnEnabled ? '智能翻頁中' : '智能翻頁'}</span>

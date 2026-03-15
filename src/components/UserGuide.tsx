@@ -16,9 +16,63 @@ import {
   UploadCloud,
   Calendar,
   History,
-  Smile
+  Smile,
+  ArrowRight
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+
+const HeadIcon = ({ type }: { type: 'center' | 'right' | 'left' | 'down' | 'up' }) => {
+  return (
+    <svg viewBox="0 0 24 24" className="w-10 h-10 text-text-warm" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      {/* Base Head */}
+      <circle cx="12" cy="12" r="8" />
+      
+      {type === 'center' && (
+        <>
+          <path d="M9 11h.01M15 11h.01" strokeWidth="2" />
+          <path d="M12 13v1" />
+          <path d="M10 16a2 2 0 0 0 4 0" />
+        </>
+      )}
+      {type === 'right' && (
+        <>
+          <path d="M13 11h.01M17 11h.01" strokeWidth="2" />
+          <path d="M15 13v1" />
+          <path d="M13 16a2 2 0 0 0 3 -0.5" />
+          {/* Arrow indicating looking right */}
+          <path d="M22 12l-3-3m3 3l-3 3m3-3H18" className="text-accent-warm" strokeWidth="2" />
+        </>
+      )}
+      {type === 'left' && (
+        <>
+          <path d="M7 11h.01M11 11h.01" strokeWidth="2" />
+          <path d="M9 13v1" />
+          <path d="M11 16a2 2 0 0 1 -3 -0.5" />
+          {/* Arrow indicating looking left */}
+          <path d="M2 12l3-3m-3 3l3 3m-3-3h4" className="text-accent-warm" strokeWidth="2" />
+        </>
+      )}
+      {type === 'down' && (
+        <>
+          <path d="M9 13h.01M15 13h.01" strokeWidth="2" />
+          <path d="M12 15v1" />
+          <path d="M10 18a2 2 0 0 0 4 0" />
+          {/* Arrow indicating looking down */}
+          <path d="M12 22l-3-3m3 3l3-3m-3 3v-4" className="text-accent-warm" strokeWidth="2" />
+        </>
+      )}
+      {type === 'up' && (
+        <>
+          <path d="M9 9h.01M15 9h.01" strokeWidth="2" />
+          <path d="M12 11v1" />
+          <path d="M10 14a2 2 0 0 0 4 0" />
+          {/* Arrow indicating looking up */}
+          <path d="M12 2l-3 3m3-3l3 3m-3-3v4" className="text-accent-warm" strokeWidth="2" />
+        </>
+      )}
+    </svg>
+  );
+};
 
 interface UserGuideProps {
   isOpen: boolean;
@@ -68,8 +122,51 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
     },
     {
       icon: <Smile className="text-accent-warm" />,
-      title: "智能翻頁 (頭部姿態)",
-      content: "開啟樂譜後，點擊上方工具列的「智能翻頁」按鈕。透過鏡頭偵測，向右歪頭即可翻到下一頁，向左歪頭翻回上一頁，完全解放雙手！"
+      title: "智能翻頁 (頭部組合動作)",
+      content: "開啟樂譜後點擊上方「智能翻頁」。為避免連續誤觸，每次翻頁後有「2 秒鐘冷卻時間」。",
+      customContent: (
+        <div className="mt-4 space-y-3">
+          <div className="bg-bg-warm/50 p-3 rounded-xl border border-white/5">
+            <div className="text-xs font-bold text-accent-warm mb-2">下一頁 (Next Page)</div>
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex flex-col items-center gap-1">
+                <HeadIcon type="right" />
+                <span className="text-[10px] text-text-muted">1. 向右看</span>
+              </div>
+              <ArrowRight className="text-white/20 w-4 h-4" />
+              <div className="flex flex-col items-center gap-1">
+                <HeadIcon type="down" />
+                <span className="text-[10px] text-text-muted">2. 向下點頭</span>
+              </div>
+              <ArrowRight className="text-white/20 w-4 h-4" />
+              <div className="flex flex-col items-center gap-1">
+                <HeadIcon type="center" />
+                <span className="text-[10px] text-text-muted">3. 頭回正</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-bg-warm/50 p-3 rounded-xl border border-white/5">
+            <div className="text-xs font-bold text-accent-warm mb-2">上一頁 (Prev Page)</div>
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex flex-col items-center gap-1">
+                <HeadIcon type="left" />
+                <span className="text-[10px] text-text-muted">1. 向左看</span>
+              </div>
+              <ArrowRight className="text-white/20 w-4 h-4" />
+              <div className="flex flex-col items-center gap-1">
+                <HeadIcon type="up" />
+                <span className="text-[10px] text-text-muted">2. 向上抬頭</span>
+              </div>
+              <ArrowRight className="text-white/20 w-4 h-4" />
+              <div className="flex flex-col items-center gap-1">
+                <HeadIcon type="center" />
+                <span className="text-[10px] text-text-muted">3. 頭回正</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
     },
     {
       icon: <BookOpen className="text-accent-warm" />,
@@ -88,7 +185,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
       version: "v1.9.0",
       date: "2026-03-15",
       changes: [
-        "✨ 新增「智能翻頁」功能：透過相機偵測頭部傾斜（向左/向右歪頭）自動翻頁，完全解放雙手。",
+        "✨ 新增「智能翻頁」功能：透過相機偵測頭部組合動作（向右看+點頭 / 向左看+抬頭）自動翻頁，並內建 2 秒防誤觸冷卻機制。",
         "🎨 樂譜清單介面優化：移除圖示釋放空間，支援長檔名兩行顯示。",
       ]
     },
@@ -193,7 +290,8 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
                       {section.icon}
                     </div>
                     <h3 className="font-bold text-lg mb-2">{section.title}</h3>
-                    <p className="text-text-muted text-sm leading-relaxed">{section.content}</p>
+                    <p className="text-text-muted text-sm leading-relaxed whitespace-pre-line">{section.content}</p>
+                    {section.customContent && section.customContent}
                   </div>
                 ))}
               </div>
