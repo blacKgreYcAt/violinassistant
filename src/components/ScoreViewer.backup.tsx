@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, Loader2, AlertCircle, LayoutDashboard, Smile } from 'lucide-react';
-import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, Loader2, AlertCircle, LayoutDashboard } from 'lucide-react';
 import { VideoRecorder } from './VideoRecorder';
 import { cn } from '../lib/utils';
 
@@ -27,126 +26,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
   const [currentPage, setCurrentPage] = useState(0);
   const [displayMode, setDisplayMode] = useState<'fit-width' | 'fit-page'>('fit-page');
   
-  // Smart Page Turn States
-  const [isAutoTurnEnabled, setIsAutoTurnEnabled] = useState(false);
-  const [isModelLoading, setIsModelLoading] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
-  const requestRef = useRef<number>();
-  const lastTurnTimeRef = useRef<number>(0);
-
   const pages = Array.isArray(score.data) ? score.data : [score.data];
   const totalPages = pages.length;
-
-  useEffect(() => {
-    let active = true;
-
-    const initMediaPipe = async () => {
-      if (!isAutoTurnEnabled) return;
-      setIsModelLoading(true);
-      setCameraError(null);
-
-      try {
-        const vision = await FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-        );
-        
-        faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
-            delegate: "GPU"
-          },
-          outputFaceBlendshapes: false,
-          runningMode: "VIDEO",
-          numFaces: 1
-        });
-
-        if (!active) return;
-
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.addEventListener('loadeddata', () => {
-            if (active) {
-              setIsModelLoading(false);
-              detectFace();
-            }
-          });
-        }
-      } catch (err) {
-        console.error("Failed to init smart page turn:", err);
-        if (active) {
-          setCameraError("無法啟動相機或模型");
-          setIsAutoTurnEnabled(false);
-          setIsModelLoading(false);
-        }
-      }
-    };
-
-    const detectFace = () => {
-      if (!videoRef.current || !faceLandmarkerRef.current || !active) return;
-
-      const nowInMs = Date.now();
-      const results = faceLandmarkerRef.current.detectForVideo(videoRef.current, performance.now());
-
-      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-        const landmarks = results.faceLandmarks[0];
-        // 33 is left eye, 263 is right eye (from user's perspective)
-        const leftEye = landmarks[33];
-        const rightEye = landmarks[263];
-        
-        const dy = rightEye.y - leftEye.y;
-        const dx = rightEye.x - leftEye.x;
-        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-
-        // Cooldown check (2 seconds)
-        if (nowInMs - lastTurnTimeRef.current > 2000) {
-          if (angle > 15) { // Tilt Right -> Next Page
-            setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
-            lastTurnTimeRef.current = nowInMs;
-          } else if (angle < -15) { // Tilt Left -> Prev Page
-            setCurrentPage(prev => Math.max(prev - 1, 0));
-            lastTurnTimeRef.current = nowInMs;
-          }
-        }
-      }
-
-      requestRef.current = requestAnimationFrame(detectFace);
-    };
-
-    if (isAutoTurnEnabled) {
-      initMediaPipe();
-    } else {
-      // Cleanup
-      if (requestRef.current) {
-        cancelAnimationFrame(requestRef.current);
-      }
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-      }
-      if (faceLandmarkerRef.current) {
-        faceLandmarkerRef.current.close();
-        faceLandmarkerRef.current = null;
-      }
-      setIsModelLoading(false);
-    }
-
-    return () => {
-      active = false;
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-      }
-      if (faceLandmarkerRef.current) {
-        faceLandmarkerRef.current.close();
-      }
-    };
-  }, [isAutoTurnEnabled, totalPages]);
 
   const handleZoom = (delta: number) => {
     setZoom(prev => Math.min(Math.max(prev + delta, 0.5), 3));
@@ -248,20 +129,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
           <div className="h-6 w-px bg-white/10 mx-1 md:mx-2" />
 
           <button 
-            onClick={() => setIsAutoTurnEnabled(!isAutoTurnEnabled)}
-            className={cn(
-              "p-1 md:p-2 rounded-xl transition-all flex items-center gap-2",
-              isAutoTurnEnabled ? "bg-emerald-500 text-white" : "text-text-muted hover:text-text-warm hover:bg-white/5"
-            )}
-            title="智能翻頁 (頭部傾斜)"
-          >
-            {isModelLoading ? <Loader2 size={18} className="animate-spin" /> : <Smile size={18} />}
-            <span className="text-[10px] font-bold hidden sm:block">{isAutoTurnEnabled ? '智能翻頁中' : '智能翻頁'}</span>
-          </button>
-
-          <div className="h-6 w-px bg-white/10 mx-1 md:mx-2" />
-
-          <button 
             onClick={() => setShowRecorder(!showRecorder)}
             className={cn(
               "p-1 md:p-2 rounded-xl transition-all flex items-center gap-2",
@@ -319,29 +186,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
             isMinimized={isRecorderMinimized}
             isFloating={true}
           />
-        </div>
-      )}
-
-      {/* Smart Page Turn Camera Preview */}
-      {isAutoTurnEnabled && (
-        <div className="fixed bottom-24 right-4 w-32 h-24 bg-black rounded-xl overflow-hidden shadow-2xl border-2 border-emerald-500/50 z-[80]">
-          <video 
-            ref={videoRef} 
-            autoPlay 
-            playsInline 
-            muted 
-            className="w-full h-full object-cover transform scale-x-[-1]" 
-          />
-          {isModelLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-              <Loader2 size={24} className="animate-spin text-emerald-500" />
-            </div>
-          )}
-          {cameraError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80 p-2 text-center">
-              <span className="text-[10px] text-red-400 font-bold">{cameraError}</span>
-            </div>
-          )}
         </div>
       )}
 
