@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, Loader2, AlertCircle, LayoutDashboard, Smile, Activity } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, Loader2, AlertCircle, LayoutDashboard, Smile, Activity, Eye } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
 import { cn } from '../lib/utils';
@@ -29,6 +29,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
   
   // Smart Page Turn States
   const [isAutoTurnEnabled, setIsAutoTurnEnabled] = useState(false);
+  const [aiMode, setAiMode] = useState<'head' | 'blink'>('head');
   const [isModelLoading, setIsModelLoading] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   
@@ -38,6 +39,11 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
   const lastTurnTimeRef = useRef<number>(0);
   const sequenceStateRef = useRef<'IDLE' | 'LOOK_RIGHT' | 'LOOK_RIGHT_DOWN' | 'LOOK_LEFT' | 'LOOK_LEFT_UP'>('IDLE');
   const sequenceTimerRef = useRef<number>(0);
+  const aiModeRef = useRef(aiMode);
+
+  useEffect(() => {
+    aiModeRef.current = aiMode;
+  }, [aiMode]);
 
   const pages = Array.isArray(score.data) ? score.data : [score.data];
   const totalPages = pages.length;
@@ -60,7 +66,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
             modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
             delegate: "GPU"
           },
-          outputFaceBlendshapes: false,
+          outputFaceBlendshapes: true,
           runningMode: "VIDEO",
           numFaces: 1
         });
@@ -94,80 +100,102 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
       const results = faceLandmarkerRef.current.detectForVideo(videoRef.current, performance.now());
 
       if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-        const landmarks = results.faceLandmarks[0];
-        
-        // MediaPipe Face Mesh Landmarks
-        const nose = landmarks[1];
-        const leftEar = landmarks[234];
-        const rightEar = landmarks[454];
-        const topHead = landmarks[10];
-        const chin = landmarks[152];
+        if (aiModeRef.current === 'head') {
+          const landmarks = results.faceLandmarks[0];
+          
+          // MediaPipe Face Mesh Landmarks
+          const nose = landmarks[1];
+          const leftEar = landmarks[234];
+          const rightEar = landmarks[454];
+          const topHead = landmarks[10];
+          const chin = landmarks[152];
 
-        const centerX = (leftEar.x + rightEar.x) / 2;
-        const centerY = (topHead.y + chin.y) / 2;
-        const faceWidth = Math.abs(rightEar.x - leftEar.x);
-        const faceHeight = Math.abs(chin.y - topHead.y);
+          const centerX = (leftEar.x + rightEar.x) / 2;
+          const centerY = (topHead.y + chin.y) / 2;
+          const faceWidth = Math.abs(rightEar.x - leftEar.x);
+          const faceHeight = Math.abs(chin.y - topHead.y);
 
-        // Calculate Yaw and Pitch ratios
-        const yaw = (nose.x - centerX) / faceWidth;
-        const pitch = (nose.y - centerY) / faceHeight;
+          // Calculate Yaw and Pitch ratios
+          const yaw = (nose.x - centerX) / faceWidth;
+          const pitch = (nose.y - centerY) / faceHeight;
 
-        // Mirrored camera: looking right means nose moves to the left side of the image (smaller X)
-        const isLookingRight = yaw < -0.10;
-        const isLookingLeft = yaw > 0.10;
-        const isLookingDown = pitch > 0.08;
-        const isLookingUp = pitch < -0.08;
-        const isCenter = Math.abs(yaw) < 0.08 && Math.abs(pitch) < 0.08;
+          // Mirrored camera: looking right means nose moves to the left side of the image (smaller X)
+          const isLookingRight = yaw < -0.10;
+          const isLookingLeft = yaw > 0.10;
+          const isLookingDown = pitch > 0.08;
+          const isLookingUp = pitch < -0.08;
+          const isCenter = Math.abs(yaw) < 0.08 && Math.abs(pitch) < 0.08;
 
-        // Reset sequence if it takes too long (3 seconds)
-        if (sequenceStateRef.current !== 'IDLE' && nowInMs - sequenceTimerRef.current > 3000) {
-          sequenceStateRef.current = 'IDLE';
-        }
+          // Reset sequence if it takes too long (3 seconds)
+          if (sequenceStateRef.current !== 'IDLE' && nowInMs - sequenceTimerRef.current > 3000) {
+            sequenceStateRef.current = 'IDLE';
+          }
 
-        switch (sequenceStateRef.current) {
-          case 'IDLE':
-            if (isLookingRight) {
-              sequenceStateRef.current = 'LOOK_RIGHT';
-              sequenceTimerRef.current = nowInMs;
-            } else if (isLookingLeft) {
-              sequenceStateRef.current = 'LOOK_LEFT';
-              sequenceTimerRef.current = nowInMs;
-            }
-            break;
-          case 'LOOK_RIGHT':
-            if (isLookingDown) {
-              sequenceStateRef.current = 'LOOK_RIGHT_DOWN';
-              sequenceTimerRef.current = nowInMs;
-            } else if (isCenter) {
-              sequenceStateRef.current = 'IDLE';
-            }
-            break;
-          case 'LOOK_RIGHT_DOWN':
-            if (isCenter) {
-              if (nowInMs - lastTurnTimeRef.current > 2000) {
-                setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
-                lastTurnTimeRef.current = nowInMs;
+          switch (sequenceStateRef.current) {
+            case 'IDLE':
+              if (isLookingRight) {
+                sequenceStateRef.current = 'LOOK_RIGHT';
+                sequenceTimerRef.current = nowInMs;
+              } else if (isLookingLeft) {
+                sequenceStateRef.current = 'LOOK_LEFT';
+                sequenceTimerRef.current = nowInMs;
               }
-              sequenceStateRef.current = 'IDLE';
-            }
-            break;
-          case 'LOOK_LEFT':
-            if (isLookingUp) {
-              sequenceStateRef.current = 'LOOK_LEFT_UP';
-              sequenceTimerRef.current = nowInMs;
-            } else if (isCenter) {
-              sequenceStateRef.current = 'IDLE';
-            }
-            break;
-          case 'LOOK_LEFT_UP':
-            if (isCenter) {
-              if (nowInMs - lastTurnTimeRef.current > 2000) {
-                setCurrentPage(prev => Math.max(prev - 1, 0));
-                lastTurnTimeRef.current = nowInMs;
+              break;
+            case 'LOOK_RIGHT':
+              if (isLookingDown) {
+                sequenceStateRef.current = 'LOOK_RIGHT_DOWN';
+                sequenceTimerRef.current = nowInMs;
+              } else if (isCenter) {
+                sequenceStateRef.current = 'IDLE';
               }
-              sequenceStateRef.current = 'IDLE';
+              break;
+            case 'LOOK_RIGHT_DOWN':
+              if (isCenter) {
+                if (nowInMs - lastTurnTimeRef.current > 2000) {
+                  setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
+                  lastTurnTimeRef.current = nowInMs;
+                }
+                sequenceStateRef.current = 'IDLE';
+              }
+              break;
+            case 'LOOK_LEFT':
+              if (isLookingUp) {
+                sequenceStateRef.current = 'LOOK_LEFT_UP';
+                sequenceTimerRef.current = nowInMs;
+              } else if (isCenter) {
+                sequenceStateRef.current = 'IDLE';
+              }
+              break;
+            case 'LOOK_LEFT_UP':
+              if (isCenter) {
+                if (nowInMs - lastTurnTimeRef.current > 2000) {
+                  setCurrentPage(prev => Math.max(prev - 1, 0));
+                  lastTurnTimeRef.current = nowInMs;
+                }
+                sequenceStateRef.current = 'IDLE';
+              }
+              break;
+          }
+        } else if (aiModeRef.current === 'blink' && results.faceBlendshapes && results.faceBlendshapes.length > 0) {
+          const blendshapes = results.faceBlendshapes[0].categories;
+          const eyeBlinkLeft = blendshapes.find(b => b.categoryName === 'eyeBlinkLeft')?.score || 0;
+          const eyeBlinkRight = blendshapes.find(b => b.categoryName === 'eyeBlinkRight')?.score || 0;
+
+          // User's right eye wink -> Next page
+          // User's left eye wink -> Prev page
+          // To avoid normal blinks, ensure the other eye is relatively open
+          const isRightWink = eyeBlinkRight > 0.5 && eyeBlinkLeft < 0.2;
+          const isLeftWink = eyeBlinkLeft > 0.5 && eyeBlinkRight < 0.2;
+
+          if (nowInMs - lastTurnTimeRef.current > 2000) {
+            if (isRightWink) {
+              setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
+              lastTurnTimeRef.current = nowInMs;
+            } else if (isLeftWink) {
+              setCurrentPage(prev => Math.max(prev - 1, 0));
+              lastTurnTimeRef.current = nowInMs;
             }
-            break;
+          }
         }
       }
 
@@ -305,17 +333,36 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, classN
 
           <div className="h-6 w-px bg-white/10 mx-1 md:mx-2" />
 
-          <button 
-            onClick={() => setIsAutoTurnEnabled(!isAutoTurnEnabled)}
-            className={cn(
-              "p-1 md:p-2 rounded-xl transition-all flex items-center gap-2",
-              isAutoTurnEnabled ? "bg-emerald-500 text-white" : "text-text-muted hover:text-text-warm hover:bg-white/5"
-            )}
-            title="智能翻頁 (頭部組合動作)"
-          >
-            {isModelLoading ? <Loader2 size={18} className="animate-spin" /> : <Smile size={18} />}
-            <span className="text-[10px] font-bold hidden sm:block">{isAutoTurnEnabled ? '智能翻頁中' : '智能翻頁'}</span>
-          </button>
+          <div className="flex items-center bg-white/5 rounded-xl p-1">
+            <button 
+              onClick={() => setIsAutoTurnEnabled(!isAutoTurnEnabled)}
+              className={cn(
+                "p-1 md:p-2 rounded-lg transition-all flex items-center gap-2",
+                isAutoTurnEnabled ? "bg-emerald-500 text-white" : "text-text-muted hover:text-text-warm"
+              )}
+              title={aiMode === 'head' ? "智能翻頁 (頭部組合動作)" : "智能翻頁 (眨眼模式)"}
+            >
+              {isModelLoading ? <Loader2 size={18} className="animate-spin" /> : (aiMode === 'head' ? <Smile size={18} /> : <Eye size={18} />)}
+              <span className="text-[10px] font-bold hidden sm:block">{isAutoTurnEnabled ? '智能翻頁中' : '智能翻頁'}</span>
+            </button>
+            
+            <div className="flex items-center border-l border-white/10 pl-1 ml-1">
+              <button
+                onClick={() => setAiMode('head')}
+                className={cn("p-1.5 rounded-md transition-all", aiMode === 'head' ? "bg-white/10 text-accent-warm" : "text-text-muted hover:text-white")}
+                title="頭部動作模式"
+              >
+                <Smile size={14} />
+              </button>
+              <button
+                onClick={() => setAiMode('blink')}
+                className={cn("p-1.5 rounded-md transition-all", aiMode === 'blink' ? "bg-white/10 text-accent-warm" : "text-text-muted hover:text-white")}
+                title="眨眼模式"
+              >
+                <Eye size={14} />
+              </button>
+            </div>
+          </div>
 
           <div className="h-6 w-px bg-white/10 mx-1 md:mx-2" />
 

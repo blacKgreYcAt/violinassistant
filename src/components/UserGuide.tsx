@@ -17,7 +17,8 @@ import {
   Calendar,
   History,
   Smile,
-  ArrowRight
+  ArrowRight,
+  Eye
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -58,7 +59,7 @@ const HeadIcon = ({ type }: { type: 'center' | 'right' | 'left' | 'down' | 'up' 
           <path d="M12 15v1" />
           <path d="M10 18a2 2 0 0 0 4 0" />
           {/* Arrow indicating looking down */}
-          <path d="M12 22l-3-3m3 3l3-3m-3 3v-4" className="text-accent-warm" strokeWidth="2" />
+          <path d="M12 22l-3-3m3 3l3-3m-3-3v-4" className="text-accent-warm" strokeWidth="2" />
         </>
       )}
       {type === 'up' && (
@@ -68,6 +69,33 @@ const HeadIcon = ({ type }: { type: 'center' | 'right' | 'left' | 'down' | 'up' 
           <path d="M10 14a2 2 0 0 0 4 0" />
           {/* Arrow indicating looking up */}
           <path d="M12 2l-3 3m3-3l3 3m-3-3v4" className="text-accent-warm" strokeWidth="2" />
+        </>
+      )}
+    </svg>
+  );
+};
+
+const WinkIcon = ({ type }: { type: 'right' | 'left' }) => {
+  return (
+    <svg viewBox="0 0 24 24" className="w-10 h-10 text-text-warm" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      {/* Base Head */}
+      <circle cx="12" cy="12" r="8" />
+      
+      {type === 'right' ? (
+        <>
+          {/* Left eye open */}
+          <path d="M8 11h.01" strokeWidth="2" />
+          {/* Right eye closed (wink) */}
+          <path d="M14 11.5c.5-1 1.5-1 2 0" />
+          <path d="M10 16a2 2 0 0 0 4 0" />
+        </>
+      ) : (
+        <>
+          {/* Left eye closed (wink) */}
+          <path d="M8 11.5c.5-1 1.5-1 2 0" />
+          {/* Right eye open */}
+          <path d="M16 11h.01" strokeWidth="2" />
+          <path d="M10 16a2 2 0 0 0 4 0" />
         </>
       )}
     </svg>
@@ -122,48 +150,72 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
     },
     {
       icon: <Smile className="text-accent-warm" />,
-      title: "智能翻頁 (頭部組合動作)",
-      content: "開啟樂譜後點擊上方「智能翻頁」。為避免連續誤觸，每次翻頁後有「2 秒鐘冷卻時間」。",
+      title: "智能翻頁 (雙模式切換)",
+      content: "開啟樂譜後點擊上方「智能翻頁」。旁邊的小按鈕可切換「頭部動作」或「眨眼」模式。為避免連續誤觸，每次翻頁後有「2 秒鐘冷卻時間」。",
       customContent: (
         <div className="mt-4 space-y-3">
           <div className="bg-bg-warm/50 p-3 rounded-xl border border-white/5">
-            <div className="text-xs font-bold text-accent-warm mb-2">下一頁 (Next Page)</div>
-            <div className="flex items-center justify-between gap-1">
-              <div className="flex flex-col items-center gap-1">
-                <HeadIcon type="right" />
-                <span className="text-[10px] text-text-muted">1. 向右看</span>
+            <div className="text-xs font-bold text-accent-warm mb-2 flex items-center gap-2">
+              <Smile size={14} /> 頭部組合動作模式
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[10px] text-text-muted w-10">下一頁</span>
+                <div className="flex flex-col items-center gap-1">
+                  <HeadIcon type="right" />
+                  <span className="text-[10px] text-text-muted">1. 向右看</span>
+                </div>
+                <ArrowRight className="text-white/20 w-4 h-4" />
+                <div className="flex flex-col items-center gap-1">
+                  <HeadIcon type="down" />
+                  <span className="text-[10px] text-text-muted">2. 向下點頭</span>
+                </div>
+                <ArrowRight className="text-white/20 w-4 h-4" />
+                <div className="flex flex-col items-center gap-1">
+                  <HeadIcon type="center" />
+                  <span className="text-[10px] text-text-muted">3. 頭回正</span>
+                </div>
               </div>
-              <ArrowRight className="text-white/20 w-4 h-4" />
-              <div className="flex flex-col items-center gap-1">
-                <HeadIcon type="down" />
-                <span className="text-[10px] text-text-muted">2. 向下點頭</span>
-              </div>
-              <ArrowRight className="text-white/20 w-4 h-4" />
-              <div className="flex flex-col items-center gap-1">
-                <HeadIcon type="center" />
-                <span className="text-[10px] text-text-muted">3. 頭回正</span>
+              <div className="flex items-center justify-between gap-1 pt-2 border-t border-white/5">
+                <span className="text-[10px] text-text-muted w-10">上一頁</span>
+                <div className="flex flex-col items-center gap-1">
+                  <HeadIcon type="left" />
+                  <span className="text-[10px] text-text-muted">1. 向左看</span>
+                </div>
+                <ArrowRight className="text-white/20 w-4 h-4" />
+                <div className="flex flex-col items-center gap-1">
+                  <HeadIcon type="up" />
+                  <span className="text-[10px] text-text-muted">2. 向上抬頭</span>
+                </div>
+                <ArrowRight className="text-white/20 w-4 h-4" />
+                <div className="flex flex-col items-center gap-1">
+                  <HeadIcon type="center" />
+                  <span className="text-[10px] text-text-muted">3. 頭回正</span>
+                </div>
               </div>
             </div>
           </div>
           
           <div className="bg-bg-warm/50 p-3 rounded-xl border border-white/5">
-            <div className="text-xs font-bold text-accent-warm mb-2">上一頁 (Prev Page)</div>
-            <div className="flex items-center justify-between gap-1">
-              <div className="flex flex-col items-center gap-1">
-                <HeadIcon type="left" />
-                <span className="text-[10px] text-text-muted">1. 向左看</span>
+            <div className="text-xs font-bold text-accent-warm mb-2 flex items-center gap-2">
+              <Eye size={14} /> 眨眼模式 (提琴手推薦)
+            </div>
+            <div className="flex items-center gap-4 mb-3">
+              <div className="flex-1 bg-white/5 p-2 rounded-lg text-center flex flex-col items-center gap-1">
+                <WinkIcon type="right" />
+                <div className="text-[10px] text-text-muted">下一頁</div>
+                <div className="text-sm font-bold text-text-warm">單眨右眼</div>
               </div>
-              <ArrowRight className="text-white/20 w-4 h-4" />
-              <div className="flex flex-col items-center gap-1">
-                <HeadIcon type="up" />
-                <span className="text-[10px] text-text-muted">2. 向上抬頭</span>
-              </div>
-              <ArrowRight className="text-white/20 w-4 h-4" />
-              <div className="flex flex-col items-center gap-1">
-                <HeadIcon type="center" />
-                <span className="text-[10px] text-text-muted">3. 頭回正</span>
+              <div className="flex-1 bg-white/5 p-2 rounded-lg text-center flex flex-col items-center gap-1">
+                <WinkIcon type="left" />
+                <div className="text-[10px] text-text-muted">上一頁</div>
+                <div className="text-sm font-bold text-text-warm">單眨左眼</div>
               </div>
             </div>
+            <ul className="text-[10px] text-text-muted space-y-1 pl-3 list-disc">
+              <li>為避免正常雙眼眨眼誤觸，請確實做出<strong className="text-accent-warm font-normal">「單眼眨眼 (Wink)」</strong>動作。</li>
+              <li>相機需清楚捕捉到眼睛，建議在光線充足處使用，並避免鏡片嚴重反光。</li>
+            </ul>
           </div>
         </div>
       )
@@ -185,7 +237,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
       version: "v1.9.0",
       date: "2026-03-15",
       changes: [
-        "✨ 新增「智能翻頁」功能：透過相機偵測頭部組合動作（向右看+點頭 / 向左看+抬頭）自動翻頁，並內建 2 秒防誤觸冷卻機制。",
+        "✨ 新增「智能翻頁雙模式」：支援「頭部組合動作」與「眨單眼」兩種模式自由切換，滿足不同樂器演奏需求。",
         "🎨 樂譜清單介面優化：移除圖示釋放空間，支援長檔名兩行顯示。",
       ]
     },
