@@ -12,7 +12,7 @@ interface VideoRecorderProps {
 export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, className, isMinimized, isFloating }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
+  const [finalVideoBlob, setFinalVideoBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
 
@@ -64,13 +64,13 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
     }
     setIsCameraOn(false);
     setIsRecording(false);
-    setRecordedChunks([]);
+    setFinalVideoBlob(null);
   };
 
   const startRecording = useCallback(() => {
     if (!stream) return;
     
-    setRecordedChunks([]);
+    setFinalVideoBlob(null);
     setPreviewUrl(null);
     
     // Better mimeType detection for cross-browser compatibility
@@ -101,12 +101,12 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           chunks.push(event.data);
-          setRecordedChunks((prev) => [...prev, event.data]);
         }
       };
 
       mediaRecorder.onstop = () => {
         const finalBlob = new Blob(chunks, { type: selectedMimeType || 'video/mp4' });
+        setFinalVideoBlob(finalBlob);
         const url = URL.createObjectURL(finalBlob);
         setPreviewUrl(url);
       };
@@ -127,14 +127,13 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
   }, [isRecording]);
 
   const downloadVideo = () => {
-    if (recordedChunks.length === 0 && !previewUrl) {
+    if (!finalVideoBlob) {
       alert("尚未取得錄影資料，請稍候再試。");
       return;
     }
 
-    const mimeType = mediaRecorderRef.current?.mimeType || 'video/mp4';
-    const blob = new Blob(recordedChunks, { type: mimeType });
-    const url = URL.createObjectURL(blob);
+    const mimeType = finalVideoBlob.type;
+    const url = URL.createObjectURL(finalVideoBlob);
     const a = document.createElement('a');
     document.body.appendChild(a);
     a.style.display = 'none';
@@ -157,14 +156,13 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
   };
 
   const shareVideo = async () => {
-    if (recordedChunks.length === 0 && !previewUrl) {
+    if (!finalVideoBlob) {
       alert("尚未取得錄影資料。");
       return;
     }
 
     try {
-      const mimeType = mediaRecorderRef.current?.mimeType || 'video/mp4';
-      const blob = new Blob(recordedChunks, { type: mimeType });
+      const mimeType = finalVideoBlob.type;
       
       const date = new Date().toISOString().split('T')[0];
       let extension = 'mp4';
@@ -172,7 +170,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
       if (mimeType.includes('quicktime')) extension = 'mov';
       
       const fileName = `${date}_${activeScoreName || '練習錄影'}.${extension}`;
-      const file = new File([blob], fileName, { type: mimeType });
+      const file = new File([finalVideoBlob], fileName, { type: mimeType });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
@@ -248,24 +246,25 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
               "relative bg-black rounded-2xl overflow-hidden border border-white/10 flex-1 min-h-0",
               isMinimized ? "aspect-square mx-auto w-full" : (isFloating ? "aspect-[3/4] sm:aspect-[9/16]" : "")
             )}>
-              {previewUrl ? (
+              {/* Always render the live video so the stream never suspends */}
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                muted 
+                playsInline 
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ opacity: previewUrl ? 0 : 1, pointerEvents: previewUrl ? 'none' : 'auto' }}
+              />
+              {previewUrl && (
                 <video 
                   src={previewUrl} 
                   controls={!isMinimized}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <video 
-                  ref={videoRef} 
-                  autoPlay 
-                  muted 
-                  playsInline 
-                  className="w-full h-full object-cover"
+                  className="absolute inset-0 w-full h-full object-cover z-10 bg-black"
                 />
               )}
               {isRecording && (
                 <div className={cn(
-                  "absolute flex items-center gap-2 bg-red-500 text-white rounded-full animate-pulse",
+                  "absolute z-20 flex items-center gap-2 bg-red-500 text-white rounded-full animate-pulse",
                   isMinimized ? "top-2 left-2 px-2 py-1" : "top-4 left-4 px-3 py-1.5"
                 )}>
                   <div className="w-1.5 h-1.5 bg-white rounded-full" />
@@ -276,7 +275,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
               )}
               {previewUrl && (
                 <div className={cn(
-                  "absolute flex items-center gap-2 bg-emerald-500 text-white rounded-full",
+                  "absolute z-20 flex items-center gap-2 bg-emerald-500 text-white rounded-full",
                   isMinimized ? "top-2 left-2 px-2 py-1" : "top-4 left-4 px-3 py-1.5"
                 )}>
                   <span className={cn("font-bold uppercase tracking-widest", isMinimized ? "text-[8px]" : "text-[10px]")}>
