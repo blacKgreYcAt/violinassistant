@@ -193,28 +193,6 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
             </BarChart>
           </ResponsiveContainer>
         </div>
-
-        {/* Recent Notes */}
-        {history.filter(s => s.note).length > 0 && (
-          <div className="mt-4 flex flex-col gap-3">
-            <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider">近期筆記</h3>
-            <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-              {history
-                .filter(s => s.note)
-                .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, 5)
-                .map((session) => (
-                  <div key={session.id} className="bg-white/5 p-3 rounded-xl border border-white/5">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-bold text-accent-warm">{session.date}</span>
-                      <span className="text-[10px] text-text-muted">{Math.round(session.durationSeconds / 60)} 分鐘</span>
-                    </div>
-                    <p className="text-sm text-text-warm whitespace-pre-wrap">{session.note}</p>
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

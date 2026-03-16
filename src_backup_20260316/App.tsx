@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Metronome } from './components/Metronome';
-import { Tuner } from './components/Tuner';
 import { Timer } from './components/Timer';
 import { VideoRecorder } from './components/VideoRecorder';
 import { ScoreLibrary } from './components/ScoreLibrary';
@@ -130,7 +129,6 @@ export default function App() {
         <div className="max-w-[1600px] mx-auto w-full h-full flex flex-col md:grid md:grid-cols-2 md:grid-rows-3 lg:grid-cols-3 lg:grid-rows-2 md:grid-flow-col gap-6">
           <ScoreLibrary onSelectScore={setActiveScore} className="min-h-0 h-full flex flex-col" />
           <Metronome className="min-h-0 h-full flex flex-col" />
-          <Tuner className="min-h-0 h-full flex flex-col" />
           <Timer className="min-h-0 h-full flex flex-col" />
           {!activeScore && (
             <>
@@ -157,7 +155,7 @@ export default function App() {
           <div className="w-px h-3 bg-white/10" />
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-bold uppercase tracking-widest">v2.0.0</span>
+            <span className="font-bold uppercase tracking-widest">v1.9.0</span>
           </div>
         </div>
       </footer>

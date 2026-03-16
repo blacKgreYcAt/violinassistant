@@ -6,16 +6,6 @@ export interface Score {
   type: 'file' | 'link';
   data: string | string[];
   date: number;
-  folderId?: string;
-  tags?: string[];
-  rotations?: number[]; // Array of rotation angles for each page
-  annotations?: string[]; // Array of serialized canvas data for each page
-}
-
-export interface Folder {
-  id: string;
-  name: string;
-  color: string;
 }
 
 export interface PracticeSession {
@@ -23,32 +13,10 @@ export interface PracticeSession {
   date: string; // YYYY-MM-DD
   durationSeconds: number;
   timestamp: number;
-  note?: string;
 }
 
 const SCORES_KEY = 'viola-scores-idb';
-const FOLDERS_KEY = 'viola-folders-idb';
 const HISTORY_KEY = 'viola-practice-history';
-
-// --- Folders ---
-
-export async function getFolders(): Promise<Folder[]> {
-  try {
-    const folders = await get<Folder[]>(FOLDERS_KEY);
-    return folders || [];
-  } catch (error) {
-    console.error('Failed to get folders:', error);
-    return [];
-  }
-}
-
-export async function saveFolders(folders: Folder[]): Promise<void> {
-  try {
-    await set(FOLDERS_KEY, folders);
-  } catch (error) {
-    console.error('Failed to save folders:', error);
-  }
-}
 
 // --- Scores ---
 
@@ -99,7 +67,7 @@ export async function getPracticeHistory(): Promise<PracticeSession[]> {
   }
 }
 
-export async function addPracticeSession(durationSeconds: number, note?: string): Promise<PracticeSession[]> {
+export async function addPracticeSession(durationSeconds: number): Promise<PracticeSession[]> {
   if (durationSeconds <= 0) return getPracticeHistory();
 
   try {
@@ -112,8 +80,7 @@ export async function addPracticeSession(durationSeconds: number, note?: string)
       id: Math.random().toString(36).substring(2, 9),
       date: dateStr,
       durationSeconds,
-      timestamp: Date.now(),
-      note
+      timestamp: Date.now()
     };
     
     const updatedHistory = [...history, newSession];

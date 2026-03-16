@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, Loader2, AlertCircle, LayoutDashboard, Smile, Activity, Eye, RotateCw, PenTool, Eraser, Save } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, Loader2, AlertCircle, LayoutDashboard, Smile, Activity, Eye } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
 import { cn } from '../lib/utils';
-import { saveScores, getScores } from '../lib/storage';
 
 interface Score {
   id: string;
@@ -11,10 +10,6 @@ interface Score {
   type: 'file' | 'link';
   data: string | string[];
   date: number;
-  folderId?: string;
-  tags?: string[];
-  rotations?: number[];
-  annotations?: string[];
 }
 
 interface ScoreViewerProps {
@@ -23,8 +18,7 @@ interface ScoreViewerProps {
   className?: string;
 }
 
-export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, onClose, className }) => {
-  const [score, setScore] = useState<Score>(initialScore);
+export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score, onClose, className }) => {
   const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
@@ -32,15 +26,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
   const [isRecorderMinimized, setIsRecorderMinimized] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [displayMode, setDisplayMode] = useState<'fit-width' | 'fit-page'>('fit-page');
-  
-  // Annotation & Rotation States
-  const [isDrawingMode, setIsDrawingMode] = useState(false);
-  const [isEraser, setIsEraser] = useState(false);
-  const [rotations, setRotations] = useState<number[]>(score.rotations || []);
-  const [annotations, setAnnotations] = useState<string[]>(score.annotations || []);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   // Smart Page Turn States
   const [isAutoTurnEnabled, setIsAutoTurnEnabled] = useState(false);
@@ -62,130 +47,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
 
   const pages = Array.isArray(score.data) ? score.data : [score.data];
   const totalPages = pages.length;
-
-  // Initialize rotations and annotations arrays if they don't exist
-  useEffect(() => {
-    if (rotations.length !== totalPages) {
-      setRotations(Array(totalPages).fill(0).map((_, i) => score.rotations?.[i] || 0));
-    }
-    if (annotations.length !== totalPages) {
-      setAnnotations(Array(totalPages).fill('').map((_, i) => score.annotations?.[i] || ''));
-    }
-  }, [totalPages, score.rotations, score.annotations]);
-
-  // Load annotation for current page
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    if (annotations[currentPage]) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0);
-      };
-      img.src = annotations[currentPage];
-    }
-  }, [currentPage, annotations, displayMode, zoom, rotations]);
-
-  const handleRotate = () => {
-    const newRotations = [...rotations];
-    newRotations[currentPage] = (newRotations[currentPage] + 90) % 360;
-    setRotations(newRotations);
-    setHasUnsavedChanges(true);
-  };
-
-  const saveAnnotationsAndRotations = async () => {
-    try {
-      // Save current canvas state to annotations array
-      const canvas = canvasRef.current;
-      let newAnnotations = [...annotations];
-      if (canvas) {
-        newAnnotations[currentPage] = canvas.toDataURL();
-      }
-
-      setAnnotations(newAnnotations);
-
-      const allScores = await getScores();
-      const updatedScores = allScores.map(s => 
-        s.id === score.id 
-          ? { ...s, rotations, annotations: newAnnotations }
-          : s
-      );
-      await saveScores(updatedScores);
-      setScore({ ...score, rotations, annotations: newAnnotations });
-      setHasUnsavedChanges(false);
-      alert('儲存成功！');
-    } catch (error) {
-      console.error('Failed to save score updates:', error);
-      alert('儲存失敗，請稍後再試。');
-    }
-  };
-
-  // Drawing Handlers
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawingMode) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const x = (clientX - rect.left) * (canvas.width / rect.width);
-    const y = (clientY - rect.top) * (canvas.height / rect.height);
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !isDrawingMode) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const x = (clientX - rect.left) * (canvas.width / rect.width);
-    const y = (clientY - rect.top) * (canvas.height / rect.height);
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    if (isEraser) {
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth = 20;
-    } else {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = '#F27D26'; // accent-warm
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-    }
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    setHasUnsavedChanges(true);
-  };
-
-  const stopDrawing = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
-    
-    // Save current canvas state to annotations array
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const newAnnotations = [...annotations];
-      newAnnotations[currentPage] = canvas.toDataURL();
-      setAnnotations(newAnnotations);
-    }
-  };
 
   useEffect(() => {
     let active = true;
@@ -445,54 +306,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
 
           <div className="h-6 w-px bg-white/10 mx-1 md:mx-2 hidden sm:block" />
           
-          {/* Annotation & Rotation Controls */}
-          <div className="hidden lg:flex items-center gap-1 md:gap-2 bg-white/5 p-1 rounded-xl">
-            <button 
-              onClick={handleRotate}
-              className="p-1 md:p-2 text-text-muted hover:text-text-warm hover:bg-white/10 rounded-lg transition-colors"
-              title="旋轉"
-            >
-              <RotateCw size={18} />
-            </button>
-            <button 
-              onClick={() => {
-                setIsDrawingMode(!isDrawingMode);
-                if (isEraser) setIsEraser(false);
-              }}
-              className={cn(
-                "p-1 md:p-2 rounded-lg transition-colors",
-                isDrawingMode && !isEraser ? "bg-accent-warm text-bg-warm" : "hover:bg-white/10 text-text-muted hover:text-text-warm"
-              )}
-              title="畫筆"
-            >
-              <PenTool size={18} />
-            </button>
-            <button 
-              onClick={() => {
-                setIsEraser(!isEraser);
-                if (!isDrawingMode) setIsDrawingMode(true);
-              }}
-              className={cn(
-                "p-1 md:p-2 rounded-lg transition-colors",
-                isDrawingMode && isEraser ? "bg-accent-warm text-bg-warm" : "hover:bg-white/10 text-text-muted hover:text-text-warm"
-              )}
-              title="橡皮擦"
-            >
-              <Eraser size={18} />
-            </button>
-            {hasUnsavedChanges && (
-              <button 
-                onClick={saveAnnotationsAndRotations}
-                className="p-1 md:p-2 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-lg transition-colors flex items-center gap-1"
-                title="儲存變更"
-              >
-                <Save size={18} />
-              </button>
-            )}
-          </div>
-
-          <div className="h-6 w-px bg-white/10 mx-1 md:mx-2 hidden sm:block" />
-          
           <button 
             onClick={() => handleZoom(-0.1)}
             className="p-1 md:p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
@@ -672,8 +485,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
                 maxWidth: '100%',
                 maxHeight: displayMode === 'fit-page' ? '100%' : 'none',
                 aspectRatio: '1 / 1.414',
-                transform: `rotate(${rotations[currentPage] || 0}deg)`,
-                transition: isDrawingMode ? 'none' : 'transform 0.3s ease-in-out'
               }}
             >
               <img 
@@ -684,33 +495,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
                   displayMode === 'fit-page' ? "max-w-full max-h-full" : "w-full h-auto"
                 )}
                 referrerPolicy="no-referrer"
-                onLoad={(e) => {
-                  if (canvasRef.current) {
-                    canvasRef.current.width = e.currentTarget.naturalWidth;
-                    canvasRef.current.height = e.currentTarget.naturalHeight;
-                    // Redraw annotation after resize
-                    if (annotations[currentPage]) {
-                      const ctx = canvasRef.current.getContext('2d');
-                      const img = new Image();
-                      img.onload = () => ctx?.drawImage(img, 0, 0);
-                      img.src = annotations[currentPage];
-                    }
-                  }
-                }}
-              />
-              <canvas
-                ref={canvasRef}
-                className={cn(
-                  "absolute inset-0 w-full h-full",
-                  isDrawingMode ? "cursor-crosshair z-10" : "pointer-events-none z-10"
-                )}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
               />
             </div>
           </div>

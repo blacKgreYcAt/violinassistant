@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Video, VideoOff, Download, Camera, StopCircle, Share2, Mic, MicOff } from 'lucide-react';
+import { Video, VideoOff, Download, Camera, StopCircle, Share2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface VideoRecorderProps {
@@ -15,7 +15,6 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
   const [finalVideoBlob, setFinalVideoBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
-  const [isAudioOnly, setIsAudioOnly] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -37,11 +36,10 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
     };
   }, [stream]);
 
-  const startCamera = async (audioOnly: boolean = false) => {
+  const startCamera = async () => {
     try {
-      const constraints = audioOnly ? {
-        audio: true
-      } : {
+      // More flexible constraints to avoid failures on some devices
+      const constraints = {
         video: {
           width: { ideal: 1280 },
           height: { ideal: 720 },
@@ -53,9 +51,8 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(mediaStream);
       setIsCameraOn(true);
-      setIsAudioOnly(audioOnly);
     } catch (err) {
-      console.error("Error accessing media:", err);
+      console.error("Error accessing camera:", err);
       alert("無法存取相機或麥克風，請檢查權限設定。建議使用 Safari (iOS) 或 Chrome (Android/PC)。");
     }
   };
@@ -78,11 +75,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
     
     // Better mimeType detection for cross-browser compatibility
     // Prioritize MP4/QuickTime for iOS/iPadOS compatibility with Photos app
-    const mimeTypes = isAudioOnly ? [
-      'audio/mp4',
-      'audio/webm',
-      'audio/ogg'
-    ] : [
+    const mimeTypes = [
       'video/mp4;codecs=avc1',
       'video/mp4',
       'video/quicktime',
@@ -112,7 +105,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
       };
 
       mediaRecorder.onstop = () => {
-        const finalBlob = new Blob(chunks, { type: selectedMimeType || (isAudioOnly ? 'audio/mp4' : 'video/mp4') });
+        const finalBlob = new Blob(chunks, { type: selectedMimeType || 'video/mp4' });
         setFinalVideoBlob(finalBlob);
         const url = URL.createObjectURL(finalBlob);
         setPreviewUrl(url);
@@ -147,10 +140,9 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
     a.href = url;
     
     const date = new Date().toISOString().split('T')[0];
-    let extension = isAudioOnly ? 'm4a' : 'mp4';
-    if (mimeType.includes('webm')) extension = isAudioOnly ? 'weba' : 'webm';
+    let extension = 'mp4';
+    if (mimeType.includes('webm')) extension = 'webm';
     if (mimeType.includes('quicktime')) extension = 'mov';
-    if (mimeType.includes('ogg')) extension = 'ogg';
     
     const fileName = `${date}_${activeScoreName || '練習錄影'}.${extension}`;
     
@@ -173,10 +165,9 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
       const mimeType = finalVideoBlob.type;
       
       const date = new Date().toISOString().split('T')[0];
-      let extension = isAudioOnly ? 'm4a' : 'mp4';
-      if (mimeType.includes('webm')) extension = isAudioOnly ? 'weba' : 'webm';
+      let extension = 'mp4';
+      if (mimeType.includes('webm')) extension = 'webm';
       if (mimeType.includes('quicktime')) extension = 'mov';
-      if (mimeType.includes('ogg')) extension = 'ogg';
       
       const fileName = `${date}_${activeScoreName || '練習錄影'}.${extension}`;
       const file = new File([finalVideoBlob], fileName, { type: mimeType });
@@ -208,8 +199,8 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
         {!isMinimized && (
           <div className="flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
-              {isAudioOnly ? <Mic size={20} className="text-accent-warm" /> : <Camera size={20} className="text-accent-warm" />}
-              <h2 className="text-lg font-bold tracking-tight text-text-warm">{isAudioOnly ? '純錄音' : '錄影作業'}</h2>
+              <Camera size={20} className="text-accent-warm" />
+              <h2 className="text-lg font-bold tracking-tight text-text-warm">錄影作業</h2>
             </div>
             {isCameraOn && (
               <button 
@@ -219,7 +210,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
                 }}
                 className="text-xs font-bold text-red-400 hover:text-red-300 transition-colors"
               >
-                {isAudioOnly ? '關閉麥克風' : '關閉相機'}
+                關閉相機
               </button>
             )}
           </div>
@@ -236,29 +227,18 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
             {!isMinimized && (
               <div className="text-center">
                 <p className="font-bold text-text-warm">準備好交作業了嗎？</p>
-                <p className="text-xs text-text-muted mt-1">點擊下方按鈕開啟相機或麥克風</p>
+                <p className="text-xs text-text-muted mt-1">點擊下方按鈕開啟相機進行錄影</p>
               </div>
             )}
-            <div className="flex gap-2 w-full max-w-[240px]">
-              <button 
-                onClick={() => startCamera(false)}
-                className={cn(
-                  "flex-1 bg-accent-warm text-bg-warm rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2",
-                  isMinimized ? "py-2 text-xs" : "py-3"
-                )}
-              >
-                <Camera size={isMinimized ? 16 : 20} /> {isMinimized ? '錄影' : '錄影'}
-              </button>
-              <button 
-                onClick={() => startCamera(true)}
-                className={cn(
-                  "flex-1 bg-white/10 text-text-warm rounded-2xl font-bold hover:bg-white/20 transition-all active:scale-95 flex items-center justify-center gap-2",
-                  isMinimized ? "py-2 text-xs" : "py-3"
-                )}
-              >
-                <Mic size={isMinimized ? 16 : 20} /> {isMinimized ? '錄音' : '錄音'}
-              </button>
-            </div>
+            <button 
+              onClick={startCamera}
+              className={cn(
+                "bg-accent-warm text-bg-warm rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2",
+                isMinimized ? "w-full py-2 text-xs" : "px-6 py-3"
+              )}
+            >
+              <Camera size={isMinimized ? 16 : 20} /> {isMinimized ? '開啟' : '開啟相機'}
+            </button>
           </div>
         ) : (
           <div className="flex-1 flex flex-col gap-4 min-h-0">
@@ -266,34 +246,21 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
               "relative bg-black rounded-2xl overflow-hidden border border-white/10 flex-1 min-h-0",
               isMinimized ? "aspect-square mx-auto w-full" : (isFloating ? "aspect-[3/4] sm:aspect-[9/16]" : "")
             )}>
-              {isAudioOnly ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-warm">
-                  <div className={cn("rounded-full bg-accent-warm/20 flex items-center justify-center mb-4", isRecording ? "animate-pulse" : "")}>
-                    <Mic size={48} className="text-accent-warm m-6" />
-                  </div>
-                  {previewUrl && (
-                    <audio src={previewUrl} controls className="w-3/4 mt-4" />
-                  )}
-                </div>
-              ) : (
-                <>
-                  {/* Always render the live video so the stream never suspends */}
-                  <video 
-                    ref={videoRef} 
-                    autoPlay 
-                    muted 
-                    playsInline 
-                    className="absolute inset-0 w-full h-full object-cover"
-                    style={{ opacity: previewUrl ? 0 : 1, pointerEvents: previewUrl ? 'none' : 'auto' }}
-                  />
-                  {previewUrl && (
-                    <video 
-                      src={previewUrl} 
-                      controls={!isMinimized}
-                      className="absolute inset-0 w-full h-full object-cover z-10 bg-black"
-                    />
-                  )}
-                </>
+              {/* Always render the live video so the stream never suspends */}
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                muted 
+                playsInline 
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ opacity: previewUrl ? 0 : 1, pointerEvents: previewUrl ? 'none' : 'auto' }}
+              />
+              {previewUrl && (
+                <video 
+                  src={previewUrl} 
+                  controls={!isMinimized}
+                  className="absolute inset-0 w-full h-full object-cover z-10 bg-black"
+                />
               )}
               {isRecording && (
                 <div className={cn(
@@ -302,7 +269,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
                 )}>
                   <div className="w-1.5 h-1.5 bg-white rounded-full" />
                   <span className={cn("font-bold uppercase tracking-widest", isMinimized ? "text-[8px]" : "text-[10px]")}>
-                    {isMinimized ? 'REC' : (isAudioOnly ? '正在錄音' : '正在錄影')}
+                    {isMinimized ? 'REC' : '正在錄影'}
                   </span>
                 </div>
               )}
@@ -312,7 +279,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
                   isMinimized ? "top-2 left-2 px-2 py-1" : "top-4 left-4 px-3 py-1.5"
                 )}>
                   <span className={cn("font-bold uppercase tracking-widest", isMinimized ? "text-[8px]" : "text-[10px]")}>
-                    {isMinimized ? 'DONE' : (isAudioOnly ? '錄音完成' : '錄影完成')}
+                    {isMinimized ? 'DONE' : '錄影完成'}
                   </span>
                 </div>
               )}
@@ -331,7 +298,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
                   )}
                 >
                   <Video size={isMinimized ? 16 : 20} fill="currentColor" /> 
-                  {isMinimized ? (previewUrl ? '重錄' : '錄製') : (previewUrl ? '重新錄製' : (isAudioOnly ? '開始錄音' : '開始錄影'))}
+                  {isMinimized ? (previewUrl ? '重錄' : '錄影') : (previewUrl ? '重新錄製' : '開始錄影')}
                 </button>
               ) : (
                 <button 
@@ -341,7 +308,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
                     isMinimized ? "py-2 text-xs" : "py-4"
                   )}
                 >
-                  <StopCircle size={isMinimized ? 16 : 20} fill="currentColor" /> {isMinimized ? '停止' : (isAudioOnly ? '停止錄音' : '停止錄影')}
+                  <StopCircle size={isMinimized ? 16 : 20} fill="currentColor" /> {isMinimized ? '停止' : '停止錄影'}
                 </button>
               )}
 
@@ -353,9 +320,9 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
                       "bg-accent-warm text-bg-warm rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-lg",
                       isMinimized ? "py-2 text-xs w-full" : "flex-1 py-4"
                     )}
-                    title="分享或儲存"
+                    title="分享或儲存到相簿"
                   >
-                    <Share2 size={isMinimized ? 16 : 20} /> {isMinimized ? '分享' : '分享/儲存'}
+                    <Share2 size={isMinimized ? 16 : 20} /> {isMinimized ? '分享' : '分享/存入相簿'}
                   </button>
                   <button 
                     onClick={downloadVideo}
@@ -364,7 +331,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
                       isMinimized ? "py-2 text-xs w-full" : "px-6 py-4"
                     )}
                   >
-                    <Download size={isMinimized ? 16 : 20} /> {isMinimized ? '下載' : '下載檔案'}
+                    <Download size={isMinimized ? 16 : 20} /> {isMinimized ? '下載' : '下載影片'}
                   </button>
                 </div>
               )}
@@ -372,7 +339,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
             
             {!isMinimized && (
               <p className="text-[10px] text-text-muted text-center italic">
-                檔案名稱將自動設為：當天日期 + {activeScoreName || '練習曲目'}
+                錄影檔名將自動設為：當天日期 + {activeScoreName || '練習曲目'}
               </p>
             )}
           </div>

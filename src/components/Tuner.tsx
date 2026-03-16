@@ -1,0 +1,181 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Mic, MicOff, Settings2 } from 'lucide-react';
+import { cn } from '../lib/utils';
+
+export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
+  const [isListening, setIsListening] = useState(false);
+  const [pitch, setPitch] = useState<number>(0);
+  const [note, setNote] = useState<string>('-');
+  const [cents, setCents] = useState<number>(0);
+  
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const rafRef = useRef<number>(0);
+
+  const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+  const noteFromPitch = (frequency: number) => {
+    const noteNum = 12 * (Math.log(frequency / 440) / Math.log(2));
+    return Math.round(noteNum) + 69;
+  };
+
+  const frequencyFromNoteNumber = (note: number) => {
+    return 440 * Math.pow(2, (note - 69) / 12);
+  };
+
+  const centsOffFromPitch = (frequency: number, note: number) => {
+    return Math.floor(1200 * Math.log(frequency / frequencyFromNoteNumber(note)) / Math.log(2));
+  };
+
+  // Simple auto-correlation pitch detection
+  const autoCorrelate = (buf: Float32Array, sampleRate: number) => {
+    let SIZE = buf.length;
+    let rms = 0;
+
+    for (let i = 0; i < SIZE; i++) {
+      const val = buf[i];
+      rms += val * val;
+    }
+    rms = Math.sqrt(rms / SIZE);
+    if (rms < 0.01) return -1;
+
+    let r1 = 0, r2 = SIZE - 1, thres = 0.2;
+    for (let i = 0; i < SIZE / 2; i++)
+      if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+    for (let i = 1; i < SIZE / 2; i++)
+      if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
+
+    buf = buf.slice(r1, r2);
+    SIZE = buf.length;
+
+    const c = new Array(SIZE).fill(0);
+    for (let i = 0; i < SIZE; i++)
+      for (let j = 0; j < SIZE - i; j++)
+        c[i] = c[i] + buf[j] * buf[j + i];
+
+    let d = 0; while (c[d] > c[d + 1]) d++;
+    let maxval = -1, maxpos = -1;
+    for (let i = d; i < SIZE; i++) {
+      if (c[i] > maxval) {
+        maxval = c[i];
+        maxpos = i;
+      }
+    }
+    let T0 = maxpos;
+
+    let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+    let a = (x1 + x3 - 2 * x2) / 2;
+    let b = (x3 - x1) / 2;
+    if (a) T0 = T0 - b / (2 * a);
+
+    return sampleRate / T0;
+  };
+
+  const updatePitch = () => {
+    if (!analyserRef.current || !audioContextRef.current) return;
+
+    const buffer = new Float32Array(2048);
+    analyserRef.current.getFloatTimeDomainData(buffer);
+    const ac = autoCorrelate(buffer, audioContextRef.current.sampleRate);
+
+    if (ac !== -1) {
+      const pitchValue = ac;
+      setPitch(pitchValue);
+      const noteNum = noteFromPitch(pitchValue);
+      setNote(noteStrings[noteNum % 12]);
+      setCents(centsOffFromPitch(pitchValue, noteNum));
+    }
+
+    rafRef.current = requestAnimationFrame(updatePitch);
+  };
+
+  const toggleTuner = async () => {
+    if (isListening) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (sourceRef.current) sourceRef.current.disconnect();
+      if (audioContextRef.current) await audioContextRef.current.close();
+      setIsListening(false);
+      setNote('-');
+      setPitch(0);
+      setCents(0);
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+        
+        audioContextRef.current = audioCtx;
+        analyserRef.current = analyser;
+        sourceRef.current = source;
+        
+        setIsListening(true);
+        updatePitch();
+      } catch (err) {
+        console.error("Error accessing microphone:", err);
+        alert("無法存取麥克風，請檢查權限設定。");
+      }
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close();
+      }
+    };
+  }, []);
+
+  return (
+    <div className={cn("bg-surface-warm backdrop-blur-md rounded-3xl shadow-xl border border-white/5 p-6 flex flex-col transition-all", className)}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Settings2 size={20} className="text-accent-warm" />
+          <h2 className="text-lg font-bold tracking-tight text-text-warm">調音器</h2>
+        </div>
+        <button
+          onClick={toggleTuner}
+          className={cn(
+            "p-2 rounded-xl transition-all",
+            isListening ? "bg-red-500/20 text-red-400" : "bg-white/5 text-text-muted hover:text-text-warm"
+          )}
+        >
+          {isListening ? <Mic size={20} /> : <MicOff size={20} />}
+        </button>
+      </div>
+
+      <div className="flex-1 flex flex-col items-center justify-center relative">
+        <div className="text-[80px] font-bold leading-none text-text-warm tracking-tighter mb-2">
+          {note}
+        </div>
+        <div className="text-sm text-text-muted font-mono mb-8">
+          {pitch > 0 ? `${pitch.toFixed(1)} Hz` : '--- Hz'}
+        </div>
+
+        {/* Tuning Meter */}
+        <div className="w-full max-w-[200px] h-2 bg-white/10 rounded-full relative overflow-hidden">
+          <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/30 -translate-x-1/2" />
+          {isListening && note !== '-' && (
+            <div 
+              className={cn(
+                "absolute top-0 bottom-0 w-2 rounded-full -translate-x-1/2 transition-all duration-75",
+                Math.abs(cents) < 5 ? "bg-emerald-500" : "bg-accent-warm"
+              )}
+              style={{ left: `${Math.max(0, Math.min(100, 50 + (cents / 50) * 50))}%` }}
+            />
+          )}
+        </div>
+        <div className="flex justify-between w-full max-w-[200px] mt-2 text-[10px] text-text-muted font-bold">
+          <span>-50</span>
+          <span className={Math.abs(cents) < 5 ? "text-emerald-500" : ""}>0</span>
+          <span>+50</span>
+        </div>
+      </div>
+    </div>
+  );
+};

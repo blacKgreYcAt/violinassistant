@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, Music, FileText, Trash2, Edit2, Check, X, Camera, Wand2, Download, UploadCloud, Share2, Library, Folder as FolderIcon, Plus, ChevronLeft } from 'lucide-react';
+import { Upload, Music, FileText, Trash2, Edit2, Check, X, Camera, Wand2, Download, UploadCloud, Share2, Library } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { Score, Folder, getScores, saveScores as saveScoresToDb, getFolders, saveFolders as saveFoldersToDb } from '../lib/storage';
+import { Score, getScores, saveScores as saveScoresToDb } from '../lib/storage';
 
 interface ScoreLibraryProps {
   onSelectScore: (score: Score) => void;
@@ -11,21 +11,16 @@ interface ScoreLibraryProps {
 
 export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, className }) => {
   const [scores, setScores] = useState<Score[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [showNewFolder, setShowNewFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
   
   useEffect(() => {
-    const loadData = async () => {
-      const [loadedScores, loadedFolders] = await Promise.all([getScores(), getFolders()]);
+    const loadScores = async () => {
+      const loadedScores = await getScores();
       setScores(loadedScores);
-      setFolders(loadedFolders);
     };
-    loadData();
+    loadScores();
   }, []);
 
   const saveScores = async (newScores: Score[]) => {
@@ -36,43 +31,6 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
       console.error("Failed to save scores:", error);
       alert("儲存失敗：設備空間可能不足。");
     }
-  };
-
-  const saveFolders = async (newFolders: Folder[]) => {
-    try {
-      await saveFoldersToDb(newFolders);
-      setFolders(newFolders);
-    } catch (error) {
-      console.error("Failed to save folders:", error);
-    }
-  };
-
-  const createFolder = async () => {
-    if (!newFolderName.trim()) return;
-    const newFolder: Folder = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: newFolderName.trim(),
-      color: '#F27D26' // Default color
-    };
-    await saveFolders([...folders, newFolder]);
-    setNewFolderName('');
-    setShowNewFolder(false);
-  };
-
-  const deleteFolder = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirm('確定要刪除這個資料夾嗎？裡面的樂譜將會移出資料夾。')) {
-      await saveFolders(folders.filter(f => f.id !== id));
-      const newScores = scores.map(s => s.folderId === id ? { ...s, folderId: undefined } : s);
-      await saveScores(newScores);
-      if (currentFolderId === id) setCurrentFolderId(null);
-    }
-  };
-
-  const moveToFolder = async (scoreId: string, folderId: string | undefined, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const newScores = scores.map(s => s.id === scoreId ? { ...s, folderId } : s);
-    await saveScores(newScores);
   };
 
   // 影像處理：彩色對比強化 (Color Contrast Enhancement)
@@ -155,7 +113,6 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
         type: 'file',
         data: results.length === 1 ? results[0] : results,
         date: Date.now(),
-        folderId: currentFolderId || undefined,
       };
       await saveScores([newScore, ...scores]);
     } catch (error) {
@@ -333,81 +290,18 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
       <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5 flex flex-col gap-6", className)}>
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            {currentFolderId ? (
-              <button 
-                onClick={() => setCurrentFolderId(null)}
-                className="p-1 -ml-1 hover:bg-white/5 rounded-lg transition-colors text-text-muted hover:text-text-warm"
-              >
-                <ChevronLeft size={20} />
-              </button>
-            ) : (
-              <Library size={20} className="text-accent-warm" />
-            )}
-            <h2 className="text-lg font-bold tracking-tight text-text-warm">
-              {currentFolderId ? folders.find(f => f.id === currentFolderId)?.name : '樂譜清單'}
-            </h2>
+            <Library size={20} className="text-accent-warm" />
+            <h2 className="text-lg font-bold tracking-tight text-text-warm">樂譜清單</h2>
           </div>
-          {!currentFolderId && (
-            <button 
-              onClick={() => setShowNewFolder(true)}
-              className="p-2 hover:bg-white/5 rounded-full transition-colors text-text-muted hover:text-text-warm"
-              title="新增資料夾"
-            >
-              <Plus size={20} />
-            </button>
-          )}
         </div>
-
-        {showNewFolder && !currentFolderId && (
-          <div className="flex items-center gap-2 bg-white/5 p-2 rounded-xl">
-            <input
-              type="text"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              placeholder="資料夾名稱"
-              className="flex-1 bg-transparent border-none text-sm text-text-warm focus:outline-none px-2"
-              autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && createFolder()}
-            />
-            <button onClick={createFolder} className="p-1 text-accent-warm hover:bg-accent-warm/20 rounded-lg">
-              <Check size={16} />
-            </button>
-            <button onClick={() => setShowNewFolder(false)} className="p-1 text-text-muted hover:bg-white/10 rounded-lg">
-              <X size={16} />
-            </button>
-          </div>
-        )}
-
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-3 min-h-0">
-          {!currentFolderId && folders.map(folder => (
-            <div 
-              key={folder.id}
-              onClick={() => setCurrentFolderId(folder.id)}
-              className="group flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-accent-warm/30 transition-all cursor-pointer"
-            >
-              <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-10 h-10 rounded-xl bg-accent-warm/10 flex items-center justify-center shrink-0">
-                  <FolderIcon size={20} className="text-accent-warm" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-sm text-text-warm truncate">{folder.name}</span>
-                  <span className="text-xs text-text-muted truncate">
-                    {scores.filter(s => s.folderId === folder.id).length} 份樂譜
-                  </span>
-                </div>
-              </div>
-              <button 
-                onClick={(e) => deleteFolder(folder.id, e)}
-                className="p-2 text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-xl hover:bg-white/5"
-              >
-                <Trash2 size={16} />
-              </button>
+          {scores.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-text-muted gap-2">
+              <Music size={32} strokeWidth={1} />
+              <p className="text-sm font-medium">尚無樂譜</p>
             </div>
-          ))}
-
-          {scores
-            .filter(s => currentFolderId ? s.folderId === currentFolderId : !s.folderId)
-            .map(score => (
+          ) : (
+            scores.map(score => (
             <div 
               key={score.id}
               onClick={() => onSelectScore(score)}
@@ -457,68 +351,24 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
                 )}
               </div>
               <div className="flex items-center gap-0.5 shrink-0">
-                {folders.length > 0 && (
-                  <div className="relative group/menu">
-                    <button 
-                      onClick={(e) => e.stopPropagation()}
-                      className="p-1.5 text-text-muted hover:text-accent-warm hover:bg-white/5 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                      title="移動到資料夾"
-                    >
-                      <FolderIcon size={16} />
-                    </button>
-                    <div className="absolute right-0 bottom-full mb-2 hidden group-hover/menu:block bg-surface-warm border border-white/10 rounded-xl shadow-xl p-2 min-w-[150px] z-10">
-                      <div className="text-xs font-bold text-text-muted mb-2 px-2">移動到...</div>
-                      {currentFolderId && (
-                        <button 
-                          onClick={(e) => moveToFolder(score.id, undefined, e)}
-                          className="w-full text-left px-2 py-1.5 text-sm text-text-warm hover:bg-white/5 rounded-lg"
-                        >
-                          (移出資料夾)
-                        </button>
-                      )}
-                      {folders.filter(f => f.id !== currentFolderId).map(f => (
-                        <button 
-                          key={f.id}
-                          onClick={(e) => moveToFolder(score.id, f.id, e)}
-                          className="w-full text-left px-2 py-1.5 text-sm text-text-warm hover:bg-white/5 rounded-lg truncate"
-                        >
-                          {f.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
                 {editingId !== score.id && (
                   <button 
                     onClick={(e) => startEditing(e, score)}
-                    className="p-1.5 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                    className="p-1.5 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-lg transition-colors"
                   >
                     <Edit2 size={16} />
                   </button>
                 )}
                 <button 
                   onClick={(e) => deleteScore(score.id, e)}
-                  className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                  className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                 >
                   <Trash2 size={16} />
                 </button>
               </div>
             </div>
-          ))}
-          
-          {scores.length === 0 && folders.length === 0 && !currentFolderId && (
-            <div className="flex flex-col items-center justify-center h-full text-text-muted gap-2 py-8">
-              <Music size={32} strokeWidth={1} />
-              <p className="text-sm font-bold mt-2">目前沒有樂譜</p>
-              <p className="text-xs">請從上方上傳或匯入</p>
-            </div>
-          )}
-          {scores.filter(s => s.folderId === currentFolderId).length === 0 && currentFolderId && (
-            <div className="flex flex-col items-center justify-center h-full text-text-muted gap-2 py-8">
-              <FolderIcon size={32} strokeWidth={1} />
-              <p className="text-sm font-bold mt-2">資料夾是空的</p>
-            </div>
-          )}
+          ))
+        )}
         </div>
       </div>
     </div>

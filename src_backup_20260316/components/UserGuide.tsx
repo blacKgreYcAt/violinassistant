@@ -115,18 +115,18 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
   const sections = [
     {
       icon: <Library className="text-accent-warm" />,
-      title: "大容量樂譜圖書館與資料夾",
-      content: "全新升級大容量儲存空間！您可以上傳大量 JPG 或 PNG 格式的樂譜照片，並建立「資料夾」來分類管理您的樂譜。"
+      title: "大容量樂譜圖書館",
+      content: "全新升級大容量儲存空間！您可以上傳大量 JPG 或 PNG 格式的樂譜照片。若您的樂譜是 PDF，建議先截圖後再上傳。"
     },
     {
       icon: <Edit2 className="text-accent-warm" />,
-      title: "編輯樂譜與標註",
-      content: "上傳照片後，點擊樂譜右側的「鉛筆圖示」即可自訂樂譜名稱。在閱覽模式中，您還可以使用「畫筆」在樂譜上自由標註重點，或「旋轉」方向錯誤的樂譜。"
+      title: "編輯樂譜名稱",
+      content: "上傳照片後，點擊樂譜右側的「鉛筆圖示」即可自訂樂譜名稱，方便您快速分類與尋找。"
     },
     {
       icon: <Calendar className="text-accent-warm" />,
-      title: "練習紀錄與筆記",
-      content: "計時器結束後會自動記錄練習時間，您還可以填寫「練習筆記」記錄心得與目標。系統會繪製近七天的練習圖表，並支援將紀錄透過郵件分享。"
+      title: "練習紀錄與統計",
+      content: "計時器結束後會自動記錄練習時間，您也可以手動補登。系統會繪製近七天的練習圖表，並支援將紀錄透過郵件分享。"
     },
     {
       icon: <UploadCloud className="text-accent-warm" />,
@@ -135,18 +135,18 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
     },
     {
       icon: <Music className="text-accent-warm" />,
-      title: "專業節拍器與調音器",
-      content: "節拍器支援 30-300 BPM 與拍號設定。首頁新增「調音器」功能，可即時偵測音準與音名，完全免費且在本地端運行。"
+      title: "專業節拍器",
+      content: "支援 30-300 BPM。您可以調整拍號（如 4/4, 3/4），並透過滑桿或加減按鈕精準控制節奏。"
     },
     {
       icon: <TimerIcon className="text-accent-warm" />,
       title: "練習倒數計時",
-      content: "設定您的練習目標時間。提供 15/30/45/60 分鐘快選，時間結束時會有視覺提醒，並可記錄本次練習筆記。"
+      content: "設定您的練習目標時間。提供 15/30/45/60 分鐘快選，時間結束時會有視覺提醒。"
     },
     {
       icon: <Video className="text-accent-warm" />,
-      title: "錄影與純錄音模式",
-      content: "錄影時可自由拖曳相機畫面至「四個角落」或縮小。若不需畫面，可切換至「純錄音模式」以節省設備儲存空間。"
+      title: "錄影與相機自訂",
+      content: "錄影時可自由拖曳相機畫面至「四個角落」。點擊相機畫面還能「切換大小」，確保不遮擋樂譜重要部分。"
     },
     {
       icon: <Smile className="text-accent-warm" />,
@@ -234,14 +234,9 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
 
   const changelog = [
     {
-      version: "v2.0.0",
+      version: "v1.9.1",
       date: "2026-03-16",
       changes: [
-        "✨ 新增「樂譜資料夾」管理功能，輕鬆分類大量樂譜。",
-        "✨ 樂譜檢視器新增「畫筆標註」與「頁面旋轉」功能，並可永久儲存變更。",
-        "✨ 新增「練習筆記」功能，計時結束後可記錄練習心得與目標。",
-        "✨ 新增「調音器」功能，即時偵測音準與音名。",
-        "✨ 影像紀錄新增「純錄音模式」，節省設備儲存空間。",
         "🐛 修正連續錄影時，部分裝置（如 iOS Safari）會出現黑畫面或無畫面的問題。",
         "⚡ 優化影片存檔機制，確保錄影檔案完整合併後再進行下載或分享。"
       ]
@@ -304,7 +299,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
               </div>
               <div>
                 <h2 className="text-xl font-bold">使用說明指南</h2>
-                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.0.0</p>
+                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v1.9.0</p>
               </div>
             </div>
             <button 

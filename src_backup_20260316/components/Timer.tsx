@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Timer as TimerIcon, Play, Pause, RotateCcw, Bell, Edit3, Check, X } from 'lucide-react';
+import { Timer as TimerIcon, Play, Pause, RotateCcw, Bell } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { addPracticeSession } from '../lib/storage';
 
@@ -13,8 +13,6 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
   const [isActive, setIsActive] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [practicedSeconds, setPracticedSeconds] = useState(0);
-  const [showNoteModal, setShowNoteModal] = useState(false);
-  const [practiceNote, setPracticeNote] = useState('');
   
   const timerRef = useRef<number | null>(null);
 
@@ -41,29 +39,15 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
 
   useEffect(() => {
     if (isFinished && practicedSeconds > 0) {
-      if (practicedSeconds >= 60) {
-        setShowNoteModal(true);
-      } else {
-        logPracticeSession();
-      }
+      logPracticeSession();
     }
   }, [isFinished]);
 
-  const logPracticeSession = async (note?: string) => {
+  const logPracticeSession = async () => {
     if (practicedSeconds >= 60) { // 至少練習 1 分鐘才記錄
-      await addPracticeSession(practicedSeconds, note);
+      await addPracticeSession(practicedSeconds);
     }
     setPracticedSeconds(0);
-    setPracticeNote('');
-    setShowNoteModal(false);
-  };
-
-  const handleSaveNote = () => {
-    logPracticeSession(practiceNote.trim() || undefined);
-  };
-
-  const handleSkipNote = () => {
-    logPracticeSession();
   };
 
   const formatTime = (totalSeconds: number) => {
@@ -74,10 +58,8 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
   };
 
   const resetTimer = () => {
-    if (practicedSeconds >= 60) {
-      setShowNoteModal(true);
-      setIsActive(false);
-      return;
+    if (practicedSeconds > 0) {
+      logPracticeSession();
     }
     setIsActive(false);
     setIsFinished(false);
@@ -180,47 +162,6 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
           </button>
         </div>
       </div>
-
-      {/* Practice Note Modal */}
-      {showNoteModal && (
-        <div className="fixed inset-0 z-50 bg-bg-warm/90 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-surface-warm border border-white/10 p-6 rounded-3xl shadow-2xl w-full max-w-sm animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-accent-warm">
-                <Edit3 size={20} />
-                <h3 className="font-bold text-lg text-text-warm">練習筆記</h3>
-              </div>
-              <button onClick={handleSkipNote} className="text-text-muted hover:text-text-warm p-1">
-                <X size={20} />
-              </button>
-            </div>
-            <p className="text-sm text-text-muted mb-4">
-              您剛剛練習了 {Math.floor(practicedSeconds / 60)} 分鐘，要記錄一下心得或下次的目標嗎？
-            </p>
-            <textarea
-              value={practiceNote}
-              onChange={(e) => setPracticeNote(e.target.value)}
-              placeholder="例如：第 45 小節的換弦還要加強..."
-              className="w-full h-32 bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-text-warm focus:outline-none focus:border-accent-warm resize-none mb-4"
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={handleSkipNote}
-                className="flex-1 py-3 rounded-xl bg-white/5 text-text-muted font-bold hover:bg-white/10 transition-colors"
-              >
-                略過
-              </button>
-              <button
-                onClick={handleSaveNote}
-                className="flex-1 py-3 rounded-xl bg-accent-warm text-bg-warm font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-              >
-                <Check size={18} /> 儲存
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
