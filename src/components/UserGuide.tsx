@@ -234,6 +234,14 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
 
   const changelog = [
     {
+      version: "v1.9.1",
+      date: "2026-03-16",
+      changes: [
+        "🐛 修正連續錄影時，部分裝置（如 iOS Safari）會出現黑畫面或無畫面的問題。",
+        "⚡ 優化影片存檔機制，確保錄影檔案完整合併後再進行下載或分享。"
+      ]
+    },
+    {
       version: "v1.9.0",
       date: "2026-03-15",
       changes: [
