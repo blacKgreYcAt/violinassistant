@@ -145,8 +145,11 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
     if (ctx.state === 'suspended') ctx.resume();
 
     if (droneOscRef.current) {
-      droneOscRef.current.stop();
+      try { droneOscRef.current.stop(); } catch(e) {}
       droneOscRef.current.disconnect();
+    }
+    if (droneGainRef.current) {
+      droneGainRef.current.disconnect();
     }
 
     const osc = ctx.createOscillator();
@@ -154,24 +157,11 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
 
     // Calculate frequency
     const noteIndex = noteStrings.indexOf(droneNote);
-    // A4 is 440Hz. A4 is index 9, octave 4.
-    // Note number = octave * 12 + noteIndex. A4 = 4 * 12 + 9 = 57. (Standard MIDI uses different offset, but we just need relative to A4)
-    // Let's use standard formula: freq = 440 * 2^((noteIndex - 9 + (droneOctave - 4) * 12) / 12)
     const freq = 440 * Math.pow(2, (noteIndex - 9 + (droneOctave - 4) * 12) / 12);
     
-    osc.type = 'sine'; // Sine wave for pure tone, or 'triangle' for a bit more harmonics
+    osc.type = 'triangle'; // Richer tone for strings
     osc.frequency.setValueAtTime(freq, ctx.currentTime);
     
-    // Add some rich harmonics for string players
-    const osc2 = ctx.createOscillator();
-    osc2.type = 'triangle';
-    osc2.frequency.setValueAtTime(freq, ctx.currentTime);
-    const gain2 = ctx.createGain();
-    gain2.gain.value = 0.3;
-    osc2.connect(gain2);
-    gain2.connect(gainNode);
-    osc2.start();
-
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
     gainNode.gain.linearRampToValueAtTime(droneVolume, ctx.currentTime + 0.1);
 
@@ -182,14 +172,6 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
     
     droneOscRef.current = osc;
     droneGainRef.current = gainNode;
-    // store osc2 somewhere if we want to stop it, but we can just close the context or use a master gain
-    // Actually, better to just use one master gain and connect both to it.
-    // To properly stop, we need to stop both. Let's just keep it simple with one oscillator for now, or store both.
-    // Let's stick to one rich oscillator (triangle) for simplicity and performance.
-    osc2.stop(ctx.currentTime + 86400); // Stop after a day just in case
-    
-    // Let's refactor the oscillator to just use a custom waveform or triangle
-    osc.type = 'triangle';
     
     setIsDronePlaying(true);
   };
@@ -200,6 +182,12 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
       setTimeout(() => {
         if (droneOscRef.current) {
           try { droneOscRef.current.stop(); } catch(e) {}
+          droneOscRef.current.disconnect();
+          droneOscRef.current = null;
+        }
+        if (droneGainRef.current) {
+          droneGainRef.current.disconnect();
+          droneGainRef.current = null;
         }
         setIsDronePlaying(false);
       }, 100);

@@ -23,6 +23,7 @@ interface Score {
 export default function App() {
   const [activeScore, setActiveScore] = useState<Score | null>(null);
   const [activeRoutine, setActiveRoutine] = useState<PracticeRoutine | null>(null);
+  const [activeTab, setActiveTab] = useState<'tools' | 'library'>('tools');
   const [appTitle, setAppTitle] = useState<string>('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState('');
@@ -136,19 +137,62 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content - Bento Grid */}
-      <main className="flex-1 min-h-0 p-4 md:p-6 lg:p-8 overflow-y-auto md:overflow-hidden bg-bg-warm">
-        <div className="max-w-[1600px] mx-auto w-full h-full flex flex-col md:grid md:grid-cols-2 md:grid-rows-3 lg:grid-cols-3 lg:grid-rows-2 md:grid-flow-col gap-6">
-          <ScoreLibrary onSelectScore={setActiveScore} className="min-h-0 h-full flex flex-col" />
-          <Metronome className="min-h-0 h-full flex flex-col" />
-          <Tuner className="min-h-0 h-full flex flex-col" />
-          <Timer activeRoutine={activeRoutine} onClearRoutine={() => setActiveRoutine(null)} className="min-h-0 h-full flex flex-col" />
-          {!activeScore && (
-            <>
-              <VideoRecorder activeScoreName={activeScore?.name} className="min-h-0 h-full flex flex-col" />
-              <PracticeDashboard onStartRoutine={setActiveRoutine} className="min-h-0 h-full flex flex-col" />
-            </>
-          )}
+      {/* Main Content - Tabbed Layout */}
+      <main className="flex-1 min-h-0 p-4 md:p-6 lg:p-8 overflow-y-auto bg-bg-warm flex flex-col">
+        <div className="max-w-[1600px] mx-auto w-full flex-1 flex flex-col gap-6">
+          
+          {/* Tabs */}
+          <div className="flex items-center justify-center gap-2 sm:gap-4 shrink-0 bg-surface-warm/50 p-2 rounded-2xl border border-white/5 w-fit mx-auto">
+            <button
+              onClick={() => setActiveTab('tools')}
+              className={cn(
+                "px-6 py-3 rounded-xl font-bold text-sm sm:text-base transition-all flex items-center gap-2",
+                activeTab === 'tools' 
+                  ? "bg-accent-warm text-bg-warm shadow-md" 
+                  : "text-text-muted hover:text-text-warm hover:bg-white/5"
+              )}
+            >
+              <LayoutDashboard size={18} />
+              練習工具
+            </button>
+            <button
+              onClick={() => setActiveTab('library')}
+              className={cn(
+                "px-6 py-3 rounded-xl font-bold text-sm sm:text-base transition-all flex items-center gap-2",
+                activeTab === 'library' 
+                  ? "bg-accent-warm text-bg-warm shadow-md" 
+                  : "text-text-muted hover:text-text-warm hover:bg-white/5"
+              )}
+            >
+              <Library size={18} />
+              樂譜與紀錄
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          <div className="flex-1 min-h-0 pb-6">
+            {activeTab === 'tools' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-[minmax(380px,1fr)]">
+                <Metronome className="h-full flex flex-col" />
+                <Tuner className="h-full flex flex-col" />
+                <Timer activeRoutine={activeRoutine} onClearRoutine={() => setActiveRoutine(null)} className="h-full flex flex-col" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-[minmax(380px,1fr)]">
+                <ScoreLibrary onSelectScore={setActiveScore} className="h-full flex flex-col" />
+                {!activeScore && (
+                  <>
+                    <VideoRecorder activeScoreName={activeScore?.name} className="h-full flex flex-col" />
+                    <PracticeDashboard onStartRoutine={(routine) => {
+                        setActiveRoutine(routine);
+                        setActiveTab('tools');
+                      }} className="h-full flex flex-col" />
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
         </div>
       </main>
 
