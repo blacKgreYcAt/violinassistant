@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, Music, FileText, Trash2, Edit2, Check, X, Camera, Wand2, Download, UploadCloud, Share2, Library, Folder as FolderIcon, Plus, ChevronLeft } from 'lucide-react';
+import { Upload, Music, FileText, Trash2, Edit2, Check, X, Camera, Wand2, Download, UploadCloud, Share2, Library, Folder as FolderIcon, Plus, ChevronLeft, Search, Tag } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Score, Folder, getScores, saveScores as saveScoresToDb, getFolders, saveFolders as saveFoldersToDb } from '../lib/storage';
 
@@ -15,9 +15,11 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [editingTags, setEditingTags] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   
   useEffect(() => {
     const loadData = async () => {
@@ -249,24 +251,29 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
     e.stopPropagation();
     setEditingId(score.id);
     setEditingName(score.name);
+    setEditingTags(score.tags ? score.tags.join(', ') : '');
   };
 
   const cancelEditing = (e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingId(null);
     setEditingName('');
+    setEditingTags('');
   };
 
   const saveRename = async (e: React.MouseEvent | React.KeyboardEvent, id: string) => {
     e.stopPropagation();
     if (!editingName.trim()) return;
     
+    const tagsArray = editingTags.split(',').map(t => t.trim()).filter(t => t.length > 0);
+    
     const newScores = scores.map(s => 
-      s.id === id ? { ...s, name: editingName.trim() } : s
+      s.id === id ? { ...s, name: editingName.trim(), tags: tagsArray } : s
     );
     await saveScores(newScores);
     setEditingId(null);
     setEditingName('');
+    setEditingTags('');
   };
 
   const deleteScore = async (id: string, e: React.MouseEvent) => {
@@ -378,8 +385,19 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
           </div>
         )}
 
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="搜尋樂譜或標籤..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-text-warm focus:outline-none focus:border-accent-warm transition-all"
+          />
+        </div>
+
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-3 min-h-0">
-          {!currentFolderId && folders.map(folder => (
+          {!currentFolderId && !searchQuery && folders.map(folder => (
             <div 
               key={folder.id}
               onClick={() => setCurrentFolderId(folder.id)}
@@ -406,7 +424,18 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
           ))}
 
           {scores
-            .filter(s => currentFolderId ? s.folderId === currentFolderId : !s.folderId)
+            .filter(s => {
+              // Folder filter
+              if (!searchQuery) {
+                if (currentFolderId) return s.folderId === currentFolderId;
+                return !s.folderId;
+              }
+              // Search filter
+              const q = searchQuery.toLowerCase();
+              const matchName = s.name.toLowerCase().includes(q);
+              const matchTags = s.tags?.some(t => t.toLowerCase().includes(q));
+              return matchName || matchTags;
+            })
             .map(score => (
             <div 
               key={score.id}
@@ -415,42 +444,62 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
             >
               <div className="flex-1 min-w-0 flex flex-col justify-center">
                 {editingId === score.id ? (
-                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
                     <input
                       autoFocus
                       type="text"
                       value={editingName}
                       onChange={(e) => setEditingName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveRename(e, score.id);
-                        if (e.key === 'Escape') cancelEditing(e as any);
-                      }}
-                      className="flex-1 bg-bg-warm border border-white/10 rounded-lg px-2 py-1.5 text-sm font-bold text-text-warm outline-none focus:ring-2 focus:ring-accent-warm/20 min-w-0"
+                      placeholder="樂譜名稱"
+                      className="w-full bg-bg-warm border border-white/10 rounded-lg px-2 py-1.5 text-sm font-bold text-text-warm outline-none focus:ring-2 focus:ring-accent-warm/20"
                     />
-                    <button 
-                      onClick={(e) => saveRename(e, score.id)}
-                      className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-colors shrink-0"
-                    >
-                      <Check size={16} />
-                    </button>
-                    <button 
-                      onClick={cancelEditing}
-                      className="p-1.5 text-text-muted hover:bg-white/5 rounded-md transition-colors shrink-0"
-                    >
-                      <X size={16} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <Tag size={14} className="text-text-muted shrink-0" />
+                      <input
+                        type="text"
+                        value={editingTags}
+                        onChange={(e) => setEditingTags(e.target.value)}
+                        placeholder="標籤 (用逗號分隔，如: 音階, 練習曲)"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveRename(e, score.id);
+                          if (e.key === 'Escape') cancelEditing(e as any);
+                        }}
+                        className="flex-1 bg-bg-warm border border-white/10 rounded-lg px-2 py-1 text-xs text-text-warm outline-none focus:ring-2 focus:ring-accent-warm/20"
+                      />
+                      <button 
+                        onClick={(e) => saveRename(e, score.id)}
+                        className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-colors shrink-0"
+                      >
+                        <Check size={16} />
+                      </button>
+                      <button 
+                        onClick={cancelEditing}
+                        className="p-1.5 text-text-muted hover:bg-white/5 rounded-md transition-colors shrink-0"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1">
                     <p className="text-sm font-bold text-text-warm line-clamp-2 leading-tight group-hover:text-accent-warm transition-colors pr-2">{score.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-[10px] text-text-muted uppercase font-bold tracking-tighter">
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      <p className="text-[10px] text-text-muted uppercase font-bold tracking-tighter shrink-0">
                         {new Date(score.date).toLocaleDateString()}
                       </p>
                       {Array.isArray(score.data) && (
-                        <span className="text-[10px] bg-accent-warm/10 text-accent-warm px-1.5 py-0.5 rounded-md font-bold">
+                        <span className="text-[10px] bg-accent-warm/10 text-accent-warm px-1.5 py-0.5 rounded-md font-bold shrink-0">
                           {score.data.length} 頁
                         </span>
+                      )}
+                      {score.tags && score.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {score.tags.map(tag => (
+                            <span key={tag} className="text-[9px] bg-white/10 text-text-muted px-1.5 py-0.5 rounded-md font-bold truncate max-w-[60px]">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </div>
                   </div>

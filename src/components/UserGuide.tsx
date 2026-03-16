@@ -18,7 +18,8 @@ import {
   History,
   Smile,
   ArrowRight,
-  Eye
+  Eye,
+  Star
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -112,16 +113,26 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  const sections = [
+    const sections = [
     {
       icon: <Library className="text-accent-warm" />,
-      title: "大容量樂譜圖書館與資料夾",
-      content: "全新升級大容量儲存空間！您可以上傳大量 JPG 或 PNG 格式的樂譜照片，並建立「資料夾」來分類管理您的樂譜。"
+      title: "樂譜資料夾與標籤",
+      content: "點擊「新增資料夾」按鈕建立分類。在樂譜清單中，點擊樂譜名稱旁的編輯按鈕，可同時修改名稱與新增「標籤 (Tag)」。上方搜尋列可快速搜尋名稱或標籤。"
     },
     {
       icon: <Edit2 className="text-accent-warm" />,
       title: "編輯樂譜與標註",
       content: "上傳照片後，點擊樂譜右側的「鉛筆圖示」即可自訂樂譜名稱。在閱覽模式中，您還可以使用「畫筆」在樂譜上自由標註重點，或「旋轉」方向錯誤的樂譜。"
+    },
+    {
+      icon: <TimerIcon className="text-accent-warm" />,
+      title: "練習計畫與計時",
+      content: "在「練習紀錄」旁的「練習計畫」分頁，可建立包含多個步驟（如：音階 10m、曲目 20m）的練習清單。點擊播放按鈕即可開始執行計畫，計時器會自動引導您完成每個步驟。"
+    },
+    {
+      icon: <Star className="text-accent-warm" />,
+      title: "音樂集點卡與徽章",
+      content: "點擊右上角的「星星」圖示開啟集點卡！每完成 30 分鐘的練習即可獲得 1 個音符 🎵。集滿 10 個音符可獲得隨機的「樂器拼圖碎片」，集滿所有拼圖即可解鎖終極徽章「首席提琴手」！"
     },
     {
       icon: <Calendar className="text-accent-warm" />,
@@ -135,13 +146,8 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
     },
     {
       icon: <Music className="text-accent-warm" />,
-      title: "專業節拍器與調音器",
-      content: "節拍器支援 30-300 BPM 與拍號設定。首頁新增「調音器」功能，可即時偵測音準與音名，完全免費且在本地端運行。"
-    },
-    {
-      icon: <TimerIcon className="text-accent-warm" />,
-      title: "練習倒數計時",
-      content: "設定您的練習目標時間。提供 15/30/45/60 分鐘快選，時間結束時會有視覺提醒，並可記錄本次練習筆記。"
+      title: "節拍器、調音器與持續音",
+      content: "節拍器支援 30-300 BPM 與拍號設定。「調音器」可即時偵測音準與音名。「持續音 (Drone Tone)」可發出指定音高的長音，輔助音準練習。"
     },
     {
       icon: <Video className="text-accent-warm" />,
@@ -237,10 +243,12 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
       version: "v2.0.0",
       date: "2026-03-16",
       changes: [
-        "✨ 新增「樂譜資料夾」管理功能，輕鬆分類大量樂譜。",
+        "✨ 新增「樂譜資料夾」與「標籤搜尋」管理功能，輕鬆分類大量樂譜。",
+        "✨ 新增「練習計畫」功能，可自訂暖身、音階、曲目等練習步驟與時長。",
+        "✨ 新增「音樂集點卡」功能，每練習 30 分鐘可獲得音符，集滿解鎖樂器拼圖與終極徽章！",
         "✨ 樂譜檢視器新增「畫筆標註」與「頁面旋轉」功能，並可永久儲存變更。",
         "✨ 新增「練習筆記」功能，計時結束後可記錄練習心得與目標。",
-        "✨ 新增「調音器」功能，即時偵測音準與音名。",
+        "✨ 新增「調音器」與「持續音 (Drone Tone) 產生器」功能，即時偵測音準與輔助練習。",
         "✨ 影像紀錄新增「純錄音模式」，節省設備儲存空間。",
         "🐛 修正連續錄影時，部分裝置（如 iOS Safari）會出現黑畫面或無畫面的問題。",
         "⚡ 優化影片存檔機制，確保錄影檔案完整合併後再進行下載或分享。"

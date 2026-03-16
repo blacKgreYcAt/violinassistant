@@ -6,8 +6,10 @@ import { VideoRecorder } from './components/VideoRecorder';
 import { ScoreLibrary } from './components/ScoreLibrary';
 import { ScoreViewer } from './components/ScoreViewer';
 import { UserGuide } from './components/UserGuide';
-import { PracticeHistory } from './components/PracticeHistory';
-import { Music, Info, LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail } from 'lucide-react';
+import { RewardCard } from './components/RewardCard';
+import { PracticeDashboard } from './components/PracticeDashboard';
+import { PracticeRoutine } from './lib/storage';
+import { Music, Info, LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail, Star } from 'lucide-react';
 import { cn } from './lib/utils';
 
 interface Score {
@@ -20,10 +22,12 @@ interface Score {
 
 export default function App() {
   const [activeScore, setActiveScore] = useState<Score | null>(null);
+  const [activeRoutine, setActiveRoutine] = useState<PracticeRoutine | null>(null);
   const [appTitle, setAppTitle] = useState<string>('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState('');
   const [guideOpen, setGuideOpen] = useState(false);
+  const [rewardCardOpen, setRewardCardOpen] = useState(false);
 
   useEffect(() => {
     const savedTitle = localStorage.getItem('app_title');
@@ -116,6 +120,13 @@ export default function App() {
         </div>
         <div className="flex items-center gap-4">
           <button 
+            onClick={() => setRewardCardOpen(true)} 
+            className="p-2 text-yellow-500 hover:text-yellow-400 transition-colors rounded-lg hover:bg-yellow-500/10 flex items-center gap-2"
+          >
+            <Star size={20} className="fill-yellow-500" />
+            <span className="hidden sm:inline text-xs font-bold">集點卡</span>
+          </button>
+          <button 
             onClick={() => setGuideOpen(true)} 
             className="p-2 text-text-muted hover:text-text-warm transition-colors rounded-lg hover:bg-white/5 flex items-center gap-2"
           >
@@ -131,11 +142,11 @@ export default function App() {
           <ScoreLibrary onSelectScore={setActiveScore} className="min-h-0 h-full flex flex-col" />
           <Metronome className="min-h-0 h-full flex flex-col" />
           <Tuner className="min-h-0 h-full flex flex-col" />
-          <Timer className="min-h-0 h-full flex flex-col" />
+          <Timer activeRoutine={activeRoutine} onClearRoutine={() => setActiveRoutine(null)} className="min-h-0 h-full flex flex-col" />
           {!activeScore && (
             <>
               <VideoRecorder activeScoreName={activeScore?.name} className="min-h-0 h-full flex flex-col" />
-              <PracticeHistory className="min-h-0 h-full flex flex-col" />
+              <PracticeDashboard onStartRoutine={setActiveRoutine} className="min-h-0 h-full flex flex-col" />
             </>
           )}
         </div>
@@ -174,6 +185,12 @@ export default function App() {
       <UserGuide 
         isOpen={guideOpen} 
         onClose={() => setGuideOpen(false)} 
+      />
+
+      {/* Reward Card Modal */}
+      <RewardCard 
+        isOpen={rewardCardOpen} 
+        onClose={() => setRewardCardOpen(false)} 
       />
     </div>
   );

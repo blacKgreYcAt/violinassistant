@@ -26,9 +26,45 @@ export interface PracticeSession {
   note?: string;
 }
 
+export interface Recording {
+  id: string;
+  scoreId: string;
+  timestamp: number;
+  type: 'video' | 'audio';
+  blob: Blob;
+  durationSeconds?: number;
+}
+
+export interface PracticeRoutine {
+  id: string;
+  name: string;
+  steps: {
+    id: string;
+    name: string;
+    durationSeconds: number;
+  }[];
+}
+
+export interface RewardsState {
+  currentNotes: number; // 0-9
+  totalNotes: number;
+  pieces: string[]; // e.g., 'violin-1', 'bow-6'
+  concertmasterUnlocked: boolean;
+  unrewardedSeconds?: number;
+}
+
+export interface RewardResult {
+  earnedNotes: number;
+  earnedPieces: string[];
+  unlockedConcertmaster: boolean;
+}
+
 const SCORES_KEY = 'viola-scores-idb';
 const FOLDERS_KEY = 'viola-folders-idb';
 const HISTORY_KEY = 'viola-practice-history';
+const RECORDINGS_KEY = 'viola-recordings-idb';
+const ROUTINES_KEY = 'viola-routines-idb';
+const REWARDS_KEY = 'viola-rewards-idb';
 
 // --- Folders ---
 
@@ -126,5 +162,128 @@ export async function addPracticeSession(durationSeconds: number, note?: string)
   } catch (error) {
     console.error('Failed to add practice session:', error);
     return await getPracticeHistory();
+  }
+}
+
+// --- Recordings ---
+
+export async function getRecordingsByScoreId(scoreId: string): Promise<Recording[]> {
+  try {
+    const recordings = await get<Recording[]>(RECORDINGS_KEY);
+    if (!recordings) return [];
+    return recordings.filter(r => r.scoreId === scoreId).sort((a, b) => b.timestamp - a.timestamp);
+  } catch (error) {
+    console.error('Failed to get recordings:', error);
+    return [];
+  }
+}
+
+export async function saveRecording(recording: Recording): Promise<void> {
+  try {
+    const recordings = await get<Recording[]>(RECORDINGS_KEY) || [];
+    await set(RECORDINGS_KEY, [...recordings, recording]);
+  } catch (error) {
+    console.error('Failed to save recording:', error);
+    throw new Error('儲存錄音/錄影失敗：設備空間可能不足。');
+  }
+}
+
+export async function deleteRecording(id: string): Promise<void> {
+  try {
+    const recordings = await get<Recording[]>(RECORDINGS_KEY) || [];
+    await set(RECORDINGS_KEY, recordings.filter(r => r.id !== id));
+  } catch (error) {
+    console.error('Failed to delete recording:', error);
+  }
+}
+
+// --- Routines ---
+
+export async function getRoutines(): Promise<PracticeRoutine[]> {
+  try {
+    const routines = await get<PracticeRoutine[]>(ROUTINES_KEY);
+    return routines || [];
+  } catch (error) {
+    console.error('Failed to get routines:', error);
+    return [];
+  }
+}
+
+export async function saveRoutines(routines: PracticeRoutine[]): Promise<void> {
+  try {
+    await set(ROUTINES_KEY, routines);
+  } catch (error) {
+    console.error('Failed to save routines:', error);
+  }
+}
+
+// --- Rewards ---
+
+export async function getRewards(): Promise<RewardsState> {
+  try {
+    const state = await get<RewardsState>(REWARDS_KEY);
+    return state || { currentNotes: 0, totalNotes: 0, pieces: [], concertmasterUnlocked: false, unrewardedSeconds: 0 };
+  } catch (error) {
+    console.error('Failed to get rewards:', error);
+    return { currentNotes: 0, totalNotes: 0, pieces: [], concertmasterUnlocked: false, unrewardedSeconds: 0 };
+  }
+}
+
+export async function processPracticeReward(seconds: number): Promise<RewardResult> {
+  try {
+    let state = await getRewards();
+    
+    // Accumulate seconds
+    const totalUnrewarded = (state.unrewardedSeconds || 0) + seconds;
+    
+    // 1 note per 30 minutes (1800 seconds)
+    const earnedNotes = Math.floor(totalUnrewarded / 1800);
+    
+    // Update unrewarded seconds (keep the remainder)
+    state.unrewardedSeconds = totalUnrewarded % 1800;
+
+    if (earnedNotes === 0) {
+      await set(REWARDS_KEY, state);
+      return { earnedNotes: 0, earnedPieces: [], unlockedConcertmaster: false };
+    }
+
+    let newNotes = state.currentNotes + earnedNotes;
+    let piecesToAward = Math.floor(newNotes / 10);
+    
+    state.currentNotes = newNotes % 10;
+    state.totalNotes += earnedNotes;
+
+    const earnedPieces: string[] = [];
+    const categories = ['stand', 'bow', 'violin', 'viola', 'cello', 'bass'];
+    const allPossiblePieces: string[] = [];
+    for (const cat of categories) {
+      for (let i = 1; i <= 6; i++) {
+        allPossiblePieces.push(`${cat}-${i}`);
+      }
+    }
+
+    let unlockedConcertmaster = false;
+
+    for (let i = 0; i < piecesToAward; i++) {
+      const uncollected = allPossiblePieces.filter(p => !state.pieces.includes(p));
+      if (uncollected.length > 0) {
+        const randomIndex = Math.floor(Math.random() * uncollected.length);
+        const piece = uncollected[randomIndex];
+        state.pieces.push(piece);
+        earnedPieces.push(piece);
+      }
+    }
+
+    if (state.pieces.length === 36 && !state.concertmasterUnlocked) {
+      state.concertmasterUnlocked = true;
+      unlockedConcertmaster = true;
+    }
+
+    await set(REWARDS_KEY, state);
+
+    return { earnedNotes, earnedPieces, unlockedConcertmaster };
+  } catch (error) {
+    console.error('Failed to process rewards:', error);
+    return { earnedNotes: 0, earnedPieces: [], unlockedConcertmaster: false };
   }
 }

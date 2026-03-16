@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Timer as TimerIcon, Play, Pause, RotateCcw, Bell, Edit3, Check, X } from 'lucide-react';
+import { Timer as TimerIcon, Play, Pause, RotateCcw, Bell, Edit3, Check, X, ListMusic, SkipForward } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { addPracticeSession } from '../lib/storage';
+import { addPracticeSession, PracticeRoutine, processPracticeReward, RewardResult } from '../lib/storage';
 
 interface TimerProps {
+  activeRoutine?: PracticeRoutine | null;
+  onClearRoutine?: () => void;
   className?: string;
 }
 
-export const Timer: React.FC<TimerProps> = ({ className }) => {
+export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, className }) => {
   const [inputMinutes, setInputMinutes] = useState(30);
   const [remainingSeconds, setRemainingSeconds] = useState(30 * 60);
   const [isActive, setIsActive] = useState(false);
@@ -15,8 +17,21 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
   const [practicedSeconds, setPracticedSeconds] = useState(0);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [practiceNote, setPracticeNote] = useState('');
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [rewardResult, setRewardResult] = useState<RewardResult | null>(null);
   
   const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (activeRoutine && activeRoutine.steps.length > 0) {
+      setCurrentStepIndex(0);
+      const firstStepDuration = activeRoutine.steps[0].duration;
+      setInputMinutes(firstStepDuration);
+      setRemainingSeconds(firstStepDuration * 60);
+      setIsActive(false);
+      setIsFinished(false);
+    }
+  }, [activeRoutine]);
 
   useEffect(() => {
     if (isActive && remainingSeconds > 0) {
@@ -40,22 +55,90 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
   }, [isActive, remainingSeconds]);
 
   useEffect(() => {
-    if (isFinished && practicedSeconds > 0) {
-      if (practicedSeconds >= 60) {
-        setShowNoteModal(true);
+    if (isFinished) {
+      if (activeRoutine) {
+        // Play a sound to notify step completion
+        try {
+          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const oscillator = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          oscillator.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+          gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+          oscillator.start();
+          gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+          oscillator.stop(audioCtx.currentTime + 0.5);
+        } catch (e) {
+          console.error("Audio playback failed", e);
+        }
+
+        if (currentStepIndex < activeRoutine.steps.length - 1) {
+          // Move to next step automatically after a short delay or require manual start
+          // Let's require manual start for the next step, but load it up
+          const nextIndex = currentStepIndex + 1;
+          setCurrentStepIndex(nextIndex);
+          const nextDuration = activeRoutine.steps[nextIndex].duration;
+          setInputMinutes(nextDuration);
+          setRemainingSeconds(nextDuration * 60);
+          setIsFinished(false);
+        } else {
+          // Routine finished
+          if (practicedSeconds >= 60) {
+            setShowNoteModal(true);
+          } else {
+            logPracticeSession();
+          }
+        }
       } else {
-        logPracticeSession();
+        if (practicedSeconds > 0) {
+          if (practicedSeconds >= 60) {
+            setShowNoteModal(true);
+          } else {
+            logPracticeSession();
+          }
+        }
       }
     }
   }, [isFinished]);
 
+  const completeReset = () => {
+    setIsFinished(false);
+    if (activeRoutine && activeRoutine.steps[currentStepIndex]) {
+      setRemainingSeconds(activeRoutine.steps[currentStepIndex].duration * 60);
+    } else {
+      setRemainingSeconds(inputMinutes * 60);
+    }
+  };
+
   const logPracticeSession = async (note?: string) => {
     if (practicedSeconds >= 60) { // 至少練習 1 分鐘才記錄
       await addPracticeSession(practicedSeconds, note);
+      
+      // Process rewards only if session is valid
+      const reward = await processPracticeReward(practicedSeconds);
+      if (reward.earnedNotes > 0) {
+        setRewardResult(reward);
+        setShowNoteModal(false);
+        return; // Do not reset practicedSeconds yet, so the modal can display it
+      } else {
+        completeReset();
+      }
+    } else {
+      completeReset();
     }
+
     setPracticedSeconds(0);
     setPracticeNote('');
     setShowNoteModal(false);
+  };
+
+  const handleCloseReward = () => {
+    setRewardResult(null);
+    setPracticedSeconds(0);
+    setPracticeNote('');
+    completeReset();
   };
 
   const handleSaveNote = () => {
@@ -80,18 +163,35 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
       return;
     }
     setIsActive(false);
-    setIsFinished(false);
-    setRemainingSeconds(inputMinutes * 60);
+    setPracticedSeconds(0);
+    completeReset();
   };
 
   const handlePresetClick = (mins: number) => {
-    if (isActive) return;
+    if (isActive || activeRoutine) return;
     setInputMinutes(mins);
     setRemainingSeconds(mins * 60);
     setIsFinished(false);
   };
 
-  const totalInitialSeconds = inputMinutes * 60;
+  const handleSkipStep = () => {
+    if (!activeRoutine) return;
+    setIsActive(false);
+    if (currentStepIndex < activeRoutine.steps.length - 1) {
+      const nextIndex = currentStepIndex + 1;
+      setCurrentStepIndex(nextIndex);
+      const nextDuration = activeRoutine.steps[nextIndex].duration;
+      setInputMinutes(nextDuration);
+      setRemainingSeconds(nextDuration * 60);
+      setIsFinished(false);
+    } else {
+      setIsFinished(true);
+    }
+  };
+
+  const totalInitialSeconds = activeRoutine && activeRoutine.steps[currentStepIndex] 
+    ? activeRoutine.steps[currentStepIndex].duration * 60 
+    : inputMinutes * 60;
   const progress = totalInitialSeconds > 0 
     ? ((totalInitialSeconds - remainingSeconds) / totalInitialSeconds) * 100 
     : 0;
@@ -102,9 +202,36 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <TimerIcon size={20} className="text-accent-warm" />
-            <h2 className="text-lg font-bold tracking-tight text-text-warm">練習計時</h2>
+            <h2 className="text-lg font-bold tracking-tight text-text-warm">
+              {activeRoutine ? '計畫執行中' : '練習計時'}
+            </h2>
           </div>
+          {activeRoutine && onClearRoutine && (
+            <button 
+              onClick={onClearRoutine}
+              className="text-xs font-bold text-text-muted hover:text-red-400 transition-colors bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg"
+            >
+              結束計畫
+            </button>
+          )}
         </div>
+
+        {activeRoutine && (
+          <div className="bg-white/5 rounded-2xl p-3 border border-white/5 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-accent-warm flex items-center gap-1">
+                <ListMusic size={14} />
+                {activeRoutine.name}
+              </span>
+              <span className="text-xs font-bold text-text-muted">
+                步驟 {currentStepIndex + 1} / {activeRoutine.steps.length}
+              </span>
+            </div>
+            <div className="text-lg font-bold text-text-warm">
+              {activeRoutine.steps[currentStepIndex]?.name}
+            </div>
+          </div>
+        )}
 
         <div className="relative flex flex-col items-center justify-center h-32">
           <div className={cn(
@@ -140,12 +267,12 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
             <button
               key={mins}
               onClick={() => handlePresetClick(mins)}
-              disabled={isActive}
+              disabled={isActive || !!activeRoutine}
               className={cn(
                 "h-full rounded-xl text-xs font-bold transition-all border",
-                inputMinutes === mins && !isActive
+                inputMinutes === mins && !isActive && !activeRoutine
                   ? "bg-accent-warm text-bg-warm border-accent-warm"
-                  : "bg-white/5 text-text-muted border-white/5 hover:bg-white/10"
+                  : "bg-white/5 text-text-muted border-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
               )}
             >
               {mins}m
@@ -172,17 +299,68 @@ export const Timer: React.FC<TimerProps> = ({ className }) => {
             {isActive ? '暫停' : '開始'}
           </button>
           
-          <button 
-            onClick={resetTimer}
-            className="w-14 h-14 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-muted rounded-2xl transition-all active:scale-95"
-          >
-            <RotateCcw size={24} />
-          </button>
+          {activeRoutine && currentStepIndex < activeRoutine.steps.length - 1 ? (
+            <button 
+              onClick={handleSkipStep}
+              className="w-14 h-14 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-muted rounded-2xl transition-all active:scale-95"
+              title="跳過此步驟"
+            >
+              <SkipForward size={24} />
+            </button>
+          ) : (
+            <button 
+              onClick={resetTimer}
+              className="w-14 h-14 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-muted rounded-2xl transition-all active:scale-95"
+              title="重設計時器"
+            >
+              <RotateCcw size={24} />
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Reward Notification Modal */}
+      {rewardResult && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-bg-warm w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col items-center p-8 text-center animate-in zoom-in duration-300">
+            <div className="text-6xl mb-4">🎵</div>
+            <h2 className="text-2xl font-bold text-text-warm mb-2">太棒了！</h2>
+            <p className="text-text-muted mb-6">
+              你完成了 {Math.floor(practicedSeconds / 60)} 分鐘的練習，獲得了 <strong className="text-accent-warm">{rewardResult.earnedNotes}</strong> 個音符！
+            </p>
+            
+            {rewardResult.earnedPieces.length > 0 && (
+              <div className="bg-accent-warm/10 p-4 rounded-2xl mb-6 w-full">
+                <div className="text-4xl mb-2">✨</div>
+                <h3 className="font-bold text-accent-warm mb-1">獲得拼圖碎片！</h3>
+                <p className="text-sm text-text-warm">
+                  你集滿了 10 個音符，獲得了 {rewardResult.earnedPieces.length} 個新的樂器拼圖碎片！
+                </p>
+              </div>
+            )}
+
+            {rewardResult.unlockedConcertmaster && (
+              <div className="bg-gradient-to-br from-yellow-100 to-amber-100 border border-yellow-400 p-4 rounded-2xl mb-6 w-full shadow-lg shadow-yellow-400/20">
+                <div className="text-5xl mb-2">🏆</div>
+                <h3 className="font-black text-yellow-700 mb-1 tracking-widest">解鎖終極徽章</h3>
+                <p className="text-sm text-yellow-600 font-medium">
+                  恭喜你收集了所有拼圖，成為了「首席提琴手」！
+                </p>
+              </div>
+            )}
+
+            <button
+              onClick={handleCloseReward}
+              className="w-full bg-accent-warm text-bg-warm py-3 rounded-xl font-bold hover:bg-accent-warm/90 transition-colors"
+            >
+              繼續加油
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Practice Note Modal */}
-      {showNoteModal && (
+      {showNoteModal && !rewardResult && (
         <div className="fixed inset-0 z-50 bg-bg-warm/90 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-surface-warm border border-white/10 p-6 rounded-3xl shadow-2xl w-full max-w-sm animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4">
