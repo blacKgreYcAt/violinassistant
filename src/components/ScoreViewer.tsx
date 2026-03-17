@@ -404,8 +404,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
       className
     )}>
       {/* Toolbar */}
-      <div className="h-16 bg-surface-warm border-b border-white/5 flex items-center justify-between px-4 md:px-6 shrink-0">
-        <div className="flex items-center gap-2 md:gap-4">
+      <div className="min-h-[64px] py-2 bg-surface-warm border-b border-white/5 flex flex-wrap items-center justify-between px-4 md:px-6 shrink-0 gap-y-2">
+        <div className="flex items-center gap-2 md:gap-4 shrink-0">
           <button 
             onClick={onClose}
             className="p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
@@ -418,7 +418,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
           </h2>
         </div>
 
-        <div className="flex items-center gap-1 md:gap-2 overflow-x-auto scrollbar-hide pb-1 -mb-1 [&>*]:shrink-0">
+        <div className="flex flex-wrap items-center gap-1 md:gap-2">
           {/* Display Mode Toggles */}
           <div className="hidden lg:flex items-center bg-white/5 rounded-xl p-1 gap-1">
             <button 

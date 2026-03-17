@@ -151,8 +151,8 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
     },
     {
       icon: <Video className="text-accent-warm" />,
-      title: "錄影與純錄音模式",
-      content: "錄影時可自由拖曳相機畫面至「四個角落」或縮小。若不需畫面，可切換至「純錄音模式」以節省設備儲存空間。"
+      title: "錄影、純錄音與分割畫面",
+      content: "錄影時可自由拖曳相機畫面至「四個角落」或縮小。若不需畫面，可切換至「純錄音模式」以節省設備儲存空間。\n\n點擊工具列的「分割畫面」按鈕，可將畫面左右對半切。在右側的錄影區塊中，您可以點擊「開啟相簿影片」來播放平板內的示範影片，方便一邊看譜一邊對照練習。"
     },
     {
       icon: <Smile className="text-accent-warm" />,
@@ -240,6 +240,15 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
 
   const changelog = [
     {
+      version: "v2.1.0",
+      date: "2026-03-17",
+      changes: [
+        "✨ 新增「分割畫面」功能：在樂譜檢視器中，可將畫面左右對半切，方便一邊看譜一邊錄影。",
+        "✨ 新增「開啟相簿影片」功能：在錄影區塊中，可直接開啟並播放裝置相簿內的影片（如老師的示範影片），支援與樂譜並排顯示。",
+        "🎨 優化樂譜檢視器上方工具列：在小螢幕裝置上會自動換行顯示，確保所有按鈕（包含分割畫面）都能直接點擊，無需滑動。"
+      ]
+    },
+    {
       version: "v2.0.0",
       date: "2026-03-16",
       changes: [
@@ -312,7 +321,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
               </div>
               <div>
                 <h2 className="text-xl font-bold">使用說明指南</h2>
-                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.0.0</p>
+                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.1.0</p>
               </div>
             </div>
             <button 
