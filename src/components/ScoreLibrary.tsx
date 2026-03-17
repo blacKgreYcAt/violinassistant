@@ -416,7 +416,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
               </div>
               <button 
                 onClick={(e) => deleteFolder(folder.id, e)}
-                className="p-2 text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-xl hover:bg-white/5"
+                className="p-2 text-text-muted hover:text-red-400 opacity-60 hover:opacity-100 transition-all rounded-xl hover:bg-white/5"
               >
                 <Trash2 size={16} />
               </button>
@@ -510,7 +510,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
                   <div className="relative group/menu">
                     <button 
                       onClick={(e) => e.stopPropagation()}
-                      className="p-1.5 text-text-muted hover:text-accent-warm hover:bg-white/5 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                      className="p-1.5 text-text-muted hover:text-accent-warm hover:bg-white/5 rounded-lg transition-colors opacity-60 hover:opacity-100"
                       title="移動到資料夾"
                     >
                       <FolderIcon size={16} />
@@ -540,14 +540,14 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
                 {editingId !== score.id && (
                   <button 
                     onClick={(e) => startEditing(e, score)}
-                    className="p-1.5 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                    className="p-1.5 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-lg transition-colors opacity-60 hover:opacity-100"
                   >
                     <Edit2 size={16} />
                   </button>
                 )}
                 <button 
                   onClick={(e) => deleteScore(score.id, e)}
-                  className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                  className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors opacity-60 hover:opacity-100"
                 >
                   <Trash2 size={16} />
                 </button>
