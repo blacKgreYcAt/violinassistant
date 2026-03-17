@@ -656,9 +656,9 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
       )}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-hidden bg-bg-warm relative flex">
+      <div className="flex-1 overflow-hidden bg-bg-warm relative flex min-h-0">
         <div className={cn(
-          "flex-1 overflow-hidden relative",
+          "flex-1 overflow-hidden relative min-w-0 min-h-0",
           showRecorder && isSplitScreen ? "border-r border-white/10" : ""
         )}>
           {score.type === 'link' ? (
