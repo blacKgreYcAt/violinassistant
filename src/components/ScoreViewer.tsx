@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, Loader2, AlertCircle, LayoutDashboard, Smile, Activity, Eye, RotateCw, PenTool, Eraser, Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, Loader2, AlertCircle, LayoutDashboard, Smile, Activity, Eye, RotateCw, PenTool, Eraser, Save, Columns } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
 import { cn } from '../lib/utils';
@@ -28,6 +28,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
   const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
+  const [isSplitScreen, setIsSplitScreen] = useState(false);
   const [recorderPosition, setRecorderPosition] = useState<'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'>('top-right');
   const [isRecorderMinimized, setIsRecorderMinimized] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
@@ -567,33 +568,47 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
           {showRecorder && (
             <div className="flex items-center bg-white/5 rounded-xl p-1 gap-1 ml-2">
               <button 
-                onClick={() => {
-                  const positions: ('top-right' | 'top-left' | 'bottom-right' | 'bottom-left')[] = ['top-right', 'bottom-right', 'bottom-left', 'top-left'];
-                  const currentIndex = positions.indexOf(recorderPosition);
-                  setRecorderPosition(positions[(currentIndex + 1) % positions.length]);
-                }}
-                className="p-1.5 text-text-muted hover:text-text-warm transition-all"
-                title="切換位置"
-              >
-                <LayoutDashboard size={14} />
-              </button>
-              <button 
-                onClick={() => setIsRecorderMinimized(!isRecorderMinimized)}
+                onClick={() => setIsSplitScreen(!isSplitScreen)}
                 className={cn(
                   "p-1.5 rounded-lg transition-all",
-                  isRecorderMinimized ? "text-accent-warm" : "text-text-muted hover:text-text-warm"
+                  isSplitScreen ? "text-accent-warm bg-white/10" : "text-text-muted hover:text-text-warm"
                 )}
-                title={isRecorderMinimized ? "展開" : "縮小"}
+                title={isSplitScreen ? "取消分割畫面" : "分割畫面"}
               >
-                {isRecorderMinimized ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+                <Columns size={14} />
               </button>
+              {!isSplitScreen && (
+                <button 
+                  onClick={() => {
+                    const positions: ('top-right' | 'top-left' | 'bottom-right' | 'bottom-left')[] = ['top-right', 'bottom-right', 'bottom-left', 'top-left'];
+                    const currentIndex = positions.indexOf(recorderPosition);
+                    setRecorderPosition(positions[(currentIndex + 1) % positions.length]);
+                  }}
+                  className="p-1.5 text-text-muted hover:text-text-warm transition-all"
+                  title="切換位置"
+                >
+                  <LayoutDashboard size={14} />
+                </button>
+              )}
+              {!isSplitScreen && (
+                <button 
+                  onClick={() => setIsRecorderMinimized(!isRecorderMinimized)}
+                  className={cn(
+                    "p-1.5 rounded-lg transition-all",
+                    isRecorderMinimized ? "text-accent-warm" : "text-text-muted hover:text-text-warm"
+                  )}
+                  title={isRecorderMinimized ? "展開" : "縮小"}
+                >
+                  {isRecorderMinimized ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+                </button>
+              )}
             </div>
           )}
         </div>
       </div>
 
       {/* Recorder Overlay */}
-      {showRecorder && (
+      {showRecorder && !isSplitScreen && (
         <div className={cn(
           "absolute z-[70] transition-all duration-300 ease-in-out",
           recorderPosition === 'top-right' && "top-20 right-4",
@@ -638,8 +653,12 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
       )}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-hidden bg-bg-warm relative">
-        {score.type === 'link' ? (
+      <div className="flex-1 overflow-hidden bg-bg-warm relative flex">
+        <div className={cn(
+          "flex-1 overflow-hidden relative",
+          showRecorder && isSplitScreen ? "border-r border-white/10" : ""
+        )}>
+          {score.type === 'link' ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 sm:p-12 text-center gap-4 sm:gap-6 bg-white">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400">
               <ExternalLink size={32} />
@@ -713,6 +732,19 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
                 onTouchEnd={stopDrawing}
               />
             </div>
+          </div>
+        )}
+        </div>
+
+        {/* Split Screen Video Area */}
+        {showRecorder && isSplitScreen && (
+          <div className="w-1/2 md:w-[400px] lg:w-[500px] h-full bg-surface-warm overflow-y-auto shrink-0 border-l border-white/5">
+            <VideoRecorder 
+              activeScoreName={score.name} 
+              className="h-full rounded-none border-0 shadow-none" 
+              isMinimized={false}
+              isFloating={false}
+            />
           </div>
         )}
       </div>

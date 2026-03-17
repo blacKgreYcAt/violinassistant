@@ -16,9 +16,19 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [isAudioOnly, setIsAudioOnly] = useState(false);
+  const [localVideoUrl, setLocalVideoUrl] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setLocalVideoUrl(url);
+    }
+  };
 
   // Keep video preview in sync with stream
   React.useEffect(() => {
@@ -228,7 +238,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
           </div>
         )}
 
-        {!isCameraOn ? (
+        {!isCameraOn && !localVideoUrl ? (
           <div className={cn(
             "flex-1 flex flex-col items-center justify-center gap-4 border-2 border-dashed border-white/10 rounded-2xl bg-white/5 min-h-0",
             isMinimized ? "p-4" : "p-6"
@@ -242,26 +252,70 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
                 <p className="text-xs text-text-muted mt-1">點擊下方按鈕開啟相機或麥克風</p>
               </div>
             )}
-            <div className="flex gap-2 w-full max-w-[240px]">
+            <div className="flex flex-col gap-2 w-full max-w-[240px]">
+              <div className="flex gap-2 w-full">
+                <button 
+                  onClick={() => startCamera(false)}
+                  className={cn(
+                    "flex-1 bg-accent-warm text-bg-warm rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2",
+                    isMinimized ? "py-2 text-xs" : "py-3"
+                  )}
+                >
+                  <Camera size={isMinimized ? 16 : 20} /> {isMinimized ? '錄影' : '錄影'}
+                </button>
+                <button 
+                  onClick={() => startCamera(true)}
+                  className={cn(
+                    "flex-1 bg-white/10 text-text-warm rounded-2xl font-bold hover:bg-white/20 transition-all active:scale-95 flex items-center justify-center gap-2",
+                    isMinimized ? "py-2 text-xs" : "py-3"
+                  )}
+                >
+                  <Mic size={isMinimized ? 16 : 20} /> {isMinimized ? '錄音' : '錄音'}
+                </button>
+              </div>
               <button 
-                onClick={() => startCamera(false)}
+                onClick={() => fileInputRef.current?.click()}
                 className={cn(
-                  "flex-1 bg-accent-warm text-bg-warm rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2",
+                  "w-full bg-white/5 text-text-warm rounded-2xl font-bold hover:bg-white/10 transition-all active:scale-95 flex items-center justify-center gap-2",
                   isMinimized ? "py-2 text-xs" : "py-3"
                 )}
               >
-                <Camera size={isMinimized ? 16 : 20} /> {isMinimized ? '錄影' : '錄影'}
+                <Video size={isMinimized ? 16 : 20} /> {isMinimized ? '相簿' : '開啟相簿影片'}
               </button>
-              <button 
-                onClick={() => startCamera(true)}
-                className={cn(
-                  "flex-1 bg-white/10 text-text-warm rounded-2xl font-bold hover:bg-white/20 transition-all active:scale-95 flex items-center justify-center gap-2",
-                  isMinimized ? "py-2 text-xs" : "py-3"
-                )}
-              >
-                <Mic size={isMinimized ? 16 : 20} /> {isMinimized ? '錄音' : '錄音'}
-              </button>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                accept="video/*" 
+                className="hidden" 
+                onChange={handleFileSelect} 
+              />
             </div>
+          </div>
+        ) : localVideoUrl ? (
+          <div className="flex-1 flex flex-col gap-4 min-h-0">
+            <div className={cn(
+              "relative bg-black rounded-2xl overflow-hidden border border-white/10 flex-1 min-h-0",
+              isMinimized ? "aspect-square mx-auto w-full" : (isFloating ? "aspect-[3/4] sm:aspect-[9/16]" : "")
+            )}>
+              <video 
+                src={localVideoUrl} 
+                controls
+                playsInline
+                className="absolute inset-0 w-full h-full object-contain bg-black"
+              />
+            </div>
+            <button 
+              onClick={() => {
+                setLocalVideoUrl(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+              }}
+              className={cn(
+                "w-full bg-white/10 text-text-warm rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition-all active:scale-95 shadow-lg",
+                isMinimized ? "py-2 text-xs" : "py-4"
+              )}
+            >
+              關閉影片
+            </button>
           </div>
         ) : (
           <div className="flex-1 flex flex-col gap-4 min-h-0">
