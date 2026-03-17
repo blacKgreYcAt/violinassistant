@@ -83,6 +83,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
       'audio/webm',
       'audio/ogg'
     ] : [
+      'video/mp4;codecs="avc1.42E01E, mp4a.40.2"', // H.264 Baseline Profile (Most compatible for LINE/WhatsApp)
       'video/mp4;codecs=avc1',
       'video/mp4',
       'video/quicktime',
@@ -112,7 +113,9 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
       };
 
       mediaRecorder.onstop = () => {
-        const finalBlob = new Blob(chunks, { type: selectedMimeType || (isAudioOnly ? 'audio/mp4' : 'video/mp4') });
+        // Strip codecs from mimeType for better compatibility with iOS Share Sheet and LINE
+        const cleanMimeType = selectedMimeType ? selectedMimeType.split(';')[0] : (isAudioOnly ? 'audio/mp4' : 'video/mp4');
+        const finalBlob = new Blob(chunks, { type: cleanMimeType });
         setFinalVideoBlob(finalBlob);
         const url = URL.createObjectURL(finalBlob);
         setPreviewUrl(url);
