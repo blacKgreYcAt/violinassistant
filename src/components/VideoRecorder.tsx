@@ -165,6 +165,12 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
     if (mimeType.includes('quicktime')) extension = 'mov';
     if (mimeType.includes('ogg')) extension = 'ogg';
     
+    // Force .mov extension on iOS to help trigger native transcoding when sharing to apps like LINE
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS && extension === 'mp4') {
+      extension = 'mov';
+    }
+    
     const fileName = `${date}_${activeScoreName || '練習錄影'}.${extension}`;
     
     a.download = fileName;
@@ -190,6 +196,12 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
       if (mimeType.includes('webm')) extension = isAudioOnly ? 'weba' : 'webm';
       if (mimeType.includes('quicktime')) extension = 'mov';
       if (mimeType.includes('ogg')) extension = 'ogg';
+      
+      // Force .mov extension on iOS to help trigger native transcoding when sharing to apps like LINE
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (isIOS && extension === 'mp4') {
+        extension = 'mov';
+      }
       
       const fileName = `${date}_${activeScoreName || '練習錄影'}.${extension}`;
       const file = new File([finalVideoBlob], fileName, { type: mimeType });
@@ -428,9 +440,16 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ activeScoreName, c
             </div>
             
             {!isMinimized && (
-              <p className="text-[10px] text-text-muted text-center italic">
-                檔案名稱將自動設為：當天日期 + {activeScoreName || '練習曲目'}
-              </p>
+              <div className="flex flex-col gap-2">
+                <p className="text-[10px] text-text-muted text-center italic">
+                  檔案名稱將自動設為：當天日期 + {activeScoreName || '練習曲目'}
+                </p>
+                {previewUrl && !isRecording && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && (
+                  <p className="text-[10px] text-amber-500/90 text-center bg-amber-500/10 p-2 rounded-lg leading-relaxed">
+                    ⚠️ iOS 裝置若要分享至 LINE，建議先點擊「下載檔案」儲存到相簿，再從相簿分享，以避免出現有聲無影的黑畫面。
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}
