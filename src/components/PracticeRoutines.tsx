@@ -48,7 +48,10 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
     if (!newRoutineName.trim() || newSteps.length === 0) return;
     
     // Validate steps
-    const validSteps = newSteps.filter(s => s.name.trim() && s.duration > 0);
+    const validSteps = newSteps.map(s => ({
+      ...s,
+      duration: (s as any).duration || (s as any).durationSeconds || 0
+    })).filter(s => s.name.trim() && s.duration > 0);
     if (validSteps.length === 0) return;
 
     const newRoutine: PracticeRoutine = {
@@ -85,8 +88,8 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
     }
   };
 
-  const calculateTotalDuration = (steps: { duration: number }[]) => {
-    return steps.reduce((total, step) => total + step.duration, 0);
+  const calculateTotalDuration = (steps: any[]) => {
+    return steps.reduce((total, step) => total + (step.duration || step.durationSeconds || 0), 0);
   };
 
   if (isCreating) {
@@ -135,7 +138,7 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
                   <input
                     type="number"
                     min="1"
-                    value={step.duration}
+                    value={(step as any).duration || (step as any).durationSeconds || 0}
                     onChange={(e) => handleUpdateStep(step.id, 'duration', parseInt(e.target.value) || 0)}
                     className="w-12 bg-transparent border-none text-sm text-center text-text-warm focus:outline-none"
                   />
@@ -234,7 +237,7 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
                   <div key={step.id} className="flex items-center gap-1 text-[10px] bg-black/20 px-2 py-1 rounded-md">
                     <span className="text-text-muted">{idx + 1}.</span>
                     <span className="text-text-warm font-medium">{step.name}</span>
-                    <span className="text-accent-warm ml-1">{step.duration}m</span>
+                    <span className="text-accent-warm ml-1">{(step as any).duration || (step as any).durationSeconds || 0}m</span>
                   </div>
                 ))}
               </div>

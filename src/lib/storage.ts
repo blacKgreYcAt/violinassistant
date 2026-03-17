@@ -41,7 +41,7 @@ export interface PracticeRoutine {
   steps: {
     id: string;
     name: string;
-    durationSeconds: number;
+    duration: number;
   }[];
 }
 

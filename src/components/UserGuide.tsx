@@ -249,6 +249,15 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
       ]
     },
     {
+      version: "v2.1.0",
+      date: "2026-03-17",
+      changes: [
+        "✨ 新增「影片輔助」功能：可在看譜時開啟分割畫面，匯入相簿中的老師示範影片，邊看邊練。",
+        "🐛 修正舊版練習計畫資料導致的白畫面問題。",
+        "🎨 樂譜檢視器工具列新增獨立「分割畫面」按鈕，操作更直覺。"
+      ]
+    },
+    {
       version: "v2.0.0",
       date: "2026-03-16",
       changes: [

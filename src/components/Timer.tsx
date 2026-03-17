@@ -25,7 +25,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
   useEffect(() => {
     if (activeRoutine && activeRoutine.steps.length > 0) {
       setCurrentStepIndex(0);
-      const firstStepDuration = activeRoutine.steps[0].duration;
+      const firstStepDuration = activeRoutine.steps[0].duration || (activeRoutine.steps[0] as any).durationSeconds || 30;
       setInputMinutes(firstStepDuration);
       setRemainingSeconds(firstStepDuration * 60);
       setIsActive(false);
@@ -79,7 +79,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
           // Let's require manual start for the next step, but load it up
           const nextIndex = currentStepIndex + 1;
           setCurrentStepIndex(nextIndex);
-          const nextDuration = activeRoutine.steps[nextIndex].duration;
+          const nextDuration = activeRoutine.steps[nextIndex].duration || (activeRoutine.steps[nextIndex] as any).durationSeconds || 30;
           setInputMinutes(nextDuration);
           setRemainingSeconds(nextDuration * 60);
           setIsFinished(false);

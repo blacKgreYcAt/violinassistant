@@ -555,53 +555,56 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
           <div className="h-6 w-px bg-white/10 mx-1 md:mx-2" />
 
           <button 
+            onClick={() => {
+              setIsSplitScreen(!isSplitScreen);
+              if (!isSplitScreen) {
+                setShowRecorder(true);
+              }
+            }}
+            className={cn(
+              "p-1 md:p-2 rounded-xl transition-all flex items-center gap-2",
+              isSplitScreen ? "bg-accent-warm text-bg-warm" : "text-text-muted hover:text-text-warm hover:bg-white/5"
+            )}
+            title={isSplitScreen ? "取消分割畫面" : "分割畫面 (左邊樂譜，右邊影片)"}
+          >
+            <Columns size={18} />
+            <span className="text-[10px] font-bold hidden sm:block">{isSplitScreen ? '取消分割' : '分割畫面'}</span>
+          </button>
+
+          <button 
             onClick={() => setShowRecorder(!showRecorder)}
             className={cn(
               "p-1 md:p-2 rounded-xl transition-all flex items-center gap-2",
-              showRecorder ? "bg-red-500 text-white" : "text-text-muted hover:text-text-warm hover:bg-white/5"
+              showRecorder && !isSplitScreen ? "bg-red-500 text-white" : "text-text-muted hover:text-text-warm hover:bg-white/5"
             )}
           >
             <Camera size={18} />
             <span className="text-[10px] font-bold hidden sm:block">{showRecorder ? '關閉錄影' : '錄影模式'}</span>
           </button>
 
-          {showRecorder && (
+          {showRecorder && !isSplitScreen && (
             <div className="flex items-center bg-white/5 rounded-xl p-1 gap-1 ml-2">
               <button 
-                onClick={() => setIsSplitScreen(!isSplitScreen)}
+                onClick={() => {
+                  const positions: ('top-right' | 'top-left' | 'bottom-right' | 'bottom-left')[] = ['top-right', 'bottom-right', 'bottom-left', 'top-left'];
+                  const currentIndex = positions.indexOf(recorderPosition);
+                  setRecorderPosition(positions[(currentIndex + 1) % positions.length]);
+                }}
+                className="p-1.5 text-text-muted hover:text-text-warm transition-all"
+                title="切換位置"
+              >
+                <LayoutDashboard size={14} />
+              </button>
+              <button 
+                onClick={() => setIsRecorderMinimized(!isRecorderMinimized)}
                 className={cn(
                   "p-1.5 rounded-lg transition-all",
-                  isSplitScreen ? "text-accent-warm bg-white/10" : "text-text-muted hover:text-text-warm"
+                  isRecorderMinimized ? "text-accent-warm" : "text-text-muted hover:text-text-warm"
                 )}
-                title={isSplitScreen ? "取消分割畫面" : "分割畫面"}
+                title={isRecorderMinimized ? "展開" : "縮小"}
               >
-                <Columns size={14} />
+                {isRecorderMinimized ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
               </button>
-              {!isSplitScreen && (
-                <button 
-                  onClick={() => {
-                    const positions: ('top-right' | 'top-left' | 'bottom-right' | 'bottom-left')[] = ['top-right', 'bottom-right', 'bottom-left', 'top-left'];
-                    const currentIndex = positions.indexOf(recorderPosition);
-                    setRecorderPosition(positions[(currentIndex + 1) % positions.length]);
-                  }}
-                  className="p-1.5 text-text-muted hover:text-text-warm transition-all"
-                  title="切換位置"
-                >
-                  <LayoutDashboard size={14} />
-                </button>
-              )}
-              {!isSplitScreen && (
-                <button 
-                  onClick={() => setIsRecorderMinimized(!isRecorderMinimized)}
-                  className={cn(
-                    "p-1.5 rounded-lg transition-all",
-                    isRecorderMinimized ? "text-accent-warm" : "text-text-muted hover:text-text-warm"
-                  )}
-                  title={isRecorderMinimized ? "展開" : "縮小"}
-                >
-                  {isRecorderMinimized ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
-                </button>
-              )}
             </div>
           )}
         </div>
