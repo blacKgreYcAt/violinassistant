@@ -682,18 +682,19 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
             </a>
           </div>
         ) : (
-          <div className="absolute inset-0 overflow-auto flex justify-center items-center p-4 scrollbar-hide">
+          <div 
+            className="absolute inset-0 overflow-auto flex justify-center items-center p-4 scrollbar-hide"
+            style={{ containerType: 'size' }}
+          >
             <div 
               className={cn(
-                "transition-all duration-200 shadow-2xl bg-white flex items-center justify-center relative",
-                displayMode === 'fit-width' && "w-full h-auto",
-                displayMode === 'fit-page' && "max-w-full max-h-full"
+                "transition-all duration-200 shadow-2xl bg-white relative shrink-0",
+                displayMode === 'fit-width' && "w-full"
               )}
               style={{ 
-                width: displayMode === 'fit-width' ? `${zoom * 100}%` : 'auto',
-                height: displayMode === 'fit-page' ? '100%' : 'auto',
-                maxWidth: '100%',
-                maxHeight: displayMode === 'fit-page' ? '100%' : 'none',
+                width: displayMode === 'fit-width' 
+                  ? `${zoom * 100}%` 
+                  : 'calc(min(100cqw - 32px, (100cqh - 32px) * 0.7072))',
                 aspectRatio: '1 / 1.414',
                 transform: `rotate(${rotations[currentPage] || 0}deg)`,
                 transition: isDrawingMode ? 'none' : 'transform 0.3s ease-in-out'
@@ -702,10 +703,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
               <img 
                 src={pages[currentPage]} 
                 alt={`${score.name} - Page ${currentPage + 1}`}
-                className={cn(
-                  "object-contain bg-white",
-                  displayMode === 'fit-page' ? "w-full h-full" : "w-full h-auto"
-                )}
+                className="w-full h-full object-contain bg-white block"
                 referrerPolicy="no-referrer"
                 onLoad={(e) => {
                   if (canvasRef.current) {
