@@ -420,15 +420,15 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
 
         <div className="flex flex-wrap items-center gap-1 md:gap-2">
           {/* Display Mode Toggles */}
-          <div className="hidden lg:flex items-center bg-white/5 rounded-xl p-1 gap-1">
+          <div className="hidden lg:flex items-center bg-white/5 rounded-2xl p-1 gap-1">
             <button 
               onClick={() => {
                 setDisplayMode('fit-page');
                 setZoom(1);
               }}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
-                displayMode === 'fit-page' ? "bg-accent-warm text-bg-warm" : "text-text-muted hover:text-text-warm"
+                "px-4 py-2 rounded-xl text-xs font-bold tracking-widest transition-all",
+                displayMode === 'fit-page' ? "bg-accent-warm text-bg-warm shadow-sm" : "text-text-muted hover:text-text-warm hover:bg-white/5"
               )}
             >
               符合頁面
@@ -436,8 +436,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
             <button 
               onClick={() => setDisplayMode('fit-width')}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
-                displayMode === 'fit-width' ? "bg-accent-warm text-bg-warm" : "text-text-muted hover:text-text-warm"
+                "px-4 py-2 rounded-xl text-xs font-bold tracking-widest transition-all",
+                displayMode === 'fit-width' ? "bg-accent-warm text-bg-warm shadow-sm" : "text-text-muted hover:text-text-warm hover:bg-white/5"
               )}
             >
               符合寬度
@@ -521,76 +521,76 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
 
           <div className="h-6 w-px bg-white/10 mx-1 md:mx-2" />
 
-          <div className="flex items-center bg-white/5 rounded-xl p-1">
-            <button 
-              onClick={() => setIsAutoTurnEnabled(!isAutoTurnEnabled)}
-              className={cn(
-                "p-1 md:p-2 rounded-lg transition-all flex items-center gap-2",
-                isAutoTurnEnabled ? "bg-emerald-500 text-white" : "text-text-muted hover:text-text-warm"
-              )}
-              title={aiMode === 'head' ? "智能翻頁 (頭部組合動作)" : "智能翻頁 (眨眼模式)"}
-            >
-              {isModelLoading ? <Loader2 size={18} className="animate-spin" /> : (aiMode === 'head' ? <Smile size={18} /> : <Eye size={18} />)}
-              <span className="text-[10px] font-bold hidden sm:block">{isAutoTurnEnabled ? '智能翻頁中' : '智能翻頁'}</span>
-            </button>
-            
-            <div className="flex items-center border-l border-white/10 pl-1 ml-1">
-              <button
-                onClick={() => setAiMode('head')}
-                className={cn("p-1.5 rounded-md transition-all", aiMode === 'head' ? "bg-white/10 text-accent-warm" : "text-text-muted hover:text-white")}
-                title="頭部動作模式"
+          <div className="flex items-center gap-2">
+            <div className="flex bg-white/5 rounded-2xl p-1">
+              <button 
+                onClick={() => setIsAutoTurnEnabled(!isAutoTurnEnabled)}
+                className={cn(
+                  "p-2 rounded-xl transition-all flex flex-col items-center justify-center gap-1.5 min-w-[64px]",
+                  isAutoTurnEnabled ? "bg-emerald-500 text-white shadow-md" : "text-text-muted hover:text-text-warm hover:bg-white/5"
+                )}
+                title={aiMode === 'head' ? "智能翻頁 (頭部組合動作)" : "智能翻頁 (眨眼模式)"}
               >
-                <Smile size={14} />
+                {isModelLoading ? <Loader2 size={20} className="animate-spin" /> : (aiMode === 'head' ? <Smile size={20} /> : <Eye size={20} />)}
+                <span className="text-[10px] font-bold leading-none">{isAutoTurnEnabled ? '智能翻頁中' : '智能翻頁'}</span>
               </button>
-              <button
-                onClick={() => setAiMode('blink')}
-                className={cn("p-1.5 rounded-md transition-all", aiMode === 'blink' ? "bg-white/10 text-accent-warm" : "text-text-muted hover:text-white")}
-                title="眨眼模式"
-              >
-                <Eye size={14} />
-              </button>
+              
+              <div className="flex flex-col justify-center border-l border-white/10 pl-1 ml-1 gap-1">
+                <button
+                  onClick={() => setAiMode('head')}
+                  className={cn("p-1.5 rounded-lg transition-all", aiMode === 'head' ? "bg-white/10 text-accent-warm" : "text-text-muted hover:text-white")}
+                  title="頭部動作模式"
+                >
+                  <Smile size={14} />
+                </button>
+                <button
+                  onClick={() => setAiMode('blink')}
+                  className={cn("p-1.5 rounded-lg transition-all", aiMode === 'blink' ? "bg-white/10 text-accent-warm" : "text-text-muted hover:text-white")}
+                  title="眨眼模式"
+                >
+                  <Eye size={14} />
+                </button>
+              </div>
             </div>
+
+            <button 
+              onClick={() => {
+                setIsSplitScreen(!isSplitScreen);
+                if (!isSplitScreen) {
+                  setShowRecorder(true);
+                }
+              }}
+              className={cn(
+                "p-2 rounded-2xl transition-all flex flex-col items-center justify-center gap-1.5 min-w-[64px]",
+                isSplitScreen ? "bg-accent-warm text-bg-warm shadow-md" : "bg-white/5 text-text-muted hover:text-text-warm hover:bg-white/10"
+              )}
+              title={isSplitScreen ? "取消分割畫面" : "分割畫面 (左邊樂譜，右邊影片)"}
+            >
+              <Columns size={20} />
+              <span className="text-[10px] font-bold leading-none">{isSplitScreen ? '取消分割' : '分割畫面'}</span>
+            </button>
+
+            <button 
+              onClick={() => setShowRecorder(!showRecorder)}
+              className={cn(
+                "p-2 rounded-2xl transition-all flex flex-col items-center justify-center gap-1.5 min-w-[64px]",
+                showRecorder && !isSplitScreen ? "bg-red-500 text-white shadow-md" : "bg-white/5 text-text-muted hover:text-text-warm hover:bg-white/10"
+              )}
+            >
+              <Camera size={20} />
+              <span className="text-[10px] font-bold leading-none">{showRecorder ? '關閉錄影' : '錄影模式'}</span>
+            </button>
           </div>
 
-          <div className="h-6 w-px bg-white/10 mx-1 md:mx-2" />
-
-          <button 
-            onClick={() => {
-              setIsSplitScreen(!isSplitScreen);
-              if (!isSplitScreen) {
-                setShowRecorder(true);
-              }
-            }}
-            className={cn(
-              "p-1 md:p-2 rounded-xl transition-all flex items-center gap-2",
-              isSplitScreen ? "bg-accent-warm text-bg-warm" : "text-text-muted hover:text-text-warm hover:bg-white/5"
-            )}
-            title={isSplitScreen ? "取消分割畫面" : "分割畫面 (左邊樂譜，右邊影片)"}
-          >
-            <Columns size={18} />
-            <span className="text-[10px] font-bold hidden sm:block">{isSplitScreen ? '取消分割' : '分割畫面'}</span>
-          </button>
-
-          <button 
-            onClick={() => setShowRecorder(!showRecorder)}
-            className={cn(
-              "p-1 md:p-2 rounded-xl transition-all flex items-center gap-2",
-              showRecorder && !isSplitScreen ? "bg-red-500 text-white" : "text-text-muted hover:text-text-warm hover:bg-white/5"
-            )}
-          >
-            <Camera size={18} />
-            <span className="text-[10px] font-bold hidden sm:block">{showRecorder ? '關閉錄影' : '錄影模式'}</span>
-          </button>
-
           {showRecorder && !isSplitScreen && (
-            <div className="flex items-center bg-white/5 rounded-xl p-1 gap-1 ml-2">
+            <div className="flex flex-col justify-center bg-white/5 rounded-xl p-1 gap-1 ml-2">
               <button 
                 onClick={() => {
                   const positions: ('top-right' | 'top-left' | 'bottom-right' | 'bottom-left')[] = ['top-right', 'bottom-right', 'bottom-left', 'top-left'];
                   const currentIndex = positions.indexOf(recorderPosition);
                   setRecorderPosition(positions[(currentIndex + 1) % positions.length]);
                 }}
-                className="p-1.5 text-text-muted hover:text-text-warm transition-all"
+                className="p-1.5 text-text-muted hover:text-text-warm transition-all rounded-lg hover:bg-white/10"
                 title="切換位置"
               >
                 <LayoutDashboard size={14} />
@@ -598,7 +598,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
               <button 
                 onClick={() => setIsRecorderMinimized(!isRecorderMinimized)}
                 className={cn(
-                  "p-1.5 rounded-lg transition-all",
+                  "p-1.5 rounded-lg transition-all hover:bg-white/10",
                   isRecorderMinimized ? "text-accent-warm" : "text-text-muted hover:text-text-warm"
                 )}
                 title={isRecorderMinimized ? "展開" : "縮小"}
@@ -691,6 +691,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
               )}
               style={{ 
                 width: displayMode === 'fit-width' ? `${zoom * 100}%` : 'auto',
+                height: displayMode === 'fit-page' ? '100%' : 'auto',
                 maxWidth: '100%',
                 maxHeight: displayMode === 'fit-page' ? '100%' : 'none',
                 aspectRatio: '1 / 1.414',
@@ -703,7 +704,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
                 alt={`${score.name} - Page ${currentPage + 1}`}
                 className={cn(
                   "object-contain bg-white",
-                  displayMode === 'fit-page' ? "max-w-full max-h-full" : "w-full h-auto"
+                  displayMode === 'fit-page' ? "w-full h-full" : "w-full h-auto"
                 )}
                 referrerPolicy="no-referrer"
                 onLoad={(e) => {
