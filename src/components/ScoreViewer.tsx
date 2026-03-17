@@ -418,7 +418,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
           </h2>
         </div>
 
-        <div className="flex items-center gap-1 md:gap-2">
+        <div className="flex items-center gap-1 md:gap-2 overflow-x-auto scrollbar-hide pb-1 -mb-1 [&>*]:shrink-0">
           {/* Display Mode Toggles */}
           <div className="hidden lg:flex items-center bg-white/5 rounded-xl p-1 gap-1">
             <button 
