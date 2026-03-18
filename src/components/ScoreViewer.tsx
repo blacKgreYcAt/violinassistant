@@ -3,7 +3,7 @@ import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, 
   Camera, Loader2, Smile, Eye, RotateCw, PenTool, Eraser, Save, 
   Columns, Moon, Sun, Star, Music, TrendingUp, Play, Pause, 
-  ChevronUp, ChevronDown, Edit2, Check, LayoutDashboard
+  ChevronUp, ChevronDown, Edit2, Check
 } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
@@ -615,7 +615,10 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
         </aside>
 
         {/* Center - Score View */}
-        <main className="flex-1 relative bg-bg-warm flex flex-col min-w-0 overflow-hidden">
+        <main className={cn(
+          "flex-1 relative bg-bg-warm flex flex-col min-w-0 overflow-hidden transition-all duration-500",
+          isSplitScreen && showRecorder ? "border-r border-white/10" : ""
+        )}>
           <div className="flex-1 relative overflow-hidden flex items-center justify-center p-4">
             <div 
               className="relative shadow-2xl transition-all duration-300"
@@ -720,6 +723,19 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
           </footer>
         </main>
 
+        {/* Split Screen Panel */}
+        {isSplitScreen && showRecorder && (
+          <div className="flex-1 shrink-0 bg-surface-warm border-l border-white/10 hidden lg:block relative">
+            <div className="w-full h-full bg-black">
+              <VideoRecorder 
+                activeScoreName={score.name} 
+                isMinimized={false}
+                onToggleMinimize={() => {}}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Right Sidebar - Features (Optional/Contextual) */}
         <aside className="w-20 shrink-0 bg-surface-warm/50 border-l border-white/5 flex flex-col items-center py-6 gap-6 z-10">
           <button 
@@ -741,7 +757,13 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
             <TrendingUp size={24} />
           </button>
           <button 
-            onClick={() => setIsSplitScreen(!isSplitScreen)}
+            onClick={() => {
+              const nextState = !isSplitScreen;
+              setIsSplitScreen(nextState);
+              if (nextState && !showRecorder) {
+                setShowRecorder(true);
+              }
+            }}
             className={cn(
               "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
               isSplitScreen ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30" : "bg-white/5 text-text-muted hover:text-text-warm"
@@ -828,11 +850,10 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
         </div>
       )}
 
-      {/* Recorder Overlay */}
-      {showRecorder && (
+      {/* Recorder Overlay (Floating) */}
+      {showRecorder && !isSplitScreen && (
         <div className={cn(
           "fixed z-40 transition-all duration-500 ease-in-out",
-          isSplitScreen ? "inset-y-0 right-0 w-1/2 bg-surface-warm border-l border-white/10" : 
           cn(
             recorderPosition === 'top-right' && "top-20 right-24",
             recorderPosition === 'top-left' && "top-20 left-24",
@@ -846,19 +867,9 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
               activeScoreName={score.name} 
               isMinimized={isRecorderMinimized}
               onToggleMinimize={() => setIsRecorderMinimized(!isRecorderMinimized)}
+              recorderPosition={recorderPosition}
+              onPositionChange={setRecorderPosition}
             />
-            {!isSplitScreen && (
-              <button 
-                onClick={() => {
-                  const positions: ('top-right' | 'top-left' | 'bottom-right' | 'bottom-left')[] = ['top-right', 'bottom-right', 'bottom-left', 'top-left'];
-                  const currentIndex = positions.indexOf(recorderPosition);
-                  setRecorderPosition(positions[(currentIndex + 1) % positions.length]);
-                }}
-                className="absolute top-2 left-2 p-1.5 bg-black/50 text-white/70 hover:text-white rounded-lg backdrop-blur-md z-50"
-              >
-                <LayoutDashboard size={14} />
-              </button>
-            )}
           </div>
         </div>
       )}

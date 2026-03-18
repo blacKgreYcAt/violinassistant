@@ -1,5 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Video, VideoOff, Download, Camera, StopCircle, Share2, Mic, MicOff, Save, Activity, Minimize2 } from 'lucide-react';
+import { 
+  Video, VideoOff, Download, Camera, StopCircle, Share2, Mic, MicOff, Save, Activity, 
+  Minimize2, Maximize2, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight 
+} from 'lucide-react';
 import { cn } from '../lib/utils';
 import { saveRecording } from '../lib/storage';
 
@@ -9,6 +12,8 @@ interface VideoRecorderProps {
   isMinimized?: boolean;
   isFloating?: boolean;
   onToggleMinimize?: () => void;
+  recorderPosition?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
+  onPositionChange?: (pos: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left') => void;
 }
 
 export const VideoRecorder: React.FC<VideoRecorderProps> = ({ 
@@ -16,7 +21,9 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
   className, 
   isMinimized, 
   isFloating,
-  onToggleMinimize 
+  onToggleMinimize,
+  recorderPosition,
+  onPositionChange
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -349,86 +356,135 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
     }
   };
 
-  return (
-    <div className={cn(
-      "bg-surface-warm backdrop-blur-md rounded-3xl shadow-xl border border-white/5 transition-all overflow-hidden", 
-      isMinimized ? "p-2" : "p-3 md:p-4",
-      className
-    )}>
-      <div className="flex flex-col gap-4 h-full">
-        {!isMinimized && (
-          <div className="flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2">
-              {isAudioOnly ? <Mic size={20} className="text-accent-warm" /> : <Camera size={20} className="text-accent-warm" />}
-              <h2 className="text-lg font-bold tracking-tight text-text-warm">{isAudioOnly ? '純錄音' : '錄影作業'}</h2>
-            </div>
-            <div className="flex items-center gap-3">
-              {onToggleMinimize && (
-                <button 
-                  onClick={onToggleMinimize}
-                  className="p-2 text-text-muted hover:text-text-warm transition-colors rounded-lg hover:bg-white/5"
-                >
-                  <Minimize2 size={18} />
-                </button>
-              )}
-              {isCameraOn && (
-                <button 
-                  onClick={() => {
-                    stopCamera();
-                    setPreviewUrl(null);
-                  }}
-                  className="text-xs font-bold text-red-400 hover:text-red-300 transition-colors"
-                >
-                  {isAudioOnly ? '關閉麥克風' : '關閉相機'}
-                </button>
-              )}
-            </div>
+  if (isMinimized) {
+    return (
+      <div 
+        className={cn(
+          "bg-surface-warm backdrop-blur-md rounded-2xl shadow-xl border border-white/5 transition-all overflow-hidden relative cursor-pointer hover:bg-white/10 w-full h-full flex items-center justify-center group", 
+          className
+        )}
+        onClick={onToggleMinimize}
+      >
+        {/* Simple Preview if camera is on and not audio only */}
+        {isCameraOn && !isAudioOnly && (
+          <video 
+            ref={videoRef} 
+            autoPlay 
+            muted 
+            playsInline 
+            className="absolute inset-0 w-full h-full object-cover opacity-40"
+          />
+        )}
+        
+        {/* Audio Only Indicator */}
+        {isAudioOnly && isCameraOn && (
+          <div className="absolute inset-0 flex items-center justify-center opacity-20">
+            <Mic size={24} className="text-accent-warm" />
           </div>
         )}
 
-        {!isCameraOn && !localVideoUrl ? (
-          <div className={cn(
-            "flex-1 flex flex-col items-center justify-center gap-3 border-2 border-dashed border-white/10 rounded-2xl bg-white/5 min-h-0",
-            isMinimized ? "p-2" : "p-4 md:p-6"
-          )}>
-            <div className={cn("bg-white/5 rounded-full flex items-center justify-center text-text-muted shrink-0", isMinimized ? "w-8 h-8" : "w-12 h-12 md:w-16 h-16")}>
-              <Video size={isMinimized ? 16 : 32} />
-            </div>
-            {!isMinimized && (
-              <div className="text-center">
-                <p className="font-bold text-text-warm text-sm md:text-base">準備好交作業了嗎？</p>
-                <p className="text-xs text-text-muted mt-1">點擊下方按鈕開啟相機或麥克風</p>
+        {/* Recording Indicator */}
+        {isRecording && (
+          <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse z-20" />
+        )}
+        
+        {/* Maximize Icon */}
+        <div className="relative z-30 flex items-center justify-center">
+          <Maximize2 size={24} className="text-white drop-shadow-lg animate-pulse opacity-80 group-hover:opacity-100 transition-opacity" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className={cn(
+        "bg-surface-warm backdrop-blur-md rounded-3xl shadow-xl border border-white/5 transition-all overflow-hidden relative", 
+        "p-3 md:p-4",
+        className
+      )}
+    >
+      <div className="flex flex-col gap-4 h-full">
+        <div className="flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            {isAudioOnly ? <Mic size={20} className="text-accent-warm" /> : <Camera size={20} className="text-accent-warm" />}
+            <h2 className="text-lg font-bold tracking-tight text-text-warm truncate max-w-[100px] md:max-w-none">{isAudioOnly ? '純錄音' : '錄影作業'}</h2>
+          </div>
+          <div className="flex items-center gap-3">
+            {onPositionChange && recorderPosition && (
+              <div className="grid grid-cols-2 gap-0.5 bg-white/5 p-0.5 rounded-lg border border-white/5">
+                {(['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const).map((pos) => (
+                  <button
+                    key={pos}
+                    onClick={() => onPositionChange(pos)}
+                    className={cn(
+                      "w-6 h-6 rounded flex items-center justify-center transition-all",
+                      recorderPosition === pos 
+                        ? "bg-accent-warm text-bg-warm" 
+                        : "text-text-muted hover:text-text-warm hover:bg-white/5"
+                    )}
+                    title={`移至 ${pos === 'top-left' ? '左上' : pos === 'top-right' ? '右上' : pos === 'bottom-left' ? '左下' : '右下'}`}
+                  >
+                    {pos === 'top-left' && <ArrowUpLeft size={14} />}
+                    {pos === 'top-right' && <ArrowUpRight size={14} />}
+                    {pos === 'bottom-left' && <ArrowDownLeft size={14} />}
+                    {pos === 'bottom-right' && <ArrowDownRight size={14} />}
+                  </button>
+                ))}
               </div>
             )}
+            {onToggleMinimize && (
+              <button 
+                onClick={onToggleMinimize}
+                className="p-2 text-text-muted hover:text-text-warm transition-colors rounded-lg hover:bg-white/5"
+                title="縮小"
+              >
+                <Minimize2 size={18} />
+              </button>
+            )}
+            {isCameraOn && (
+              <button 
+                onClick={() => {
+                  stopCamera();
+                  setPreviewUrl(null);
+                }}
+                className="text-xs font-bold text-red-400 hover:text-red-300 transition-colors"
+              >
+                {isAudioOnly ? '關閉麥克風' : '關閉相機'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {!isCameraOn && !localVideoUrl ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 border-2 border-dashed border-white/10 rounded-2xl bg-white/5 min-h-0 p-4 md:p-6">
+            <div className="bg-white/5 rounded-full flex items-center justify-center text-text-muted shrink-0 w-12 h-12 md:w-16 h-16">
+              <Video size={32} />
+            </div>
+            <div className="text-center">
+              <p className="font-bold text-text-warm text-sm md:text-base">準備好交作業了嗎？</p>
+              <p className="text-xs text-text-muted mt-1">點擊下方按鈕開啟相機或麥克風</p>
+            </div>
             <div className="flex flex-col gap-2 w-full max-w-[280px]">
               <div className="flex gap-2 w-full">
                 <button 
                   onClick={() => startCamera(false)}
-                  className={cn(
-                    "flex-1 bg-accent-warm text-bg-warm rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2",
-                    isMinimized ? "py-1.5 text-[10px]" : "py-3 text-sm"
-                  )}
+                  className="flex-1 bg-accent-warm text-bg-warm rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2 py-3 text-sm"
                 >
-                  <Camera size={isMinimized ? 14 : 18} /> {isMinimized ? '錄影' : '錄影'}
+                  <Camera size={18} /> 錄影
                 </button>
                 <button 
                   onClick={() => startCamera(true)}
-                  className={cn(
-                    "flex-1 bg-white/10 text-text-warm rounded-2xl font-bold hover:bg-white/20 transition-all active:scale-95 flex items-center justify-center gap-2",
-                    isMinimized ? "py-1.5 text-[10px]" : "py-3 text-sm"
-                  )}
+                  className="flex-1 bg-white/10 text-text-warm rounded-2xl font-bold hover:bg-white/20 transition-all active:scale-95 flex items-center justify-center gap-2 py-3 text-sm"
                 >
-                  <Mic size={isMinimized ? 14 : 18} /> {isMinimized ? '錄音' : '錄音'}
+                  <Mic size={18} /> 錄音
                 </button>
               </div>
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className={cn(
-                  "w-full bg-white/5 text-text-warm rounded-2xl font-bold hover:bg-white/10 transition-all active:scale-95 flex items-center justify-center gap-2",
-                  isMinimized ? "py-1.5 text-[10px]" : "py-3 text-sm"
-                )}
+                className="w-full bg-white/5 text-text-warm rounded-2xl font-bold hover:bg-white/10 transition-all active:scale-95 flex items-center justify-center gap-2 py-3 text-sm"
               >
-                <Video size={isMinimized ? 14 : 18} /> {isMinimized ? '開啟相簿影片' : '開啟相簿影片'}
+                <Video size={18} /> 開啟相簿影片
               </button>
               <input 
                 type="file" 
@@ -443,7 +499,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
           <div className="flex-1 flex flex-col gap-4 min-h-0">
             <div className={cn(
               "relative bg-black rounded-2xl overflow-hidden border border-white/10 flex-1 min-h-0",
-              isMinimized ? "aspect-square mx-auto w-full" : (isFloating ? "aspect-[3/4] sm:aspect-[9/16]" : "")
+              isFloating ? "aspect-[3/4] sm:aspect-[9/16]" : ""
             )}>
               <video 
                 src={localVideoUrl} 
@@ -457,10 +513,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
                 setLocalVideoUrl(null);
                 if (fileInputRef.current) fileInputRef.current.value = '';
               }}
-              className={cn(
-                "w-full bg-white/10 text-text-warm rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition-all active:scale-95 shadow-lg",
-                isMinimized ? "py-2 text-xs" : "py-4"
-              )}
+              className="w-full bg-white/10 text-text-warm rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition-all active:scale-95 shadow-lg py-4"
             >
               關閉影片
             </button>
@@ -469,7 +522,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
           <div className="flex-1 flex flex-col gap-4 min-h-0">
             <div className={cn(
               "relative bg-black rounded-2xl overflow-hidden border border-white/10 flex-1 min-h-0",
-              isMinimized ? "aspect-square mx-auto w-full" : (isFloating ? "aspect-[3/4] sm:aspect-[9/16]" : "")
+              isFloating ? "aspect-[3/4] sm:aspect-[9/16]" : ""
             )}>
               {isAudioOnly ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-warm">
@@ -482,7 +535,6 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
                 </div>
               ) : (
                 <>
-                  {/* Always render the live video so the stream never suspends */}
                   <video 
                     ref={videoRef} 
                     autoPlay 
@@ -494,20 +546,17 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
                   {previewUrl && (
                     <video 
                       src={previewUrl} 
-                      controls={!isMinimized}
+                      controls
                       className="absolute inset-0 w-full h-full object-contain z-10 bg-black"
                     />
                   )}
                 </>
               )}
               {isRecording && (
-                <div className={cn(
-                  "absolute z-20 flex items-center gap-2 bg-red-500 text-white rounded-full animate-pulse",
-                  isMinimized ? "top-2 left-2 px-2 py-1" : "top-4 left-4 px-3 py-1.5"
-                )}>
+                <div className="absolute z-20 flex items-center gap-2 bg-red-500 text-white rounded-full animate-pulse top-4 left-4 px-3 py-1.5">
                   <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                  <span className={cn("font-bold uppercase tracking-widest", isMinimized ? "text-[8px]" : "text-[10px]")}>
-                    {isMinimized ? 'REC' : (isAudioOnly ? '正在錄音' : '正在錄影')}
+                  <span className="font-bold uppercase tracking-widest text-[10px]">
+                    {isAudioOnly ? '正在錄音' : '正在錄影'}
                   </span>
                 </div>
               )}
@@ -520,91 +569,71 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
                 </div>
               )}
               {previewUrl && (
-                <div className={cn(
-                  "absolute z-20 flex items-center gap-2 bg-emerald-500 text-white rounded-full",
-                  isMinimized ? "top-2 left-2 px-2 py-1" : "top-4 left-4 px-3 py-1.5"
-                )}>
-                  <span className={cn("font-bold uppercase tracking-widest", isMinimized ? "text-[8px]" : "text-[10px]")}>
-                    {isMinimized ? 'DONE' : (isAudioOnly ? '錄音完成' : '錄影完成')}
+                <div className="absolute z-20 flex items-center gap-2 bg-emerald-500 text-white rounded-full top-4 left-4 px-3 py-1.5">
+                  <span className="font-bold uppercase tracking-widest text-[10px]">
+                    {isAudioOnly ? '錄音完成' : '錄影完成'}
                   </span>
                 </div>
               )}
             </div>
 
-            <div className={cn("flex gap-2 shrink-0", isMinimized ? "flex-col" : "flex-row")}>
+            <div className="flex gap-2 shrink-0 flex-row">
               {!isRecording ? (
                 <button 
                   onClick={() => {
                     setPreviewUrl(null);
                     startRecording();
                   }}
-                  className={cn(
-                    "flex-1 bg-red-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-red-600 transition-all active:scale-95 shadow-lg shadow-red-500/20",
-                    isMinimized ? "py-2 text-xs" : "py-3 md:py-4 text-sm"
-                  )}
+                  className="flex-1 bg-red-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-red-600 transition-all active:scale-95 shadow-lg shadow-red-500/20 py-3 md:py-4 text-sm"
                 >
-                  <Video size={isMinimized ? 16 : 18} fill="currentColor" /> 
-                  {isMinimized ? (previewUrl ? '重錄' : '錄製') : (previewUrl ? '重新錄製' : (isAudioOnly ? '開始錄音' : '開始錄影'))}
+                  <Video size={18} fill="currentColor" /> 
+                  {previewUrl ? '重新錄製' : (isAudioOnly ? '開始錄音' : '開始錄影')}
                 </button>
               ) : (
                 <button 
                   onClick={stopRecording}
-                  className={cn(
-                    "flex-1 bg-white text-bg-warm rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-neutral-100 transition-all active:scale-95 shadow-lg",
-                    isMinimized ? "py-2 text-xs" : "py-3 md:py-4 text-sm"
-                  )}
+                  className="flex-1 bg-white text-bg-warm rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-neutral-100 transition-all active:scale-95 shadow-lg py-3 md:py-4 text-sm"
                 >
-                  <StopCircle size={isMinimized ? 16 : 18} fill="currentColor" /> {isMinimized ? '停止' : (isAudioOnly ? '停止錄音' : '停止錄影')}
+                  <StopCircle size={18} fill="currentColor" /> {isAudioOnly ? '停止錄音' : '停止錄影'}
                 </button>
               )}
 
               {previewUrl && !isRecording && (
-                <div className={cn("flex gap-2", isMinimized ? "w-full flex-col" : "flex-1")}>
+                <div className="flex gap-2 flex-1">
                   <button 
                     onClick={shareVideo}
-                    className={cn(
-                      "bg-accent-warm text-bg-warm rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-lg",
-                      isMinimized ? "py-2 text-xs w-full" : "flex-1 py-3 md:py-4 text-sm"
-                    )}
+                    className="bg-accent-warm text-bg-warm rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-lg flex-1 py-3 md:py-4 text-sm"
                     title="分享或儲存"
                   >
-                    <Share2 size={isMinimized ? 16 : 18} /> {isMinimized ? '分享' : '分享/儲存'}
+                    <Share2 size={18} /> 分享/儲存
                   </button>
                   <button 
                     onClick={saveToApp}
                     disabled={isSaving}
-                    className={cn(
-                      "bg-white/10 text-text-warm rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition-all active:scale-95 shadow-lg",
-                      isMinimized ? "py-2 text-xs w-full" : "px-4 md:px-6 py-3 md:py-4 text-sm"
-                    )}
+                    className="bg-white/10 text-text-warm rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition-all active:scale-95 shadow-lg px-4 md:px-6 py-3 md:py-4 text-sm"
                   >
-                    <Save size={isMinimized ? 16 : 18} /> {isSaving ? '...' : (isMinimized ? '存App' : '儲存')}
+                    <Save size={18} /> {isSaving ? '...' : '儲存'}
                   </button>
                   <button 
                     onClick={downloadVideo}
-                    className={cn(
-                      "bg-emerald-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-600/20",
-                      isMinimized ? "py-2 text-xs w-full" : "px-4 md:px-6 py-3 md:py-4 text-sm"
-                    )}
+                    className="bg-emerald-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-600/20 px-4 md:px-6 py-3 md:py-4 text-sm"
                   >
-                    <Download size={isMinimized ? 16 : 18} /> {isMinimized ? '下載' : '下載'}
+                    <Download size={18} /> 下載
                   </button>
                 </div>
               )}
             </div>
             
-            {!isMinimized && (
-              <div className="flex flex-col gap-2">
-                <p className="text-[10px] text-text-muted text-center italic">
-                  檔案名稱將自動設為：當天日期 + {activeScoreName || '練習曲目'}
+            <div className="flex flex-col gap-2">
+              <p className="text-[10px] text-text-muted text-center italic">
+                檔案名稱將自動設為：當天日期 + {activeScoreName || '練習曲目'}
+              </p>
+              {previewUrl && !isRecording && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && (
+                <p className="text-[10px] text-amber-500/90 text-center bg-amber-500/10 p-2 rounded-lg leading-relaxed">
+                  ⚠️ iOS 裝置若要分享至 LINE，建議先點擊「下載檔案」儲存到相簿，再從相簿分享，以避免出現有聲無影的黑畫面。
                 </p>
-                {previewUrl && !isRecording && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && (
-                  <p className="text-[10px] text-amber-500/90 text-center bg-amber-500/10 p-2 rounded-lg leading-relaxed">
-                    ⚠️ iOS 裝置若要分享至 LINE，建議先點擊「下載檔案」儲存到相簿，再從相簿分享，以避免出現有聲無影的黑畫面。
-                  </p>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>
