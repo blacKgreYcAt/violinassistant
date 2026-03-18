@@ -398,31 +398,31 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
 
       {/* Top Card: Upload */}
       <div className="bg-surface-warm backdrop-blur-md p-3 rounded-3xl shadow-xl border border-white/5 flex flex-col gap-3 shrink-0">
-        <div className="flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between shrink-0 gap-4">
+          <div className="flex items-center gap-2 shrink-0">
             <UploadCloud size={20} className="text-accent-warm" />
-            <h2 className="text-lg font-bold tracking-tight text-text-warm">新增樂譜</h2>
+            <h2 className="text-lg font-bold tracking-tight text-text-warm whitespace-nowrap">新增樂譜</h2>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all cursor-pointer">
+          <div className="flex items-center gap-2 flex-1 max-w-[300px]">
+            <label className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all cursor-pointer">
               <UploadCloud size={16} />
-              <span className="hidden xl:inline">匯入</span>
+              <span>匯入</span>
               <input type="file" accept=".json" onChange={importLibrary} className="hidden" />
             </label>
             <button 
               onClick={shareLibrary}
-              className="flex items-center gap-2 px-3 py-1.5 bg-accent-warm/10 hover:bg-accent-warm/20 text-accent-warm rounded-xl text-xs font-bold transition-all"
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-accent-warm/10 hover:bg-accent-warm/20 text-accent-warm rounded-xl text-xs font-bold transition-all"
               title="分享備份"
             >
               <Share2 size={16} />
-              <span className="hidden xl:inline">分享</span>
+              <span>分享</span>
             </button>
             <button 
               onClick={exportLibrary}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all"
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all"
             >
               <Download size={16} />
-              <span className="hidden xl:inline">下載</span>
+              <span>下載</span>
             </button>
           </div>
         </div>
