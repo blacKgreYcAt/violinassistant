@@ -191,7 +191,7 @@ export default function App() {
           <div className="w-px h-3 bg-white/10" />
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-bold uppercase tracking-widest">v2.2.0</span>
+            <span className="font-bold uppercase tracking-widest">v2.2.1</span>
           </div>
         </div>
       </footer>

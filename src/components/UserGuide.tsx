@@ -259,6 +259,15 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
 
   const changelog = [
     {
+      version: "v2.2.1",
+      date: "2026-03-18",
+      changes: [
+        "🐛 修復「分割畫面」模式下，錄影區塊與相簿影片無法正常顯示（黑畫面）的問題。",
+        "🎨 優化「分割畫面」在大螢幕下的比例，讓左側樂譜能獲得更完整的顯示空間。",
+        "🐛 修正「智能翻頁」邏輯，還原為說明書記載的標準動作（頭部組合動作與單眼眨眼），並恢復 2 秒防誤觸冷卻時間。"
+      ]
+    },
+    {
       version: "v2.2.0",
       date: "2026-03-18",
       changes: [
@@ -369,7 +378,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
               </div>
               <div>
                 <h2 className="text-xl font-bold">使用說明指南</h2>
-                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.2.0</p>
+                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.2.1</p>
               </div>
             </div>
             <button 
