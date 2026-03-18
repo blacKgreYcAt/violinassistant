@@ -31,26 +31,16 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [isAudioOnly, setIsAudioOnly] = useState(false);
-  const [localVideoUrl, setLocalVideoUrl] = useState<string | null>(null);
   const [intonationData, setIntonationData] = useState<{ time: number; pitch: number; cents: number }[]>([]);
   const [currentPitch, setCurrentPitch] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number>();
   const intonationCanvasRef = useRef<HTMLCanvasElement>(null);
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setLocalVideoUrl(url);
-    }
-  };
 
   // Keep video preview in sync with stream - run on every render to catch remounts
   React.useEffect(() => {
@@ -463,7 +453,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
           </div>
         </div>
 
-        {!isCameraOn && !localVideoUrl ? (
+        {!isCameraOn ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 border-2 border-dashed border-white/10 rounded-2xl bg-white/5 min-h-0 p-4 md:p-6">
             <div className="bg-white/5 rounded-full flex items-center justify-center text-text-muted shrink-0 w-12 h-12 md:w-16 h-16">
               <Video size={32} />
@@ -487,43 +477,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
                   <Mic size={18} /> 錄音
                 </button>
               </div>
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full bg-white/5 text-text-warm rounded-2xl font-bold hover:bg-white/10 transition-all active:scale-95 flex items-center justify-center gap-2 py-3 text-sm"
-              >
-                <Video size={18} /> 開啟相簿影片
-              </button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                accept="video/*" 
-                className="hidden" 
-                onChange={handleFileSelect} 
-              />
             </div>
-          </div>
-        ) : localVideoUrl ? (
-          <div className="flex-1 flex flex-col gap-4 min-h-0">
-            <div className={cn(
-              "relative bg-black rounded-2xl overflow-hidden border border-white/10 flex-1 min-h-0",
-              isFloating ? "aspect-[3/4] sm:aspect-[9/16]" : ""
-            )}>
-              <video 
-                src={localVideoUrl} 
-                controls
-                playsInline
-                className="absolute inset-0 w-full h-full object-contain bg-black"
-              />
-            </div>
-            <button 
-              onClick={() => {
-                setLocalVideoUrl(null);
-                if (fileInputRef.current) fileInputRef.current.value = '';
-              }}
-              className="w-full bg-white/10 text-text-warm rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition-all active:scale-95 shadow-lg py-4"
-            >
-              關閉影片
-            </button>
           </div>
         ) : (
           <div className="flex-1 flex flex-col gap-4 min-h-0">

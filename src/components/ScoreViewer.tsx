@@ -39,6 +39,9 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
   const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [videoFileUrl, setVideoFileUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSplitScreen, setIsSplitScreen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [mastery, setMastery] = useState(score.mastery || 0);
@@ -281,101 +284,107 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
     const detectFace = () => {
       if (!videoRef.current || !faceLandmarkerRef.current || !active) return;
 
-      const nowInMs = Date.now();
-      const results = faceLandmarkerRef.current.detectForVideo(videoRef.current, performance.now());
+      try {
+        const nowInMs = Date.now();
+        const results = faceLandmarkerRef.current.detectForVideo(videoRef.current, performance.now());
 
-      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-        if (aiModeRef.current === 'head') {
-          const landmarks = results.faceLandmarks[0];
-          const nose = landmarks[1];
-          const leftEar = landmarks[234];
-          const rightEar = landmarks[454];
-          const topHead = landmarks[10];
-          const chin = landmarks[152];
+        if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+          if (aiModeRef.current === 'head') {
+            const landmarks = results.faceLandmarks[0];
+            const nose = landmarks[1];
+            const leftEar = landmarks[234];
+            const rightEar = landmarks[454];
+            const topHead = landmarks[10];
+            const chin = landmarks[152];
 
-          const centerX = (leftEar.x + rightEar.x) / 2;
-          const centerY = (topHead.y + chin.y) / 2;
-          const faceWidth = Math.abs(rightEar.x - leftEar.x);
-          const faceHeight = Math.abs(chin.y - topHead.y);
+            const centerX = (leftEar.x + rightEar.x) / 2;
+            const centerY = (topHead.y + chin.y) / 2;
+            const faceWidth = Math.abs(rightEar.x - leftEar.x);
+            const faceHeight = Math.abs(chin.y - topHead.y);
 
-          const yaw = (nose.x - centerX) / faceWidth;
-          const pitch = (nose.y - centerY) / faceHeight;
+            const yaw = (nose.x - centerX) / faceWidth;
+            const pitch = (nose.y - centerY) / faceHeight;
 
-          // Head Movement Sequence:
-          // Next Page: Look Right -> Nod Down -> Return to Center
-          // Prev Page: Look Left -> Look Up -> Return to Center
-          const isLookingRight = yaw < -0.15;
-          const isLookingLeft = yaw > 0.15;
-          const isLookingDown = pitch > 0.15;
-          const isLookingUp = pitch < -0.15;
-          const isCentered = Math.abs(yaw) < 0.1 && Math.abs(pitch) < 0.1;
+            // Head Movement Sequence:
+            // Next Page: Look Right -> Nod Down -> Return to Center
+            // Prev Page: Look Left -> Look Up -> Return to Center
+            const isLookingRight = yaw < -0.12;
+            const isLookingLeft = yaw > 0.12;
+            const isLookingDown = pitch > 0.12;
+            const isLookingUp = pitch < -0.12;
+            const isCentered = Math.abs(yaw) < 0.1 && Math.abs(pitch) < 0.1;
 
-          if (nowInMs - lastTurnTimeRef.current > 2000) {
-            if (sequenceStateRef.current === 'IDLE') {
-              if (isLookingRight) {
-                sequenceStateRef.current = 'LOOK_RIGHT';
-                sequenceTimerRef.current = nowInMs;
-              } else if (isLookingLeft) {
-                sequenceStateRef.current = 'LOOK_LEFT';
-                sequenceTimerRef.current = nowInMs;
-              }
-            } else if (sequenceStateRef.current === 'LOOK_RIGHT') {
-              if (isLookingDown) {
-                sequenceStateRef.current = 'LOOK_RIGHT_DOWN';
-              } else if (nowInMs - sequenceTimerRef.current > 1500) {
-                sequenceStateRef.current = 'IDLE';
-              }
-            } else if (sequenceStateRef.current === 'LOOK_RIGHT_DOWN') {
-              if (isCentered) {
-                setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
-                lastTurnTimeRef.current = nowInMs;
-                sequenceStateRef.current = 'IDLE';
-              } else if (nowInMs - sequenceTimerRef.current > 2000) {
-                sequenceStateRef.current = 'IDLE';
-              }
-            } else if (sequenceStateRef.current === 'LOOK_LEFT') {
-              if (isLookingUp) {
-                sequenceStateRef.current = 'LOOK_LEFT_UP';
-              } else if (nowInMs - sequenceTimerRef.current > 1500) {
-                sequenceStateRef.current = 'IDLE';
-              }
-            } else if (sequenceStateRef.current === 'LOOK_LEFT_UP') {
-              if (isCentered) {
-                setCurrentPage(prev => Math.max(prev - 1, 0));
-                lastTurnTimeRef.current = nowInMs;
-                sequenceStateRef.current = 'IDLE';
-              } else if (nowInMs - sequenceTimerRef.current > 2000) {
-                sequenceStateRef.current = 'IDLE';
+            if (nowInMs - lastTurnTimeRef.current > 2000) {
+              if (sequenceStateRef.current === 'IDLE') {
+                if (isLookingRight) {
+                  sequenceStateRef.current = 'LOOK_RIGHT';
+                  sequenceTimerRef.current = nowInMs;
+                } else if (isLookingLeft) {
+                  sequenceStateRef.current = 'LOOK_LEFT';
+                  sequenceTimerRef.current = nowInMs;
+                }
+              } else if (sequenceStateRef.current === 'LOOK_RIGHT') {
+                if (isLookingDown) {
+                  sequenceStateRef.current = 'LOOK_RIGHT_DOWN';
+                } else if (nowInMs - sequenceTimerRef.current > 1500) {
+                  sequenceStateRef.current = 'IDLE';
+                }
+              } else if (sequenceStateRef.current === 'LOOK_RIGHT_DOWN') {
+                if (isCentered) {
+                  setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
+                  lastTurnTimeRef.current = nowInMs;
+                  sequenceStateRef.current = 'IDLE';
+                } else if (nowInMs - sequenceTimerRef.current > 2000) {
+                  sequenceStateRef.current = 'IDLE';
+                }
+              } else if (sequenceStateRef.current === 'LOOK_LEFT') {
+                if (isLookingUp) {
+                  sequenceStateRef.current = 'LOOK_LEFT_UP';
+                } else if (nowInMs - sequenceTimerRef.current > 1500) {
+                  sequenceStateRef.current = 'IDLE';
+                }
+              } else if (sequenceStateRef.current === 'LOOK_LEFT_UP') {
+                if (isCentered) {
+                  setCurrentPage(prev => Math.max(prev - 1, 0));
+                  lastTurnTimeRef.current = nowInMs;
+                  sequenceStateRef.current = 'IDLE';
+                } else if (nowInMs - sequenceTimerRef.current > 2000) {
+                  sequenceStateRef.current = 'IDLE';
+                }
               }
             }
-          }
-        } else if (aiModeRef.current === 'blink' && results.faceBlendshapes && results.faceBlendshapes.length > 0) {
-          const blendshapes = results.faceBlendshapes[0].categories;
-          const eyeBlinkLeft = blendshapes.find(b => b.categoryName === 'eyeBlinkLeft')?.score || 0;
-          const eyeBlinkRight = blendshapes.find(b => b.categoryName === 'eyeBlinkRight')?.score || 0;
+          } else if (aiModeRef.current === 'blink' && results.faceBlendshapes && results.faceBlendshapes.length > 0) {
+            const blendshapes = results.faceBlendshapes[0].categories;
+            const eyeBlinkLeft = blendshapes.find(b => b.categoryName === 'eyeBlinkLeft')?.score || 0;
+            const eyeBlinkRight = blendshapes.find(b => b.categoryName === 'eyeBlinkRight')?.score || 0;
 
-          // Blink Mode Sequence:
-          // Next Page: Wink Right Eye (Right eye blink, left eye open)
-          // Prev Page: Wink Left Eye (Left eye blink, right eye open)
-          // Note: eyeBlinkLeft/Right in MediaPipe refers to the user's actual left/right eye.
-          const isRightWink = eyeBlinkRight > 0.5 && eyeBlinkLeft < 0.2;
-          const isLeftWink = eyeBlinkLeft > 0.5 && eyeBlinkRight < 0.2;
+            // Blink Mode Sequence:
+            // Next Page: Wink Right Eye (Right eye blink, left eye open)
+            // Prev Page: Wink Left Eye (Left eye blink, right eye open)
+            // Note: eyeBlinkLeft/Right in MediaPipe refers to the user's actual left/right eye.
+            const isRightWink = eyeBlinkRight > 0.4 && eyeBlinkLeft < 0.3;
+            const isLeftWink = eyeBlinkLeft > 0.4 && eyeBlinkRight < 0.3;
 
-          if (nowInMs - lastTurnTimeRef.current > 2000) {
-            if (isRightWink) {
-              // Right eye wink -> Next page
-              setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
-              lastTurnTimeRef.current = nowInMs;
-            } else if (isLeftWink) {
-              // Left eye wink -> Previous page
-              setCurrentPage(prev => Math.max(prev - 1, 0));
-              lastTurnTimeRef.current = nowInMs;
+            if (nowInMs - lastTurnTimeRef.current > 2000) {
+              if (isRightWink) {
+                // Right eye wink -> Next page
+                setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
+                lastTurnTimeRef.current = nowInMs;
+              } else if (isLeftWink) {
+                // Left eye wink -> Previous page
+                setCurrentPage(prev => Math.max(prev - 1, 0));
+                lastTurnTimeRef.current = nowInMs;
+              }
             }
           }
         }
+      } catch (err) {
+        console.error("Face detection error:", err);
       }
 
-      requestRef.current = requestAnimationFrame(detectFace);
+      if (active) {
+        requestRef.current = requestAnimationFrame(detectFace);
+      }
     };
 
     if (isAutoTurnEnabled) {
@@ -708,8 +717,9 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                 onClick={() => {
                   const nextRecorderState = !showRecorder;
                   setShowRecorder(nextRecorderState);
-                  if (nextRecorderState && !isSplitScreen) {
-                    setIsSplitScreen(true);
+                  if (nextRecorderState) {
+                    setShowVideoPlayer(false);
+                    if (!isSplitScreen) setIsSplitScreen(true);
                   }
                 }}
                 className={cn(
@@ -720,19 +730,80 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                 <Camera size={18} />
                 錄影模式
               </button>
+              <button 
+                onClick={() => {
+                  if (showVideoPlayer) {
+                    setShowVideoPlayer(false);
+                    setVideoFileUrl(null);
+                  } else {
+                    fileInputRef.current?.click();
+                  }
+                }}
+                className={cn(
+                  "px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
+                  showVideoPlayer ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20" : "bg-white/5 text-text-muted hover:text-text-warm"
+                )}
+              >
+                <Play size={18} />
+                觀看影片
+              </button>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                accept="video/*" 
+                className="hidden" 
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const url = URL.createObjectURL(file);
+                    setVideoFileUrl(url);
+                    setShowVideoPlayer(true);
+                    setShowRecorder(false);
+                    if (!isSplitScreen) {
+                      setIsSplitScreen(true);
+                    }
+                  }
+                  // Reset input value so the same file can be selected again
+                  if (e.target) e.target.value = '';
+                }} 
+              />
             </div>
           </footer>
         </main>
 
         {/* Split Screen Panel */}
-        {isSplitScreen && showRecorder && (
+        {isSplitScreen && (showRecorder || showVideoPlayer) && (
           <div className="w-[300px] md:w-[360px] lg:w-[480px] xl:w-[560px] shrink-0 bg-surface-warm border-l border-white/10 relative">
-            <div className="w-full h-full bg-black">
-              <VideoRecorder 
-                activeScoreName={score.name} 
-                isMinimized={false}
-                onToggleMinimize={() => {}}
-              />
+            <div className="w-full h-full bg-black relative">
+              {showRecorder && (
+                <VideoRecorder 
+                  activeScoreName={score.name} 
+                  isMinimized={false}
+                  onToggleMinimize={() => {}}
+                />
+              )}
+              {showVideoPlayer && videoFileUrl && (
+                <div className="w-full h-full flex flex-col items-center justify-center relative">
+                  <div className="absolute top-4 right-4 z-10">
+                    <button 
+                      onClick={() => {
+                        setShowVideoPlayer(false);
+                        setVideoFileUrl(null);
+                        if (!showRecorder) setIsSplitScreen(false);
+                      }}
+                      className="p-2 bg-black/50 text-white rounded-lg hover:bg-black/80 transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <video 
+                    src={videoFileUrl} 
+                    controls 
+                    playsInline 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -761,7 +832,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
             onClick={() => {
               const nextState = !isSplitScreen;
               setIsSplitScreen(nextState);
-              if (nextState && !showRecorder) {
+              if (nextState && !showRecorder && !showVideoPlayer) {
                 setShowRecorder(true);
               }
             }}
@@ -908,7 +979,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
       )}
 
       {/* Recorder Overlay (Floating) */}
-      {showRecorder && !isSplitScreen && (
+      {(showRecorder || showVideoPlayer) && !isSplitScreen && (
         <div className={cn(
           "fixed z-40 transition-all duration-500 ease-in-out",
           cn(
@@ -920,13 +991,52 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
           )
         )}>
           <div className="w-full h-full relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black">
-            <VideoRecorder 
-              activeScoreName={score.name} 
-              isMinimized={isRecorderMinimized}
-              onToggleMinimize={() => setIsRecorderMinimized(!isRecorderMinimized)}
-              recorderPosition={recorderPosition}
-              onPositionChange={setRecorderPosition}
-            />
+            {showRecorder && (
+              <VideoRecorder 
+                activeScoreName={score.name} 
+                isMinimized={isRecorderMinimized}
+                onToggleMinimize={() => setIsRecorderMinimized(!isRecorderMinimized)}
+                recorderPosition={recorderPosition}
+                onPositionChange={setRecorderPosition}
+              />
+            )}
+            {showVideoPlayer && videoFileUrl && (
+              <div className="w-full h-full flex flex-col relative">
+                <div className="absolute top-2 right-2 z-10 flex gap-2">
+                  <button 
+                    onClick={() => setIsRecorderMinimized(!isRecorderMinimized)}
+                    className="p-2 bg-black/50 text-white rounded-lg hover:bg-black/80 transition-colors"
+                  >
+                    {isRecorderMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowVideoPlayer(false);
+                      setVideoFileUrl(null);
+                    }}
+                    className="p-2 bg-black/50 text-white rounded-lg hover:bg-black/80 transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                {!isRecorderMinimized && (
+                  <video 
+                    src={videoFileUrl} 
+                    controls 
+                    playsInline 
+                    className="w-full h-full object-contain"
+                  />
+                )}
+                {isRecorderMinimized && (
+                  <div 
+                    className="w-full h-full flex items-center justify-center bg-surface-warm cursor-pointer"
+                    onClick={() => setIsRecorderMinimized(false)}
+                  >
+                    <Play size={24} className="text-accent-warm" />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
