@@ -138,34 +138,38 @@ export default function App() {
           </div>
 
           {/* Tab Content */}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            {activeTab === 'tools' ? (
-              <div className="h-full grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 overflow-y-auto md:overflow-hidden p-1">
-                <Metronome 
-                  bpm={bpm} 
-                  setBpm={setBpm} 
-                  isPlaying={isMetronomePlaying} 
-                  setIsPlaying={setIsMetronomePlaying}
-                  className="min-h-[540px] md:h-full" 
-                />
-                <Tuner className="min-h-[540px] md:h-full" />
-                <Timer activeRoutine={activeRoutine} onClearRoutine={() => setActiveRoutine(null)} className="min-h-[540px] md:h-full" />
-              </div>
-            ) : (
-              <div className="h-full flex flex-col gap-4 overflow-y-auto md:overflow-hidden custom-scrollbar p-1">
-                {!activeScore && (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0 min-h-[500px]">
-                      <ScoreLibrary onSelectScore={setActiveScore} className="h-full" />
-                      <VideoRecorder activeScoreName={activeScore?.name} className="h-full" />
-                    </div>
-                    <div className="shrink-0 min-h-[400px]">
-                      <PracticeHistory className="h-full" />
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+          <div className="flex-1 min-h-0 overflow-hidden relative">
+            <div 
+              className="h-full grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 overflow-y-auto md:overflow-hidden p-1"
+              style={{ display: activeTab === 'tools' ? '' : 'none' }}
+            >
+              <Metronome 
+                bpm={bpm} 
+                setBpm={setBpm} 
+                isPlaying={isMetronomePlaying} 
+                setIsPlaying={setIsMetronomePlaying}
+                className="min-h-[540px] md:h-full" 
+              />
+              <Tuner className="min-h-[540px] md:h-full" />
+              <Timer activeRoutine={activeRoutine} onClearRoutine={() => setActiveRoutine(null)} className="min-h-[540px] md:h-full" />
+            </div>
+            
+            <div 
+              className="h-full flex flex-col gap-4 overflow-y-auto md:overflow-hidden custom-scrollbar p-1"
+              style={{ display: activeTab === 'library' ? '' : 'none' }}
+            >
+              {!activeScore && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0 min-h-[500px]">
+                    <ScoreLibrary onSelectScore={setActiveScore} className="h-full" />
+                    <VideoRecorder activeScoreName={activeScore?.name} className="h-full" />
+                  </div>
+                  <div className="shrink-0 min-h-[400px]">
+                    <PracticeHistory className="h-full" />
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
         </div>

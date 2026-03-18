@@ -45,62 +45,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
   const [showMasteryPopover, setShowMasteryPopover] = useState(false);
   const [showTempoHistory, setShowTempoHistory] = useState(false);
   const [showBpmPopover, setShowBpmPopover] = useState(false);
-  const bpmRef = useRef(currentBpm);
-  const metronomeAudioCtxRef = useRef<AudioContext | null>(null);
-  const metronomeNextNoteTimeRef = useRef(0);
-  const metronomeTimerIDRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    bpmRef.current = currentBpm;
-  }, [currentBpm]);
-
-  const playMetronomeClick = (time: number) => {
-    if (!metronomeAudioCtxRef.current) return;
-    const osc = metronomeAudioCtxRef.current.createOscillator();
-    const envelope = metronomeAudioCtxRef.current.createGain();
-
-    osc.frequency.value = 1000;
-    envelope.gain.value = 1;
-    envelope.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
-
-    osc.connect(envelope);
-    envelope.connect(metronomeAudioCtxRef.current.destination);
-
-    osc.start(time);
-    osc.stop(time + 0.1);
-  };
-
-  const scheduler = () => {
-    if (!metronomeAudioCtxRef.current || !isMetronomePlaying) return;
-    while (metronomeNextNoteTimeRef.current < metronomeAudioCtxRef.current.currentTime + 0.1) {
-      playMetronomeClick(metronomeNextNoteTimeRef.current);
-      const secondsPerBeat = 60.0 / bpmRef.current;
-      metronomeNextNoteTimeRef.current += secondsPerBeat;
-    }
-    metronomeTimerIDRef.current = window.setTimeout(scheduler, 25);
-  };
-
-  useEffect(() => {
-    if (isMetronomePlaying) {
-      if (!metronomeAudioCtxRef.current) {
-        metronomeAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      if (metronomeAudioCtxRef.current.state === 'suspended') {
-        metronomeAudioCtxRef.current.resume();
-      }
-      metronomeNextNoteTimeRef.current = metronomeAudioCtxRef.current.currentTime;
-      scheduler();
-    } else {
-      if (metronomeTimerIDRef.current) {
-        clearTimeout(metronomeTimerIDRef.current);
-      }
-    }
-    return () => {
-      if (metronomeTimerIDRef.current) {
-        clearTimeout(metronomeTimerIDRef.current);
-      }
-    };
-  }, [isMetronomePlaying]);
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [recorderPosition, setRecorderPosition] = useState<'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'>('top-right');
   const [isRecorderMinimized, setIsRecorderMinimized] = useState(false);
@@ -719,6 +663,30 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
             </div>
 
             <div className="flex items-center gap-4">
+              {isAutoTurnEnabled && (
+                <div className="flex items-center bg-white/5 rounded-xl p-1 animate-in fade-in slide-in-from-right-2">
+                  <button
+                    onClick={() => setAiMode('head')}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all",
+                      aiMode === 'head' ? "bg-white/10 text-text-warm" : "text-text-muted hover:text-text-warm"
+                    )}
+                  >
+                    <Smile size={14} />
+                    轉頭
+                  </button>
+                  <button
+                    onClick={() => setAiMode('blink')}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all",
+                      aiMode === 'blink' ? "bg-white/10 text-text-warm" : "text-text-muted hover:text-text-warm"
+                    )}
+                  >
+                    <Eye size={14} />
+                    眨眼
+                  </button>
+                </div>
+              )}
               <button 
                 onClick={() => setIsAutoTurnEnabled(!isAutoTurnEnabled)}
                 className={cn(
@@ -730,7 +698,13 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                 智能翻頁
               </button>
               <button 
-                onClick={() => setShowRecorder(!showRecorder)}
+                onClick={() => {
+                  const nextRecorderState = !showRecorder;
+                  setShowRecorder(nextRecorderState);
+                  if (nextRecorderState && !isSplitScreen) {
+                    setIsSplitScreen(true);
+                  }
+                }}
                 className={cn(
                   "px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
                   showRecorder ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "bg-white/5 text-text-muted hover:text-text-warm"
@@ -745,7 +719,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
 
         {/* Split Screen Panel */}
         {isSplitScreen && showRecorder && (
-          <div className="flex-1 shrink-0 bg-surface-warm border-l border-white/10 hidden lg:block relative">
+          <div className="w-[300px] md:w-[360px] lg:flex-1 shrink-0 bg-surface-warm border-l border-white/10 relative">
             <div className="w-full h-full bg-black">
               <VideoRecorder 
                 activeScoreName={score.name} 

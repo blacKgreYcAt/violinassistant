@@ -58,7 +58,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
       videoRef.current.srcObject = stream;
       videoRef.current.play().catch(e => console.error("Video play error:", e));
     }
-  }, [stream, isCameraOn]);
+  }, [stream, isCameraOn, isMinimized]);
 
   // Cleanup on unmount
   React.useEffect(() => {
@@ -90,6 +90,8 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
       // Setup Audio Analysis
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      } else if (audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume();
       }
       const source = audioContextRef.current.createMediaStreamSource(mediaStream);
       const analyser = audioContextRef.current.createAnalyser();
