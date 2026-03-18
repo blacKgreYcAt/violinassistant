@@ -36,7 +36,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
   const [currentPitch, setCurrentPitch] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -52,13 +52,18 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
     }
   };
 
-  // Keep video preview in sync with stream
+  // Keep video preview in sync with stream - run on every render to catch remounts
   React.useEffect(() => {
     if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-      videoRef.current.play().catch(e => console.error("Video play error:", e));
+      if (videoRef.current.srcObject !== stream) {
+        videoRef.current.srcObject = stream;
+      }
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(e => console.error("Video play error:", e));
+      }
     }
-  }, [stream, isCameraOn, isMinimized]);
+  });
 
   // Cleanup on unmount
   React.useEffect(() => {
@@ -401,7 +406,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
   return (
     <div 
       className={cn(
-        "bg-surface-warm backdrop-blur-md rounded-3xl shadow-xl border border-white/5 transition-all overflow-hidden relative", 
+        "bg-surface-warm backdrop-blur-md rounded-3xl shadow-xl border border-white/5 transition-all overflow-hidden relative w-full h-full", 
         "p-3 md:p-4",
         className
       )}

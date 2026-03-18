@@ -254,12 +254,20 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.addEventListener('loadeddata', () => {
+          videoRef.current.play().catch(e => console.error("Face tracking video play error:", e));
+          
+          const onLoadedData = () => {
             if (active) {
               setIsModelLoading(false);
               detectFace();
             }
-          });
+          };
+
+          if (videoRef.current.readyState >= 2) {
+            onLoadedData();
+          } else {
+            videoRef.current.addEventListener('loadeddata', onLoadedData, { once: true });
+          }
         }
       } catch (err) {
         console.error("Failed to init smart page turn:", err);
@@ -293,18 +301,17 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
           const yaw = (nose.x - centerX) / faceWidth;
           const pitch = (nose.y - centerY) / faceHeight;
 
-          const isLookingRight = yaw < -0.10;
-          const isLookingLeft = yaw > 0.10;
-          const isLookingDown = pitch > 0.08;
-          const isLookingUp = pitch < -0.08;
-          const isCenter = Math.abs(yaw) < 0.08 && Math.abs(pitch) < 0.08;
+          // Head Movement Sequence:
+          // Next Page: Look Right -> Nod Down -> Return to Center
+          // Prev Page: Look Left -> Look Up -> Return to Center
+          const isLookingRight = yaw < -0.15;
+          const isLookingLeft = yaw > 0.15;
+          const isLookingDown = pitch > 0.15;
+          const isLookingUp = pitch < -0.15;
+          const isCentered = Math.abs(yaw) < 0.1 && Math.abs(pitch) < 0.1;
 
-          if (sequenceStateRef.current !== 'IDLE' && nowInMs - sequenceTimerRef.current > 3000) {
-            sequenceStateRef.current = 'IDLE';
-          }
-
-          switch (sequenceStateRef.current) {
-            case 'IDLE':
+          if (nowInMs - lastTurnTimeRef.current > 2000) {
+            if (sequenceStateRef.current === 'IDLE') {
               if (isLookingRight) {
                 sequenceStateRef.current = 'LOOK_RIGHT';
                 sequenceTimerRef.current = nowInMs;
@@ -312,55 +319,55 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                 sequenceStateRef.current = 'LOOK_LEFT';
                 sequenceTimerRef.current = nowInMs;
               }
-              break;
-            case 'LOOK_RIGHT':
+            } else if (sequenceStateRef.current === 'LOOK_RIGHT') {
               if (isLookingDown) {
                 sequenceStateRef.current = 'LOOK_RIGHT_DOWN';
-                sequenceTimerRef.current = nowInMs;
-              } else if (isCenter) {
+              } else if (nowInMs - sequenceTimerRef.current > 1500) {
                 sequenceStateRef.current = 'IDLE';
               }
-              break;
-            case 'LOOK_RIGHT_DOWN':
-              if (isCenter) {
-                if (nowInMs - lastTurnTimeRef.current > 2000) {
-                  setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
-                  lastTurnTimeRef.current = nowInMs;
-                }
+            } else if (sequenceStateRef.current === 'LOOK_RIGHT_DOWN') {
+              if (isCentered) {
+                setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
+                lastTurnTimeRef.current = nowInMs;
+                sequenceStateRef.current = 'IDLE';
+              } else if (nowInMs - sequenceTimerRef.current > 2000) {
                 sequenceStateRef.current = 'IDLE';
               }
-              break;
-            case 'LOOK_LEFT':
+            } else if (sequenceStateRef.current === 'LOOK_LEFT') {
               if (isLookingUp) {
                 sequenceStateRef.current = 'LOOK_LEFT_UP';
-                sequenceTimerRef.current = nowInMs;
-              } else if (isCenter) {
+              } else if (nowInMs - sequenceTimerRef.current > 1500) {
                 sequenceStateRef.current = 'IDLE';
               }
-              break;
-            case 'LOOK_LEFT_UP':
-              if (isCenter) {
-                if (nowInMs - lastTurnTimeRef.current > 2000) {
-                  setCurrentPage(prev => Math.max(prev - 1, 0));
-                  lastTurnTimeRef.current = nowInMs;
-                }
+            } else if (sequenceStateRef.current === 'LOOK_LEFT_UP') {
+              if (isCentered) {
+                setCurrentPage(prev => Math.max(prev - 1, 0));
+                lastTurnTimeRef.current = nowInMs;
+                sequenceStateRef.current = 'IDLE';
+              } else if (nowInMs - sequenceTimerRef.current > 2000) {
                 sequenceStateRef.current = 'IDLE';
               }
-              break;
+            }
           }
         } else if (aiModeRef.current === 'blink' && results.faceBlendshapes && results.faceBlendshapes.length > 0) {
           const blendshapes = results.faceBlendshapes[0].categories;
           const eyeBlinkLeft = blendshapes.find(b => b.categoryName === 'eyeBlinkLeft')?.score || 0;
           const eyeBlinkRight = blendshapes.find(b => b.categoryName === 'eyeBlinkRight')?.score || 0;
 
+          // Blink Mode Sequence:
+          // Next Page: Wink Right Eye (Right eye blink, left eye open)
+          // Prev Page: Wink Left Eye (Left eye blink, right eye open)
+          // Note: eyeBlinkLeft/Right in MediaPipe refers to the user's actual left/right eye.
           const isRightWink = eyeBlinkRight > 0.5 && eyeBlinkLeft < 0.2;
           const isLeftWink = eyeBlinkLeft > 0.5 && eyeBlinkRight < 0.2;
 
           if (nowInMs - lastTurnTimeRef.current > 2000) {
             if (isRightWink) {
+              // Right eye wink -> Next page
               setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
               lastTurnTimeRef.current = nowInMs;
             } else if (isLeftWink) {
+              // Left eye wink -> Previous page
               setCurrentPage(prev => Math.max(prev - 1, 0));
               lastTurnTimeRef.current = nowInMs;
             }
@@ -719,7 +726,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
 
         {/* Split Screen Panel */}
         {isSplitScreen && showRecorder && (
-          <div className="w-[300px] md:w-[360px] lg:flex-1 shrink-0 bg-surface-warm border-l border-white/10 relative">
+          <div className="w-[300px] md:w-[360px] lg:w-[480px] xl:w-[560px] shrink-0 bg-surface-warm border-l border-white/10 relative">
             <div className="w-full h-full bg-black">
               <VideoRecorder 
                 activeScoreName={score.name} 
@@ -924,8 +931,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
         </div>
       )}
 
-      {/* Smart Page Turn Camera Preview (Hidden) */}
-      <video ref={videoRef} className="hidden" playsInline muted />
+      {/* Smart Page Turn Camera Preview (Hidden but must have dimensions for MediaPipe) */}
+      <video ref={videoRef} autoPlay playsInline muted className="absolute opacity-0 pointer-events-none w-[320px] h-[240px] z-[-1]" />
     </div>
   );
 };
