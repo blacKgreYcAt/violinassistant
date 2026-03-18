@@ -9,7 +9,7 @@ import { UserGuide } from './components/UserGuide';
 import { RewardCard } from './components/RewardCard';
 import { PracticeHistory } from './components/PracticeHistory';
 import { PracticeRoutine, Score } from './lib/storage';
-import { Music, LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail, Star } from 'lucide-react';
+import { Music, LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail, Star, Smartphone } from 'lucide-react';
 import { cn } from './lib/utils';
 
 export default function App() {
@@ -21,6 +21,8 @@ export default function App() {
   const [tempTitle, setTempTitle] = useState('');
   const [guideOpen, setGuideOpen] = useState(false);
   const [rewardCardOpen, setRewardCardOpen] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [isExiting, setIsExiting] = useState(false);
 
   // Shared Metronome State
   const [bpm, setBpm] = useState(100);
@@ -31,6 +33,21 @@ export default function App() {
     if (savedTitle) {
       setAppTitle(savedTitle);
     }
+    
+    // Start exit animation after 2.5 seconds
+    const exitTimer = setTimeout(() => {
+      setIsExiting(true);
+    }, 2500);
+    
+    // Remove from DOM after 3.5 seconds
+    const removeTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 3500);
+    
+    return () => {
+      clearTimeout(exitTimer);
+      clearTimeout(removeTimer);
+    };
   }, []);
 
   const saveTitle = () => {
@@ -45,8 +62,33 @@ export default function App() {
     setIsEditingTitle(true);
   };
 
+  if (showSplash) {
+    return (
+      <div className={cn(
+        "fixed inset-0 z-[200] bg-bg-warm flex flex-col items-center justify-center transition-opacity duration-1000",
+        isExiting ? "opacity-0" : "opacity-100"
+      )}>
+        <div className="flex flex-col items-center gap-8 animate-in fade-in zoom-in duration-700">
+          <div className="relative w-32 h-32 flex items-center justify-center bg-surface-warm rounded-full shadow-2xl border border-white/5">
+            <Smartphone 
+              size={64} 
+              className="text-accent-warm animate-tablet-rotate" 
+              strokeWidth={1.5}
+            />
+          </div>
+          <div className="text-center space-y-3">
+            <h1 className="text-2xl md:text-3xl font-bold text-text-warm tracking-tight">我的練習小幫手</h1>
+            <p className="text-accent-warm text-sm md:text-base font-bold tracking-widest bg-accent-warm/10 px-4 py-2 rounded-full border border-accent-warm/20">
+              請將平板直式放置，以便取得最佳效果
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-screen bg-bg-warm text-text-warm font-sans selection:bg-accent-warm selection:text-bg-warm flex flex-col overflow-hidden">
+    <div className="h-screen bg-bg-warm text-text-warm font-sans selection:bg-accent-warm selection:text-bg-warm flex flex-col overflow-hidden animate-in fade-in duration-1000">
       {/* Top Header */}
       <header className="h-16 shrink-0 border-b border-white/5 flex items-center justify-between px-4 md:px-6 bg-surface-warm/80 backdrop-blur-md z-10">
         <div className="flex items-center gap-3">
