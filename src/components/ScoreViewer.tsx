@@ -3,7 +3,7 @@ import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, 
   Camera, Loader2, Smile, Eye, RotateCw, PenTool, Eraser, Save, 
   Columns, Moon, Sun, Star, Music, TrendingUp, Play, Pause, 
-  ChevronUp, ChevronDown, Edit2, Check
+  ChevronUp, ChevronDown, Edit2, Check, Plus, Minus, Square
 } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
@@ -20,9 +20,21 @@ interface ScoreViewerProps {
   score: Score;
   onClose: () => void;
   className?: string;
+  bpm: number;
+  setBpm: (bpm: number) => void;
+  isMetronomePlaying: boolean;
+  setIsMetronomePlaying: (isPlaying: boolean) => void;
 }
 
-export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, onClose, className }) => {
+export const ScoreViewer: React.FC<ScoreViewerProps> = ({ 
+  score: initialScore, 
+  onClose, 
+  className,
+  bpm: currentBpm,
+  setBpm: setCurrentBpm,
+  isMetronomePlaying,
+  setIsMetronomePlaying
+}) => {
   const [score, setScore] = useState<Score>(initialScore);
   const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -32,9 +44,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
   const [mastery, setMastery] = useState(score.mastery || 0);
   const [showMasteryPopover, setShowMasteryPopover] = useState(false);
   const [showTempoHistory, setShowTempoHistory] = useState(false);
-  const [currentBpm, setCurrentBpm] = useState(100);
+  const [showBpmPopover, setShowBpmPopover] = useState(false);
   const bpmRef = useRef(currentBpm);
-  const [isMetronomePlaying, setIsMetronomePlaying] = useState(false);
   const metronomeAudioCtxRef = useRef<AudioContext | null>(null);
   const metronomeNextNoteTimeRef = useRef(0);
   const metronomeTimerIDRef = useRef<number | null>(null);
@@ -516,7 +527,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
 
         <div className="flex items-center gap-2">
           <button 
-            onClick={() => setIsMetronomePlaying(!isMetronomePlaying)}
+            onClick={() => setShowBpmPopover(!showBpmPopover)}
             className={cn(
               "px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
               isMetronomePlaying ? "bg-accent-warm text-bg-warm shadow-lg shadow-accent-warm/20" : "bg-white/5 text-text-muted hover:text-text-warm"
@@ -524,6 +535,15 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
           >
             <Music size={18} />
             <span className="hidden sm:inline">{currentBpm} BPM</span>
+          </button>
+          <button 
+            onClick={() => setIsMetronomePlaying(!isMetronomePlaying)}
+            className={cn(
+              "w-10 h-10 flex items-center justify-center rounded-xl transition-all",
+              isMetronomePlaying ? "bg-red-500 text-white" : "bg-white/5 text-text-muted hover:text-text-warm"
+            )}
+          >
+            {isMetronomePlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
           </button>
           {hasUnsavedChanges && (
             <button 
@@ -775,6 +795,62 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
       </div>
 
       {/* Popovers */}
+      {showBpmPopover && (
+        <div className="fixed top-20 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-72 z-[100] animate-in fade-in slide-in-from-right-4">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Music size={20} className="text-accent-warm" />
+              <span className="text-sm font-bold text-text-warm uppercase tracking-widest">節拍速度</span>
+            </div>
+            <button 
+              onClick={() => setShowBpmPopover(false)}
+              className="text-text-muted hover:text-text-warm"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className="flex flex-col items-center mb-6">
+            <div className="text-5xl font-bold font-mono text-text-warm mb-2">{currentBpm}</div>
+            <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest">BPM</div>
+          </div>
+
+          <div className="flex items-center gap-4 mb-6">
+            <button 
+              onClick={() => setCurrentBpm(Math.max(30, currentBpm - 1))}
+              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all"
+            >
+              <Minus size={20} />
+            </button>
+            <input 
+              type="range" 
+              min="30" 
+              max="300" 
+              value={currentBpm} 
+              onChange={(e) => setCurrentBpm(parseInt(e.target.value))}
+              className="flex-1 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-accent-warm"
+            />
+            <button 
+              onClick={() => setCurrentBpm(Math.min(300, currentBpm + 1))}
+              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all"
+            >
+              <Plus size={20} />
+            </button>
+          </div>
+
+          <button 
+            onClick={() => setIsMetronomePlaying(!isMetronomePlaying)}
+            className={cn(
+              "w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all",
+              isMetronomePlaying ? "bg-white/10 text-text-warm" : "bg-accent-warm text-bg-warm shadow-lg shadow-accent-warm/20"
+            )}
+          >
+            {isMetronomePlaying ? <Square size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+            {isMetronomePlaying ? '停止' : '開始'}
+          </button>
+        </div>
+      )}
+
       {showMasteryPopover && (
         <div className="fixed top-20 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-72 z-[100] animate-in fade-in slide-in-from-right-4">
           <div className="flex items-center justify-between mb-4">
@@ -823,8 +899,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex flex-col gap-1">
-                  <button onClick={() => setCurrentBpm(prev => prev + 1)} className="p-2 hover:bg-white/10 rounded-lg"><ChevronUp size={20} /></button>
-                  <button onClick={() => setCurrentBpm(prev => prev - 1)} className="p-2 hover:bg-white/10 rounded-lg"><ChevronDown size={20} /></button>
+                  <button onClick={() => setCurrentBpm(currentBpm + 1)} className="p-2 hover:bg-white/10 rounded-lg"><ChevronUp size={20} /></button>
+                  <button onClick={() => setCurrentBpm(currentBpm - 1)} className="p-2 hover:bg-white/10 rounded-lg"><ChevronDown size={20} /></button>
                 </div>
                 <button 
                   onClick={() => setIsMetronomePlaying(!isMetronomePlaying)}

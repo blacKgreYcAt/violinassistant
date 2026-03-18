@@ -22,6 +22,10 @@ export default function App() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [rewardCardOpen, setRewardCardOpen] = useState(false);
 
+  // Shared Metronome State
+  const [bpm, setBpm] = useState(100);
+  const [isMetronomePlaying, setIsMetronomePlaying] = useState(false);
+
   useEffect(() => {
     const savedTitle = localStorage.getItem('app_title');
     if (savedTitle) {
@@ -137,7 +141,13 @@ export default function App() {
           <div className="flex-1 min-h-0 overflow-hidden">
             {activeTab === 'tools' ? (
               <div className="h-full grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 overflow-y-auto md:overflow-hidden p-1">
-                <Metronome className="min-h-[540px] md:h-full" />
+                <Metronome 
+                  bpm={bpm} 
+                  setBpm={setBpm} 
+                  isPlaying={isMetronomePlaying} 
+                  setIsPlaying={setIsMetronomePlaying}
+                  className="min-h-[540px] md:h-full" 
+                />
                 <Tuner className="min-h-[540px] md:h-full" />
                 <Timer activeRoutine={activeRoutine} onClearRoutine={() => setActiveRoutine(null)} className="min-h-[540px] md:h-full" />
               </div>
@@ -187,6 +197,10 @@ export default function App() {
         <ScoreViewer 
           score={activeScore} 
           onClose={() => setActiveScore(null)} 
+          bpm={bpm}
+          setBpm={setBpm}
+          isMetronomePlaying={isMetronomePlaying}
+          setIsMetronomePlaying={setIsMetronomePlaying}
         />
       )}
 

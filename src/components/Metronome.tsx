@@ -4,11 +4,19 @@ import { cn } from '../lib/utils';
 
 interface MetronomeProps {
   className?: string;
+  bpm: number;
+  setBpm: (bpm: number) => void;
+  isPlaying: boolean;
+  setIsPlaying: (isPlaying: boolean) => void;
 }
 
-export const Metronome: React.FC<MetronomeProps> = ({ className }) => {
-  const [bpm, setBpm] = useState(100);
-  const [isPlaying, setIsPlaying] = useState(false);
+export const Metronome: React.FC<MetronomeProps> = ({ 
+  className,
+  bpm,
+  setBpm,
+  isPlaying,
+  setIsPlaying
+}) => {
   const [isMuted, setIsMuted] = useState(false);
   const [beatsPerMeasure, setBeatsPerMeasure] = useState(4);
   const [currentBeat, setCurrentBeat] = useState(0);
@@ -101,29 +109,33 @@ export const Metronome: React.FC<MetronomeProps> = ({ className }) => {
     timerID.current = window.setTimeout(scheduler, lookahead);
   }, [playClick]);
 
-  const togglePlay = () => {
-    if (!isPlaying) {
+  useEffect(() => {
+    if (isPlaying) {
       if (!audioContext.current) {
         audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
-      
       if (audioContext.current.state === 'suspended') {
         audioContext.current.resume();
       }
-
-      currentBeatRef.current = 0;
-      setCurrentBeat(0);
-      measuresCountRef.current = 0;
-      setMeasuresCount(0);
-      nextNoteTime.current = audioContext.current.currentTime + 0.05;
-      setIsPlaying(true);
-      scheduler();
+      // Only start scheduler if it's not already running
+      if (!timerID.current) {
+        currentBeatRef.current = 0;
+        setCurrentBeat(0);
+        measuresCountRef.current = 0;
+        setMeasuresCount(0);
+        nextNoteTime.current = audioContext.current.currentTime + 0.05;
+        scheduler();
+      }
     } else {
-      setIsPlaying(false);
       if (timerID.current) {
         clearTimeout(timerID.current);
+        timerID.current = null;
       }
     }
+  }, [isPlaying, scheduler]);
+
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying);
   };
 
   useEffect(() => {
