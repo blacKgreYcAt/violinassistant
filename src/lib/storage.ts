@@ -10,6 +10,9 @@ export interface Score {
   tags?: string[];
   rotations?: number[]; // Array of rotation angles for each page
   annotations?: string[]; // Array of serialized canvas data for each page
+  mastery?: number; // 0-100 percentage
+  tempoHistory?: { bpm: number; date: number }[];
+  cropData?: { x: number; y: number; width: number; height: number }[]; // Per page crop
 }
 
 export interface Folder {
@@ -33,6 +36,7 @@ export interface Recording {
   type: 'video' | 'audio';
   blob: Blob;
   durationSeconds?: number;
+  intonationData?: { time: number; pitch: number; cents: number }[];
 }
 
 export interface PracticeRoutine {
@@ -59,12 +63,22 @@ export interface RewardResult {
   unlockedConcertmaster: boolean;
 }
 
+export interface PracticeGoal {
+  id: string;
+  title: string;
+  type: 'time' | 'sessions' | 'score';
+  target: number;
+  current: number;
+  period: 'daily' | 'weekly';
+}
+
 const SCORES_KEY = 'viola-scores-idb';
 const FOLDERS_KEY = 'viola-folders-idb';
 const HISTORY_KEY = 'viola-practice-history';
 const RECORDINGS_KEY = 'viola-recordings-idb';
 const ROUTINES_KEY = 'viola-routines-idb';
 const REWARDS_KEY = 'viola-rewards-idb';
+const GOALS_KEY = 'viola-goals-idb';
 
 // --- Folders ---
 
@@ -117,6 +131,7 @@ export async function getScores(): Promise<Score[]> {
 export async function saveScores(scores: Score[]): Promise<void> {
   try {
     await set(SCORES_KEY, scores);
+    window.dispatchEvent(new CustomEvent('scores-updated'));
   } catch (error) {
     console.error('Failed to save scores to storage:', error);
     throw new Error('儲存失敗：設備空間可能不足。');
@@ -132,6 +147,14 @@ export async function getPracticeHistory(): Promise<PracticeSession[]> {
   } catch (error) {
     console.error('Failed to get practice history:', error);
     return [];
+  }
+}
+
+export async function saveHistory(history: PracticeSession[]): Promise<void> {
+  try {
+    await set(HISTORY_KEY, history);
+  } catch (error) {
+    console.error('Failed to save practice history:', error);
   }
 }
 
@@ -167,6 +190,16 @@ export async function addPracticeSession(durationSeconds: number, note?: string)
 
 // --- Recordings ---
 
+export async function getAllRecordings(): Promise<Recording[]> {
+  try {
+    const recordings = await get<Recording[]>(RECORDINGS_KEY);
+    return recordings || [];
+  } catch (error) {
+    console.error('Failed to get all recordings:', error);
+    return [];
+  }
+}
+
 export async function getRecordingsByScoreId(scoreId: string): Promise<Recording[]> {
   try {
     const recordings = await get<Recording[]>(RECORDINGS_KEY);
@@ -185,6 +218,14 @@ export async function saveRecording(recording: Recording): Promise<void> {
   } catch (error) {
     console.error('Failed to save recording:', error);
     throw new Error('儲存錄音/錄影失敗：設備空間可能不足。');
+  }
+}
+
+export async function saveRecordings(recordings: Recording[]): Promise<void> {
+  try {
+    await set(RECORDINGS_KEY, recordings);
+  } catch (error) {
+    console.error('Failed to save recordings:', error);
   }
 }
 
@@ -226,6 +267,14 @@ export async function getRewards(): Promise<RewardsState> {
   } catch (error) {
     console.error('Failed to get rewards:', error);
     return { currentNotes: 0, totalNotes: 0, pieces: [], concertmasterUnlocked: false, unrewardedSeconds: 0 };
+  }
+}
+
+export async function saveRewards(state: RewardsState): Promise<void> {
+  try {
+    await set(REWARDS_KEY, state);
+  } catch (error) {
+    console.error('Failed to save rewards:', error);
   }
 }
 
@@ -286,4 +335,49 @@ export async function processPracticeReward(seconds: number): Promise<RewardResu
     console.error('Failed to process rewards:', error);
     return { earnedNotes: 0, earnedPieces: [], unlockedConcertmaster: false };
   }
+}
+
+// --- Goals ---
+
+export async function getGoals(): Promise<PracticeGoal[]> {
+  try {
+    const goals = await get<PracticeGoal[]>(GOALS_KEY);
+    return goals || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function saveGoals(goals: PracticeGoal[]): Promise<void> {
+  await set(GOALS_KEY, goals);
+}
+
+// --- Tempo History ---
+
+export async function updateTempoHistory(scoreId: string, bpm: number): Promise<void> {
+  const scores = await getScores();
+  const score = scores.find(s => s.id === scoreId);
+  if (!score) return;
+
+  const history = score.tempoHistory || [];
+  const today = new Date().setHours(0, 0, 0, 0);
+  
+  // Only keep the highest BPM per day
+  const existingIndex = history.findIndex(h => new Date(h.date).setHours(0, 0, 0, 0) === today);
+  
+  if (existingIndex >= 0) {
+    if (bpm > history[existingIndex].bpm) {
+      history[existingIndex].bpm = bpm;
+    } else {
+      return; // No improvement today
+    }
+  } else {
+    history.push({ bpm, date: Date.now() });
+  }
+
+  // Keep last 30 entries
+  const updatedHistory = history.sort((a, b) => a.date - b.date).slice(-30);
+  
+  const newScores = scores.map(s => s.id === scoreId ? { ...s, tempoHistory: updatedHistory } : s);
+  await saveScores(newScores);
 }

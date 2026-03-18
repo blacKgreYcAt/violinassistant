@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, Music, FileText, Trash2, Edit2, Check, X, Camera, Wand2, Download, UploadCloud, Share2, Library, Folder as FolderIcon, Plus, ChevronLeft, Search, Tag } from 'lucide-react';
+import { Upload, Music, FileText, Trash2, Edit2, Check, X, Camera, Wand2, Download, UploadCloud, Share2, Library, Folder as FolderIcon, Plus, ChevronLeft, Search, Tag, Star, Crop, Zap } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Score, Folder, getScores, saveScores as saveScoresToDb, getFolders, saveFolders as saveFoldersToDb } from '../lib/storage';
 
@@ -20,6 +20,9 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCropModal, setShowCropModal] = useState<Score | null>(null);
+  const [cropRect, setCropRect] = useState({ x: 0, y: 0, width: 100, height: 100 });
+  const [cropPage, setCropPage] = useState(0);
   
   useEffect(() => {
     const loadData = async () => {
@@ -28,6 +31,8 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
       setFolders(loadedFolders);
     };
     loadData();
+    window.addEventListener('scores-updated', loadData);
+    return () => window.removeEventListener('scores-updated', loadData);
   }, []);
 
   const saveScores = async (newScores: Score[]) => {
@@ -281,10 +286,91 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
     await saveScores(scores.filter(s => s.id !== id));
   };
 
+  const handleApplyCrop = async () => {
+    if (!showCropModal) return;
+    const newScores = scores.map(s => {
+      if (s.id === showCropModal.id) {
+        const newCropData = [...(s.cropData || Array(Array.isArray(s.data) ? s.data.length : 1).fill({ x: 0, y: 0, width: 100, height: 100 }))];
+        newCropData[cropPage] = cropRect;
+        return { ...s, cropData: newCropData };
+      }
+      return s;
+    });
+    await saveScores(newScores);
+    setShowCropModal(null);
+  };
+
   return (
-    <div className="contents">
+    <>
+      {/* Crop Modal */}
+      {showCropModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-surface-warm w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Crop size={20} className="text-accent-warm" />
+                <h3 className="text-lg font-bold text-text-warm">裁切樂譜 - {showCropModal.name}</h3>
+              </div>
+              <button onClick={() => setShowCropModal(null)} className="p-2 hover:bg-white/5 rounded-full text-text-muted"><X size={20} /></button>
+            </div>
+            
+            <div className="flex-1 overflow-auto p-6 flex flex-col items-center gap-4">
+              <div className="relative bg-black rounded-lg overflow-hidden group" style={{ maxWidth: '100%', aspectRatio: '1/1.414' }}>
+                <img 
+                  src={Array.isArray(showCropModal.data) ? showCropModal.data[cropPage] : showCropModal.data} 
+                  className="max-h-[60vh] object-contain opacity-50"
+                  alt="Crop preview"
+                />
+                {/* Visual Crop Box */}
+                <div 
+                  className="absolute border-2 border-accent-warm bg-accent-warm/10 cursor-move"
+                  style={{
+                    left: `${cropRect.x}%`,
+                    top: `${cropRect.y}%`,
+                    width: `${cropRect.width}%`,
+                    height: `${cropRect.height}%`
+                  }}
+                />
+                {/* Simple Controls for Crop */}
+                <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                   {/* This is a simplified UI for the agent, in a real app we'd use a proper library or more complex mouse events */}
+                   <div className="cursor-nw-resize" onClick={() => setCropRect(prev => ({ ...prev, x: Math.max(0, prev.x - 5), y: Math.max(0, prev.y - 5), width: prev.width + 5, height: prev.height + 5 }))}></div>
+                   <div></div>
+                   <div className="cursor-ne-resize" onClick={() => setCropRect(prev => ({ ...prev, y: Math.max(0, prev.y - 5), width: prev.width + 5, height: prev.height + 5 }))}></div>
+                   <div></div>
+                   <div className="cursor-move" onClick={() => setCropRect(prev => ({ ...prev, x: Math.min(100 - prev.width, prev.x + 2), y: Math.min(100 - prev.height, prev.y + 2) }))}></div>
+                   <div></div>
+                   <div className="cursor-sw-resize" onClick={() => setCropRect(prev => ({ ...prev, x: Math.max(0, prev.x - 5), width: prev.width + 5, height: prev.height + 5 }))}></div>
+                   <div></div>
+                   <div className="cursor-se-resize" onClick={() => setCropRect(prev => ({ ...prev, width: Math.min(100 - prev.x, prev.width + 5), height: Math.min(100 - prev.height, prev.height + 5) }))}></div>
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-2 w-full max-w-xs">
+                <div className="flex justify-between text-xs font-bold text-text-muted uppercase tracking-widest">
+                  <span>調整範圍 (點擊邊角)</span>
+                  <button onClick={() => setCropRect({ x: 0, y: 0, width: 100, height: 100 })} className="text-accent-warm">重設</button>
+                </div>
+                {Array.isArray(showCropModal.data) && showCropModal.data.length > 1 && (
+                  <div className="flex items-center justify-center gap-4 mt-2">
+                    <button onClick={() => setCropPage(Math.max(0, cropPage - 1))} className="p-2 bg-white/5 rounded-lg"><ChevronLeft size={16} /></button>
+                    <span className="text-sm font-bold text-text-warm">第 {cropPage + 1} / {showCropModal.data.length} 頁</span>
+                    <button onClick={() => setCropPage(Math.min(showCropModal.data.length - 1, cropPage + 1))} className="p-2 bg-white/5 rounded-lg"><ChevronLeft size={16} className="rotate-180" /></button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-white/5 flex gap-3">
+              <button onClick={() => setShowCropModal(null)} className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-text-warm rounded-2xl font-bold transition-all">取消</button>
+              <button onClick={handleApplyCrop} className="flex-1 py-3 bg-accent-warm text-bg-warm rounded-2xl font-bold shadow-lg shadow-accent-warm/20 transition-all">套用裁切</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Card: Upload */}
-      <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5 flex flex-col gap-6", className)}>
+      <div className="bg-surface-warm backdrop-blur-md p-3 rounded-3xl shadow-xl border border-white/5 flex flex-col gap-3 shrink-0">
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <UploadCloud size={20} className="text-accent-warm" />
@@ -337,7 +423,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
       </div>
 
       {/* Bottom Card: Library List */}
-      <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5 flex flex-col gap-6", className)}>
+      <div className="bg-surface-warm backdrop-blur-md p-3 rounded-3xl shadow-xl border border-white/5 flex flex-col gap-3 flex-1 min-h-0">
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             {currentFolderId ? (
@@ -487,6 +573,20 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
                       <p className="text-[10px] text-text-muted uppercase font-bold tracking-tighter shrink-0">
                         {new Date(score.date).toLocaleDateString()}
                       </p>
+                      {score.mastery !== undefined && score.mastery > 0 && (
+                        <div className="flex items-center gap-0.5 bg-amber-500/10 px-1.5 py-0.5 rounded-md shrink-0">
+                          <Star size={10} className="text-amber-500 fill-amber-500" />
+                          <span className="text-[10px] font-bold text-amber-500">{score.mastery}%</span>
+                        </div>
+                      )}
+                      {score.tempoHistory && score.tempoHistory.length > 0 && (
+                        <div className="flex items-center gap-0.5 bg-emerald-500/10 px-1.5 py-0.5 rounded-md shrink-0">
+                          <Zap size={10} className="text-emerald-500 fill-emerald-500" />
+                          <span className="text-[10px] font-bold text-emerald-500">
+                            {score.tempoHistory[score.tempoHistory.length - 1].bpm} BPM
+                          </span>
+                        </div>
+                      )}
                       {Array.isArray(score.data) && (
                         <span className="text-[10px] bg-accent-warm/10 text-accent-warm px-1.5 py-0.5 rounded-md font-bold shrink-0">
                           {score.data.length} 頁
@@ -538,12 +638,26 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
                   </div>
                 )}
                 {editingId !== score.id && (
-                  <button 
-                    onClick={(e) => startEditing(e, score)}
-                    className="p-1.5 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-lg transition-colors opacity-60 hover:opacity-100"
-                  >
-                    <Edit2 size={16} />
-                  </button>
+                  <>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowCropModal(score);
+                        setCropPage(0);
+                        setCropRect(score.cropData?.[0] || { x: 0, y: 0, width: 100, height: 100 });
+                      }}
+                      className="p-1.5 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-lg transition-colors opacity-60 hover:opacity-100"
+                      title="裁切樂譜"
+                    >
+                      <Crop size={16} />
+                    </button>
+                    <button 
+                      onClick={(e) => startEditing(e, score)}
+                      className="p-1.5 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-lg transition-colors opacity-60 hover:opacity-100"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  </>
                 )}
                 <button 
                   onClick={(e) => deleteScore(score.id, e)}
@@ -570,6 +684,6 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 };

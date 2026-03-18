@@ -19,7 +19,9 @@ import {
   Smile,
   ArrowRight,
   Eye,
-  Star
+  Star,
+  Moon,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -155,14 +157,30 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
       content: "錄影時可自由拖曳相機畫面至「四個角落」或縮小。若不需畫面，可切換至「純錄音模式」以節省設備儲存空間。\n\n點擊工具列的「分割畫面」按鈕，可將畫面左右對半切。在右側的錄影區塊中，您可以點擊「開啟相簿影片」來播放平板內的示範影片，方便一邊看譜一邊對照練習。"
     },
     {
+      icon: <Star className="text-accent-warm" />,
+      title: "曲目熟練度管理",
+      content: "在樂譜檢視器中，點擊星星圖示可設定該曲目的「熟練度」。從 0%（剛開始）到 100%（已精通），圖書館清單會同步顯示進度，幫助您掌握練習成效。"
+    },
+    {
+      icon: <TrendingUp className="text-accent-warm" />,
+      title: "進階節拍器 (速度漸進模式)",
+      content: "點擊節拍器右上角的「漸進」按鈕，可設定「目標速度」、「每次增加量」及「間隔小節」。節拍器會隨練習自動提速，是練習快速樂段的最佳工具。"
+    },
+    {
+      icon: <Moon className="text-accent-warm" />,
+      title: "樂譜深色模式 (反相顯示)",
+      content: "點擊工具列的「深色模式」按鈕，可將樂譜圖片直接反相顯示（變為黑底白字）。這在光線較暗的環境下練習非常實用，能有效減少眼睛疲勞。"
+    },
+    {
       icon: <Smile className="text-accent-warm" />,
-      title: "智能翻頁 (雙模式切換)",
-      content: "開啟樂譜後點擊上方「智能翻頁」。旁邊的小按鈕可切換「頭部動作」或「眨眼」模式。為避免連續誤觸，每次翻頁後有「2 秒鐘冷卻時間」。",
+      title: "智能翻頁 (水平/橫放模式)",
+      content: "開啟樂譜後點擊上方「智能翻頁」。支援「水平」與「橫放」兩種模式，旁邊的小按鈕可切換「頭部動作」或「眨眼」模式。為避免連續誤觸，每次翻頁後有「2 秒鐘冷卻時間」。",
+      className: "md:col-span-2",
       customContent: (
         <div className="mt-4 space-y-3">
           <div className="bg-bg-warm/50 p-3 rounded-xl border border-white/5">
             <div className="text-xs font-bold text-accent-warm mb-2 flex items-center gap-2">
-              <Smile size={14} /> 頭部組合動作模式
+              <Smile size={14} /> 水平/橫放模式 (頭部動作)
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-1">
@@ -229,7 +247,8 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
     {
       icon: <BookOpen className="text-accent-warm" />,
       title: "多頁樂譜切換",
-      content: "若上傳多張照片，閱覽模式下方會出現「頁碼提示」。點擊數字或左右滑動即可快速切換不同頁面。"
+      content: "若上傳多張照片，閱覽模式下方會出現「頁碼提示」。點擊數字或左右滑動即可快速切換不同頁面。",
+      className: "md:col-span-2"
     },
     {
       icon: <Share2 className="text-accent-warm" />,
@@ -239,6 +258,31 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
   ];
 
   const changelog = [
+    {
+      version: "v2.2.0",
+      date: "2026-03-18",
+      changes: [
+        "🏆 新增「曲目熟練度管理」：在樂譜檢視器中設定熟練度（0-100%），圖書館會顯示星等與進度。",
+        "📈 新增「進階節拍器：速度漸進模式」：可設定目標速度與增加間隔，自動隨練習進度提升 BPM。",
+        "✨ 新增樂譜「深色模式」：支援將圖片樂譜反相顯示（黑底白字）。"
+      ]
+    },
+    {
+      version: "v2.1.2",
+      date: "2026-03-18",
+      changes: [
+        "✨ 新增樂譜「深色模式」：支援將圖片樂譜反相顯示（黑底白字），減少長時間看譜的眼睛疲勞。",
+        "🎨 優化工具列排版，新增深色模式切換按鈕。"
+      ]
+    },
+    {
+      version: "v2.1.1",
+      date: "2026-03-18",
+      changes: [
+        "🎨 優化「使用說明」排版：將「智能翻頁」與「多頁樂譜切換」改為全寬顯示，消除排版空白。",
+        "📝 更新「智能翻頁」說明，新增「水平」與「橫放」模式支援說明。"
+      ]
+    },
     {
       version: "v2.1.0",
       date: "2026-03-17",
@@ -325,7 +369,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
               </div>
               <div>
                 <h2 className="text-xl font-bold">使用說明指南</h2>
-                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.1.0</p>
+                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.2.0</p>
               </div>
             </div>
             <button 
@@ -371,7 +415,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {sections.map((section, index) => (
-                  <div key={index} className="bg-white/5 p-6 rounded-2xl border border-white/5 hover:border-accent-warm/30 transition-all group">
+                  <div key={index} className={cn("bg-white/5 p-6 rounded-2xl border border-white/5 hover:border-accent-warm/30 transition-all group", (section as any).className)}>
                     <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       {section.icon}
                     </div>

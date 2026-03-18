@@ -198,8 +198,8 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
 
   return (
     <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5", className)}>
-      <div className="flex flex-col gap-6 h-full">
-        <div className="flex items-center justify-between shrink-0">
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between shrink-0 h-10 mb-6">
           <div className="flex items-center gap-2">
             <TimerIcon size={20} className="text-accent-warm" />
             <h2 className="text-lg font-bold tracking-tight text-text-warm">
@@ -216,31 +216,14 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
           )}
         </div>
 
-        {activeRoutine && (
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/5 flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-accent-warm flex items-center gap-1">
-                <ListMusic size={14} />
-                {activeRoutine.name}
-              </span>
-              <span className="text-xs font-bold text-text-muted">
-                步驟 {currentStepIndex + 1} / {activeRoutine.steps.length}
-              </span>
-            </div>
-            <div className="text-lg font-bold text-text-warm">
-              {activeRoutine.steps[currentStepIndex]?.name}
-            </div>
-          </div>
-        )}
-
-        <div className="relative flex flex-col items-center justify-center h-32">
+        <div className="flex flex-col items-center justify-center h-40 shrink-0 mb-6 relative">
           <div className={cn(
-            "text-6xl font-bold font-mono tracking-tighter transition-colors duration-300",
+            "text-7xl font-bold font-mono tracking-tighter transition-colors duration-300 leading-none",
             remainingSeconds === 0 ? "text-emerald-400" : "text-text-warm"
           )}>
             {formatTime(remainingSeconds)}
           </div>
-          <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mt-1">REMAINING</div>
+          <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mt-2">REMAINING</div>
           
           {isFinished && (
             <div className="absolute top-0 right-0 flex items-center gap-1 text-emerald-400 animate-bounce">
@@ -250,7 +233,61 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
           )}
         </div>
 
-        <div className="flex items-center h-12">
+        <div className="flex-1 flex flex-col gap-6 justify-center">
+          {activeRoutine ? (
+            <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-accent-warm flex items-center gap-1">
+                  <ListMusic size={14} />
+                  {activeRoutine.name}
+                </span>
+                <span className="text-xs font-bold text-text-muted">
+                  步驟 {currentStepIndex + 1} / {activeRoutine.steps.length}
+                </span>
+              </div>
+              <div className="text-lg font-bold text-text-warm truncate">
+                {activeRoutine.steps[currentStepIndex]?.name}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-4 gap-2">
+                {[15, 30, 45, 60].map((mins) => (
+                  <button
+                    key={mins}
+                    onClick={() => handlePresetClick(mins)}
+                    disabled={isActive || !!activeRoutine}
+                    className={cn(
+                      "py-2 rounded-xl text-xs font-bold transition-all border",
+                      inputMinutes === mins && !isActive && !activeRoutine
+                        ? "bg-accent-warm text-bg-warm border-accent-warm shadow-lg shadow-accent-warm/20"
+                        : "bg-white/5 text-text-muted border-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                    )}
+                  >
+                    {mins}m
+                  </button>
+                ))}
+              </div>
+              
+              <div className="flex items-center gap-3 bg-white/5 p-2 rounded-2xl border border-white/5">
+                <span className="text-xs font-bold text-text-muted uppercase tracking-wider pl-2 shrink-0">自訂分鐘</span>
+                <input 
+                  type="number"
+                  min="1"
+                  max="999"
+                  value={inputMinutes}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    setInputMinutes(val);
+                    setRemainingSeconds(val * 60);
+                  }}
+                  disabled={isActive}
+                  className="flex-1 bg-transparent border-none text-right pr-2 font-bold text-lg text-text-warm focus:outline-none disabled:opacity-50"
+                />
+              </div>
+            </div>
+          )}
+
           <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
             <div 
               className={cn(
@@ -262,25 +299,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2 h-12">
-          {[15, 30, 45, 60].map((mins) => (
-            <button
-              key={mins}
-              onClick={() => handlePresetClick(mins)}
-              disabled={isActive || !!activeRoutine}
-              className={cn(
-                "h-full rounded-xl text-xs font-bold transition-all border",
-                inputMinutes === mins && !isActive && !activeRoutine
-                  ? "bg-accent-warm text-bg-warm border-accent-warm"
-                  : "bg-white/5 text-text-muted border-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
-              )}
-            >
-              {mins}m
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-3">
+        <div className="mt-auto pt-6 flex gap-3">
           <button 
             onClick={() => {
               if (remainingSeconds > 0) {
@@ -289,20 +308,23 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
             }}
             disabled={remainingSeconds === 0}
             className={cn(
-              "flex-1 py-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-95 disabled:opacity-50 disabled:scale-100",
+              "flex-1 h-16 rounded-2xl flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:scale-100",
               isActive 
                 ? "bg-white/10 text-text-warm" 
-                : "bg-accent-warm text-bg-warm shadow-lg shadow-accent-warm/20"
+                : "bg-accent-warm text-bg-warm shadow-lg shadow-accent-warm/20 hover:bg-accent-warm/90"
             )}
           >
-            {isActive ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
-            {isActive ? '暫停' : '開始'}
+            {isActive ? (
+              <><Pause size={24} fill="currentColor" /> 暫停</>
+            ) : (
+              <><Play size={24} fill="currentColor" /> 開始</>
+            )}
           </button>
           
           {activeRoutine && currentStepIndex < activeRoutine.steps.length - 1 ? (
             <button 
               onClick={handleSkipStep}
-              className="w-14 h-14 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-muted rounded-2xl transition-all active:scale-95"
+              className="w-16 h-16 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-muted rounded-2xl transition-all active:scale-95 border border-white/5"
               title="跳過此步驟"
             >
               <SkipForward size={24} />
@@ -310,7 +332,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
           ) : (
             <button 
               onClick={resetTimer}
-              className="w-14 h-14 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-muted rounded-2xl transition-all active:scale-95"
+              className="w-16 h-16 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-muted rounded-2xl transition-all active:scale-95 border border-white/5"
               title="重設計時器"
             >
               <RotateCcw size={24} />

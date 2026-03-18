@@ -1,21 +1,20 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, ExternalLink, Camera, Loader2, AlertCircle, LayoutDashboard, Smile, Activity, Eye, RotateCw, PenTool, Eraser, Save, Columns } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, 
+  Camera, Loader2, Smile, Eye, RotateCw, PenTool, Eraser, Save, 
+  Columns, Moon, Sun, Star, Music, TrendingUp, Play, Pause, 
+  ChevronUp, ChevronDown, Edit2, Check, LayoutDashboard
+} from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
 import { cn } from '../lib/utils';
-import { saveScores, getScores } from '../lib/storage';
-
-interface Score {
-  id: string;
-  name: string;
-  type: 'file' | 'link';
-  data: string | string[];
-  date: number;
-  folderId?: string;
-  tags?: string[];
-  rotations?: number[];
-  annotations?: string[];
-}
+import { 
+  saveScores, 
+  getScores, 
+  getRecordingsByScoreId, 
+  Recording, 
+  Score
+} from '../lib/storage';
 
 interface ScoreViewerProps {
   score: Score;
@@ -29,6 +28,13 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
   const [isSplitScreen, setIsSplitScreen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [mastery, setMastery] = useState(score.mastery || 0);
+  const [showMasteryPopover, setShowMasteryPopover] = useState(false);
+  const [showTempoHistory, setShowTempoHistory] = useState(false);
+  const [currentBpm, setCurrentBpm] = useState(100);
+  const [isMetronomePlaying, setIsMetronomePlaying] = useState(false);
+  const [recordings, setRecordings] = useState<Recording[]>([]);
   const [recorderPosition, setRecorderPosition] = useState<'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'>('top-right');
   const [isRecorderMinimized, setIsRecorderMinimized] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
@@ -47,7 +53,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
   const [isAutoTurnEnabled, setIsAutoTurnEnabled] = useState(false);
   const [aiMode, setAiMode] = useState<'head' | 'blink'>('head');
   const [isModelLoading, setIsModelLoading] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -56,6 +61,10 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
   const sequenceStateRef = useRef<'IDLE' | 'LOOK_RIGHT' | 'LOOK_RIGHT_DOWN' | 'LOOK_LEFT' | 'LOOK_LEFT_UP'>('IDLE');
   const sequenceTimerRef = useRef<number>(0);
   const aiModeRef = useRef(aiMode);
+
+  // Score Name Editing
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState(score.name);
 
   useEffect(() => {
     aiModeRef.current = aiMode;
@@ -80,16 +89,30 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    if (annotations[currentPage]) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0);
-      };
-      img.src = annotations[currentPage];
-    }
-  }, [currentPage, annotations, displayMode, zoom, rotations]);
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      if (annotations[currentPage]) {
+        const annotationImg = new Image();
+        annotationImg.onload = () => {
+          ctx.drawImage(annotationImg, 0, 0);
+        };
+        annotationImg.src = annotations[currentPage];
+      }
+    };
+    img.src = pages[currentPage];
+  }, [currentPage, annotations, displayMode, zoom, rotations, pages]);
+
+  useEffect(() => {
+    const loadRecordings = async () => {
+      const scoreRecordings = await getRecordingsByScoreId(score.id);
+      setRecordings(scoreRecordings);
+    };
+    loadRecordings();
+  }, [score.id]);
 
   const handleRotate = () => {
     const newRotations = [...rotations];
@@ -100,7 +123,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
 
   const saveAnnotationsAndRotations = async () => {
     try {
-      // Save current canvas state to annotations array
       const canvas = canvasRef.current;
       let newAnnotations = [...annotations];
       if (canvas) {
@@ -112,17 +134,24 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
       const allScores = await getScores();
       const updatedScores = allScores.map(s => 
         s.id === score.id 
-          ? { ...s, rotations, annotations: newAnnotations }
+          ? { ...s, name: score.name, rotations, annotations: newAnnotations, mastery }
           : s
       );
       await saveScores(updatedScores);
-      setScore({ ...score, rotations, annotations: newAnnotations });
+      setScore({ ...score, rotations, annotations: newAnnotations, mastery });
       setHasUnsavedChanges(false);
       alert('儲存成功！');
     } catch (error) {
       console.error('Failed to save score updates:', error);
-      alert('儲存失敗，請稍後再試。');
+      alert('儲存失敗，請檢查儲存空間。');
     }
+  };
+
+  const handleSaveName = () => {
+    const finalName = tempName.trim() || score.name;
+    setScore(prev => ({ ...prev, name: finalName }));
+    setIsEditingName(false);
+    setHasUnsavedChanges(true);
   };
 
   // Drawing Handlers
@@ -164,7 +193,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
       ctx.lineWidth = 20;
     } else {
       ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = '#F27D26'; // accent-warm
+      ctx.strokeStyle = '#F27D26';
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -179,7 +208,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
     if (!isDrawing) return;
     setIsDrawing(false);
     
-    // Save current canvas state to annotations array
     const canvas = canvasRef.current;
     if (canvas) {
       const newAnnotations = [...annotations];
@@ -194,7 +222,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
     const initMediaPipe = async () => {
       if (!isAutoTurnEnabled) return;
       setIsModelLoading(true);
-      setCameraError(null);
 
       try {
         const vision = await FilesetResolver.forVisionTasks(
@@ -226,7 +253,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
       } catch (err) {
         console.error("Failed to init smart page turn:", err);
         if (active) {
-          setCameraError("無法啟動相機或模型");
           setIsAutoTurnEnabled(false);
           setIsModelLoading(false);
         }
@@ -242,8 +268,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
       if (results.faceLandmarks && results.faceLandmarks.length > 0) {
         if (aiModeRef.current === 'head') {
           const landmarks = results.faceLandmarks[0];
-          
-          // MediaPipe Face Mesh Landmarks
           const nose = landmarks[1];
           const leftEar = landmarks[234];
           const rightEar = landmarks[454];
@@ -255,18 +279,15 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
           const faceWidth = Math.abs(rightEar.x - leftEar.x);
           const faceHeight = Math.abs(chin.y - topHead.y);
 
-          // Calculate Yaw and Pitch ratios
           const yaw = (nose.x - centerX) / faceWidth;
           const pitch = (nose.y - centerY) / faceHeight;
 
-          // Mirrored camera: looking right means nose moves to the left side of the image (smaller X)
           const isLookingRight = yaw < -0.10;
           const isLookingLeft = yaw > 0.10;
           const isLookingDown = pitch > 0.08;
           const isLookingUp = pitch < -0.08;
           const isCenter = Math.abs(yaw) < 0.08 && Math.abs(pitch) < 0.08;
 
-          // Reset sequence if it takes too long (3 seconds)
           if (sequenceStateRef.current !== 'IDLE' && nowInMs - sequenceTimerRef.current > 3000) {
             sequenceStateRef.current = 'IDLE';
           }
@@ -321,9 +342,6 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
           const eyeBlinkLeft = blendshapes.find(b => b.categoryName === 'eyeBlinkLeft')?.score || 0;
           const eyeBlinkRight = blendshapes.find(b => b.categoryName === 'eyeBlinkRight')?.score || 0;
 
-          // User's right eye wink -> Next page
-          // User's left eye wink -> Prev page
-          // To avoid normal blinks, ensure the other eye is relatively open
           const isRightWink = eyeBlinkRight > 0.5 && eyeBlinkLeft < 0.2;
           const isLeftWink = eyeBlinkLeft > 0.5 && eyeBlinkRight < 0.2;
 
@@ -345,10 +363,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
     if (isAutoTurnEnabled) {
       initMediaPipe();
     } else {
-      // Cleanup
-      if (requestRef.current) {
-        cancelAnimationFrame(requestRef.current);
-      }
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
@@ -390,83 +405,96 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
     }
   };
 
-  const nextPage = () => {
-    setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
-  };
-
-  const prevPage = () => {
-    setCurrentPage(prev => Math.max(prev - 1, 0));
-  };
+  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
+  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 0));
 
   return (
     <div className={cn(
-      "fixed inset-0 z-50 bg-bg-warm flex flex-col",
+      "fixed inset-0 z-50 bg-bg-warm flex flex-col overflow-hidden",
       className
     )}>
-      {/* Toolbar */}
-      <div className="min-h-[64px] py-2 bg-surface-warm border-b border-white/5 flex flex-wrap items-center justify-between px-4 md:px-6 shrink-0 gap-y-2">
-        <div className="flex items-center gap-2 md:gap-4 shrink-0">
+      {/* Top Bar */}
+      <header className="h-16 shrink-0 bg-surface-warm/90 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-4 md:px-6 z-20">
+        <div className="flex items-center gap-4">
           <button 
             onClick={onClose}
-            className="p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
+            className="w-10 h-10 flex items-center justify-center text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
           >
             <X size={24} />
           </button>
-          <div className="h-6 w-px bg-white/10 hidden sm:block" />
-          <h2 className="text-text-warm font-bold tracking-tight truncate max-w-[100px] sm:max-w-md text-sm sm:text-base">
-            {score.name}
-          </h2>
+          <div className="h-8 w-px bg-white/10" />
+          <div className="flex items-center gap-2">
+            {isEditingName ? (
+              <div className="flex items-center gap-2">
+                <input 
+                  type="text"
+                  value={tempName}
+                  onChange={(e) => setTempName(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-base font-bold w-48 sm:w-64 focus:outline-none focus:border-accent-warm transition-all"
+                  autoFocus
+                  onBlur={handleSaveName}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
+                />
+                <button onClick={handleSaveName} className="text-accent-warm p-2 hover:bg-white/5 rounded-lg transition-colors">
+                  <Check size={20} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 group">
+                <h2 
+                  onClick={() => { setTempName(score.name); setIsEditingName(true); }}
+                  className="text-text-warm font-bold text-lg tracking-tight truncate max-w-[150px] sm:max-w-md cursor-pointer hover:text-accent-warm transition-colors"
+                >
+                  {score.name}
+                </h2>
+                <button 
+                  onClick={() => { setTempName(score.name); setIsEditingName(true); }}
+                  className="opacity-0 group-hover:opacity-100 p-1.5 text-text-muted hover:text-accent-warm transition-all rounded-lg"
+                >
+                  <Edit2 size={14} />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1 md:gap-2">
-          {/* Display Mode Toggles */}
-          <div className="hidden lg:flex items-center bg-white/5 rounded-2xl p-1 gap-1">
+        <div className="flex items-center gap-2">
+          {hasUnsavedChanges && (
             <button 
-              onClick={() => {
-                setDisplayMode('fit-page');
-                setZoom(1);
-              }}
-              className={cn(
-                "px-4 py-2 rounded-xl text-xs font-bold tracking-widest transition-all",
-                displayMode === 'fit-page' ? "bg-accent-warm text-bg-warm shadow-sm" : "text-text-muted hover:text-text-warm hover:bg-white/5"
-              )}
+              onClick={saveAnnotationsAndRotations}
+              className="px-4 py-2 bg-emerald-500 text-bg-warm rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/20 animate-pulse"
             >
-              符合頁面
+              <Save size={18} />
+              儲存變更
             </button>
-            <button 
-              onClick={() => setDisplayMode('fit-width')}
-              className={cn(
-                "px-4 py-2 rounded-xl text-xs font-bold tracking-widest transition-all",
-                displayMode === 'fit-width' ? "bg-accent-warm text-bg-warm shadow-sm" : "text-text-muted hover:text-text-warm hover:bg-white/5"
-              )}
-            >
-              符合寬度
-            </button>
-          </div>
+          )}
+          <button 
+            onClick={toggleFullscreen}
+            className="w-10 h-10 flex items-center justify-center text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
+          >
+            {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+          </button>
+        </div>
+      </header>
 
-          <div className="h-6 w-px bg-white/10 mx-1 md:mx-2 hidden sm:block" />
-          
-          {/* Annotation & Rotation Controls */}
-          <div className="hidden lg:flex items-center gap-1 md:gap-2 bg-white/5 p-1 rounded-xl">
-            <button 
-              onClick={handleRotate}
-              className="p-1 md:p-2 text-text-muted hover:text-text-warm hover:bg-white/10 rounded-lg transition-colors"
-              title="旋轉"
-            >
-              <RotateCw size={18} />
-            </button>
+      {/* Main Content Area */}
+      <div className="flex-1 flex min-h-0 relative overflow-hidden">
+        
+        {/* Left Sidebar - Tools */}
+        <aside className="w-20 shrink-0 bg-surface-warm/50 border-r border-white/5 flex flex-col items-center py-6 gap-6 z-10">
+          <div className="flex flex-col gap-4">
             <button 
               onClick={() => {
                 setIsDrawingMode(!isDrawingMode);
                 if (isEraser) setIsEraser(false);
               }}
               className={cn(
-                "p-1 md:p-2 rounded-lg transition-colors",
-                isDrawingMode && !isEraser ? "bg-accent-warm text-bg-warm" : "hover:bg-white/10 text-text-muted hover:text-text-warm"
+                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg",
+                isDrawingMode && !isEraser ? "bg-accent-warm text-bg-warm shadow-accent-warm/30" : "bg-white/5 text-text-muted hover:text-text-warm"
               )}
               title="畫筆"
             >
-              <PenTool size={18} />
+              <PenTool size={24} />
             </button>
             <button 
               onClick={() => {
@@ -474,256 +502,77 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
                 if (!isDrawingMode) setIsDrawingMode(true);
               }}
               className={cn(
-                "p-1 md:p-2 rounded-lg transition-colors",
-                isDrawingMode && isEraser ? "bg-accent-warm text-bg-warm" : "hover:bg-white/10 text-text-muted hover:text-text-warm"
+                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg",
+                isDrawingMode && isEraser ? "bg-accent-warm text-bg-warm shadow-accent-warm/30" : "bg-white/5 text-text-muted hover:text-text-warm"
               )}
               title="橡皮擦"
             >
-              <Eraser size={18} />
+              <Eraser size={24} />
             </button>
-            {hasUnsavedChanges && (
-              <button 
-                onClick={saveAnnotationsAndRotations}
-                className="p-1 md:p-2 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-lg transition-colors flex items-center gap-1"
-                title="儲存變更"
-              >
-                <Save size={18} />
-              </button>
-            )}
-          </div>
-
-          <div className="h-6 w-px bg-white/10 mx-1 md:mx-2 hidden sm:block" />
-          
-          <button 
-            onClick={() => handleZoom(-0.1)}
-            className="p-1 md:p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
-          >
-            <ZoomOut size={18} />
-          </button>
-          <span className="text-[10px] md:text-xs font-bold text-text-muted w-8 md:w-12 text-center">
-            {Math.round(zoom * 100)}%
-          </span>
-          <button 
-            onClick={() => handleZoom(0.1)}
-            className="p-1 md:p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
-          >
-            <ZoomIn size={18} />
-          </button>
-          
-          <div className="h-6 w-px bg-white/10 mx-1 md:mx-2" />
-          
-          <button 
-            onClick={toggleFullscreen}
-            className="p-1 md:p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
-          >
-            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-          </button>
-
-          <div className="h-6 w-px bg-white/10 mx-1 md:mx-2" />
-
-          <div className="flex items-center gap-2">
-            <div className="flex bg-white/5 rounded-2xl p-1">
-              <button 
-                onClick={() => setIsAutoTurnEnabled(!isAutoTurnEnabled)}
-                className={cn(
-                  "p-2 rounded-xl transition-all flex flex-col items-center justify-center gap-1.5 min-w-[64px]",
-                  isAutoTurnEnabled ? "bg-emerald-500 text-white shadow-md" : "text-text-muted hover:text-text-warm hover:bg-white/5"
-                )}
-                title={aiMode === 'head' ? "智能翻頁 (頭部組合動作)" : "智能翻頁 (眨眼模式)"}
-              >
-                {isModelLoading ? <Loader2 size={20} className="animate-spin" /> : (aiMode === 'head' ? <Smile size={20} /> : <Eye size={20} />)}
-                <span className="text-[10px] font-bold leading-none">{isAutoTurnEnabled ? '智能翻頁中' : '智能翻頁'}</span>
-              </button>
-              
-              <div className="flex flex-col justify-center border-l border-white/10 pl-1 ml-1 gap-1">
-                <button
-                  onClick={() => setAiMode('head')}
-                  className={cn("p-1.5 rounded-lg transition-all", aiMode === 'head' ? "bg-white/10 text-accent-warm" : "text-text-muted hover:text-white")}
-                  title="頭部動作模式"
-                >
-                  <Smile size={14} />
-                </button>
-                <button
-                  onClick={() => setAiMode('blink')}
-                  className={cn("p-1.5 rounded-lg transition-all", aiMode === 'blink' ? "bg-white/10 text-accent-warm" : "text-text-muted hover:text-white")}
-                  title="眨眼模式"
-                >
-                  <Eye size={14} />
-                </button>
-              </div>
-            </div>
-
             <button 
-              onClick={() => {
-                setIsSplitScreen(!isSplitScreen);
-                if (!isSplitScreen) {
-                  setShowRecorder(true);
-                }
-              }}
-              className={cn(
-                "p-2 rounded-2xl transition-all flex flex-col items-center justify-center gap-1.5 min-w-[64px]",
-                isSplitScreen ? "bg-accent-warm text-bg-warm shadow-md" : "bg-white/5 text-text-muted hover:text-text-warm hover:bg-white/10"
-              )}
-              title={isSplitScreen ? "取消分割畫面" : "分割畫面 (左邊樂譜，右邊影片)"}
+              onClick={handleRotate}
+              className="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/5 text-text-muted hover:text-text-warm transition-all"
+              title="旋轉"
             >
-              <Columns size={20} />
-              <span className="text-[10px] font-bold leading-none">{isSplitScreen ? '取消分割' : '分割畫面'}</span>
-            </button>
-
-            <button 
-              onClick={() => setShowRecorder(!showRecorder)}
-              className={cn(
-                "p-2 rounded-2xl transition-all flex flex-col items-center justify-center gap-1.5 min-w-[64px]",
-                showRecorder && !isSplitScreen ? "bg-red-500 text-white shadow-md" : "bg-white/5 text-text-muted hover:text-text-warm hover:bg-white/10"
-              )}
-            >
-              <Camera size={20} />
-              <span className="text-[10px] font-bold leading-none">{showRecorder ? '關閉錄影' : '錄影模式'}</span>
+              <RotateCw size={24} />
             </button>
           </div>
 
-          {showRecorder && !isSplitScreen && (
-            <div className="flex flex-col justify-center bg-white/5 rounded-xl p-1 gap-1 ml-2">
-              <button 
-                onClick={() => {
-                  const positions: ('top-right' | 'top-left' | 'bottom-right' | 'bottom-left')[] = ['top-right', 'bottom-right', 'bottom-left', 'top-left'];
-                  const currentIndex = positions.indexOf(recorderPosition);
-                  setRecorderPosition(positions[(currentIndex + 1) % positions.length]);
-                }}
-                className="p-1.5 text-text-muted hover:text-text-warm transition-all rounded-lg hover:bg-white/10"
-                title="切換位置"
-              >
-                <LayoutDashboard size={14} />
-              </button>
-              <button 
-                onClick={() => setIsRecorderMinimized(!isRecorderMinimized)}
-                className={cn(
-                  "p-1.5 rounded-lg transition-all hover:bg-white/10",
-                  isRecorderMinimized ? "text-accent-warm" : "text-text-muted hover:text-text-warm"
-                )}
-                title={isRecorderMinimized ? "展開" : "縮小"}
-              >
-                {isRecorderMinimized ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+          <div className="w-8 h-px bg-white/10" />
 
-      {/* Recorder Overlay */}
-      {showRecorder && !isSplitScreen && (
-        <div className={cn(
-          "absolute z-[70] transition-all duration-300 ease-in-out",
-          recorderPosition === 'top-right' && "top-20 right-4",
-          recorderPosition === 'top-left' && "top-20 left-4",
-          recorderPosition === 'bottom-right' && "bottom-24 right-4",
-          recorderPosition === 'bottom-left' && "bottom-24 left-4",
-          isRecorderMinimized ? "w-48" : "w-full max-w-[320px]"
-        )}>
-          <VideoRecorder 
-            activeScoreName={score.name} 
+          <div className="flex flex-col gap-4">
+            <button 
+              onClick={() => handleZoom(0.1)}
+              className="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/5 text-text-muted hover:text-text-warm transition-all"
+            >
+              <ZoomIn size={24} />
+            </button>
+            <button 
+              onClick={() => handleZoom(-0.1)}
+              className="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/5 text-text-muted hover:text-text-warm transition-all"
+            >
+              <ZoomOut size={24} />
+            </button>
+          </div>
+
+          <div className="w-8 h-px bg-white/10" />
+
+          <button 
+            onClick={() => setIsDarkMode(!isDarkMode)}
             className={cn(
-              "shadow-2xl border-accent-warm/20",
-              isRecorderMinimized && "p-2"
-            )} 
-            isMinimized={isRecorderMinimized}
-            isFloating={true}
-          />
-        </div>
-      )}
-
-      {/* Smart Page Turn Camera Preview */}
-      {isAutoTurnEnabled && (
-        <div className="fixed bottom-24 right-4 w-32 h-24 bg-black rounded-xl overflow-hidden shadow-2xl border-2 border-emerald-500/50 z-[80]">
-          <video 
-            ref={videoRef} 
-            autoPlay 
-            playsInline 
-            muted 
-            className="w-full h-full object-cover transform scale-x-[-1]" 
-          />
-          {isModelLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-              <Loader2 size={24} className="animate-spin text-emerald-500" />
-            </div>
-          )}
-          {cameraError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80 p-2 text-center">
-              <span className="text-[10px] text-red-400 font-bold">{cameraError}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Content Area */}
-      <div className="flex-1 overflow-hidden bg-bg-warm relative flex min-h-0">
-        <div className={cn(
-          "flex-1 overflow-hidden relative min-w-0 min-h-0",
-          showRecorder && isSplitScreen ? "border-r border-white/10" : ""
-        )}>
-          {score.type === 'link' ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 sm:p-12 text-center gap-4 sm:gap-6 bg-white">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400">
-              <ExternalLink size={32} />
-            </div>
-            <div className="max-w-xs">
-              <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-2">外部樂譜連結</h3>
-              <p className="text-neutral-500 text-xs sm:text-sm">
-                由於版權與安全限制，某些外部樂譜無法直接在 App 內顯示。
-              </p>
-            </div>
-            <a 
-              href={score.data as string} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="w-full sm:w-auto px-6 py-3 sm:px-8 sm:py-4 bg-neutral-900 text-white rounded-2xl font-bold hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
-            >
-              在新分頁開啟樂譜 <ExternalLink size={18} />
-            </a>
-          </div>
-        ) : (
-          <div 
-            className="absolute inset-0 overflow-auto flex justify-center items-center p-4 scrollbar-hide"
-            style={{ containerType: 'size' }}
+              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+              isDarkMode ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30" : "bg-white/5 text-text-muted hover:text-text-warm"
+            )}
           >
+            {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
+          </button>
+        </aside>
+
+        {/* Center - Score View */}
+        <main className="flex-1 relative bg-bg-warm flex flex-col min-w-0 overflow-hidden">
+          <div className="flex-1 relative overflow-hidden flex items-center justify-center p-4">
             <div 
-              className={cn(
-                "transition-all duration-200 shadow-2xl bg-white relative shrink-0",
-                displayMode === 'fit-width' && "w-full"
-              )}
+              className="relative shadow-2xl transition-all duration-300"
               style={{ 
-                width: displayMode === 'fit-width' 
-                  ? `${zoom * 100}%` 
-                  : 'calc(min(100cqw - 32px, (100cqh - 32px) * 0.7072))',
+                width: displayMode === 'fit-width' ? `${zoom * 100}%` : 'auto',
+                height: displayMode === 'fit-page' ? `${zoom * 100}%` : 'auto',
+                maxHeight: '100%',
                 aspectRatio: '1 / 1.414',
                 transform: `rotate(${rotations[currentPage] || 0}deg)`,
-                transition: isDrawingMode ? 'none' : 'transform 0.3s ease-in-out'
+                filter: isDarkMode ? 'invert(1) hue-rotate(180deg)' : 'none'
               }}
             >
               <img 
                 src={pages[currentPage]} 
-                alt={`${score.name} - Page ${currentPage + 1}`}
-                className="w-full h-full object-contain bg-white block"
+                alt="Score"
+                className="w-full h-full object-contain bg-white rounded-lg"
                 referrerPolicy="no-referrer"
-                onLoad={(e) => {
-                  if (canvasRef.current) {
-                    canvasRef.current.width = e.currentTarget.naturalWidth;
-                    canvasRef.current.height = e.currentTarget.naturalHeight;
-                    // Redraw annotation after resize
-                    if (annotations[currentPage]) {
-                      const ctx = canvasRef.current.getContext('2d');
-                      const img = new Image();
-                      img.onload = () => ctx?.drawImage(img, 0, 0);
-                      img.src = annotations[currentPage];
-                    }
-                  }
-                }}
               />
               <canvas
                 ref={canvasRef}
                 className={cn(
-                  "absolute inset-0 w-full h-full",
-                  isDrawingMode ? "cursor-crosshair z-10" : "pointer-events-none z-10"
+                  "absolute inset-0 w-full h-full z-10",
+                  isDrawingMode ? "cursor-crosshair" : "cursor-default"
                 )}
                 onMouseDown={startDrawing}
                 onMouseMove={draw}
@@ -734,50 +583,222 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
                 onTouchEnd={stopDrawing}
               />
             </div>
-          </div>
-        )}
-        </div>
 
-        {/* Split Screen Video Area */}
-        {showRecorder && isSplitScreen && (
-          <div className="w-1/2 md:w-[400px] lg:w-[500px] h-full bg-surface-warm overflow-y-auto shrink-0 border-l border-white/5">
-            <VideoRecorder 
-              activeScoreName={score.name} 
-              className="h-full rounded-none border-0 shadow-none" 
-              isMinimized={false}
-              isFloating={false}
-            />
+            {/* Navigation Arrows */}
+            <button 
+              onClick={prevPage}
+              disabled={currentPage === 0}
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-surface-warm/80 backdrop-blur-md border border-white/10 flex items-center justify-center text-text-warm shadow-2xl hover:bg-accent-warm hover:text-bg-warm transition-all disabled:opacity-0 z-20"
+            >
+              <ChevronLeft size={32} />
+            </button>
+            <button 
+              onClick={nextPage}
+              disabled={currentPage === totalPages - 1}
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-surface-warm/80 backdrop-blur-md border border-white/10 flex items-center justify-center text-text-warm shadow-2xl hover:bg-accent-warm hover:text-bg-warm transition-all disabled:opacity-0 z-20"
+            >
+              <ChevronRight size={32} />
+            </button>
           </div>
-        )}
+
+          {/* Bottom Bar - Page Info & Display Mode */}
+          <footer className="h-16 shrink-0 bg-surface-warm/50 border-t border-white/5 flex items-center justify-between px-6">
+            <div className="flex items-center gap-4">
+              <div className="flex bg-white/5 rounded-xl p-1">
+                <button 
+                  onClick={() => setDisplayMode('fit-page')}
+                  className={cn(
+                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    displayMode === 'fit-page' ? "bg-white/10 text-text-warm" : "text-text-muted hover:text-text-warm"
+                  )}
+                >
+                  符合頁面
+                </button>
+                <button 
+                  onClick={() => setDisplayMode('fit-width')}
+                  className={cn(
+                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    displayMode === 'fit-width' ? "bg-white/10 text-text-warm" : "text-text-muted hover:text-text-warm"
+                  )}
+                >
+                  符合寬度
+                </button>
+              </div>
+              <span className="text-sm font-bold text-text-muted">
+                {currentPage + 1} / {totalPages}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setIsAutoTurnEnabled(!isAutoTurnEnabled)}
+                className={cn(
+                  "px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
+                  isAutoTurnEnabled ? "bg-emerald-500 text-bg-warm shadow-lg shadow-emerald-500/20" : "bg-white/5 text-text-muted hover:text-text-warm"
+                )}
+              >
+                {isModelLoading ? <Loader2 size={18} className="animate-spin" /> : (aiMode === 'head' ? <Smile size={18} /> : <Eye size={18} />)}
+                智能翻頁
+              </button>
+              <button 
+                onClick={() => setShowRecorder(!showRecorder)}
+                className={cn(
+                  "px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
+                  showRecorder ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "bg-white/5 text-text-muted hover:text-text-warm"
+                )}
+              >
+                <Camera size={18} />
+                錄影模式
+              </button>
+            </div>
+          </footer>
+        </main>
+
+        {/* Right Sidebar - Features (Optional/Contextual) */}
+        <aside className="w-20 shrink-0 bg-surface-warm/50 border-l border-white/5 flex flex-col items-center py-6 gap-6 z-10">
+          <button 
+            onClick={() => setShowMasteryPopover(!showMasteryPopover)}
+            className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+              mastery > 0 ? "bg-amber-500/20 text-amber-500" : "bg-white/5 text-text-muted hover:text-text-warm"
+            )}
+          >
+            <Star size={24} className={cn(mastery > 0 && "fill-amber-500")} />
+          </button>
+          <button 
+            onClick={() => setShowTempoHistory(!showTempoHistory)}
+            className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+              showTempoHistory ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30" : "bg-white/5 text-text-muted hover:text-text-warm"
+            )}
+          >
+            <TrendingUp size={24} />
+          </button>
+          <button 
+            onClick={() => setIsSplitScreen(!isSplitScreen)}
+            className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+              isSplitScreen ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30" : "bg-white/5 text-text-muted hover:text-text-warm"
+            )}
+          >
+            <Columns size={24} />
+          </button>
+        </aside>
       </div>
 
-      {/* Page Controls (Floating) */}
-      {totalPages > 1 && (
-        <div className="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 sm:gap-4 bg-surface-warm/80 backdrop-blur-md border border-white/5 p-1.5 sm:p-2 rounded-2xl shadow-2xl z-[60]">
-          <button 
-            onClick={prevPage}
-            disabled={currentPage === 0}
-            className="p-2 sm:p-3 text-text-warm hover:bg-white/5 rounded-xl transition-all disabled:opacity-30"
-          >
-            <ChevronLeft size={24} />
-          </button>
-          <div className="flex flex-col items-center px-2 sm:px-4">
-            <span className="text-[10px] sm:text-xs font-bold text-text-muted uppercase tracking-widest mb-0.5">
-              樂譜頁碼
-            </span>
-            <span className="text-xs sm:text-sm font-bold text-text-warm">
-              {`第 ${currentPage + 1} / ${totalPages} 頁`}
-            </span>
+      {/* Popovers */}
+      {showMasteryPopover && (
+        <div className="fixed top-20 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-72 z-[100] animate-in fade-in slide-in-from-right-4">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm font-bold text-text-warm uppercase tracking-widest">曲目熟練度</span>
+            <span className="text-2xl font-mono font-bold text-amber-500">{mastery}%</span>
+          </div>
+          <input 
+            type="range" 
+            min="0" 
+            max="100" 
+            step="5"
+            value={mastery} 
+            onChange={(e) => {
+              setMastery(parseInt(e.target.value));
+              setHasUnsavedChanges(true);
+            }}
+            className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-amber-500 mb-6"
+          />
+          <div className="flex justify-between text-[10px] text-text-muted font-bold uppercase tracking-tighter">
+            <span>剛開始</span>
+            <span>視奏中</span>
+            <span>背譜中</span>
+            <span>已精通</span>
           </div>
           <button 
-            onClick={nextPage}
-            disabled={currentPage === totalPages - 1}
-            className="p-2 sm:p-3 text-text-warm hover:bg-white/5 rounded-xl transition-all disabled:opacity-30"
+            onClick={() => setShowMasteryPopover(false)}
+            className="w-full mt-6 py-3 bg-accent-warm text-bg-warm rounded-xl font-bold transition-all active:scale-95"
           >
-            <ChevronRight size={24} />
+            完成設定
           </button>
         </div>
       )}
+
+      {showTempoHistory && (
+        <div className="fixed top-36 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-80 z-[100] animate-in fade-in slide-in-from-right-4">
+          <div className="flex items-center justify-between mb-6">
+            <span className="text-sm font-bold text-text-warm uppercase tracking-widest">速度與節拍器</span>
+            <button onClick={() => setShowTempoHistory(false)} className="text-text-muted hover:text-text-warm"><X size={20} /></button>
+          </div>
+          
+          <div className="bg-white/5 rounded-2xl p-4 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">當前 BPM</span>
+                <span className="text-3xl font-mono font-bold text-emerald-500">{currentBpm}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-1">
+                  <button onClick={() => setCurrentBpm(prev => prev + 1)} className="p-2 hover:bg-white/10 rounded-lg"><ChevronUp size={20} /></button>
+                  <button onClick={() => setCurrentBpm(prev => prev - 1)} className="p-2 hover:bg-white/10 rounded-lg"><ChevronDown size={20} /></button>
+                </div>
+                <button 
+                  onClick={() => setIsMetronomePlaying(!isMetronomePlaying)}
+                  className={cn(
+                    "w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg",
+                    isMetronomePlaying ? "bg-red-500 text-white shadow-red-500/30" : "bg-emerald-500 text-bg-warm shadow-emerald-500/30"
+                  )}
+                >
+                  {isMetronomePlaying ? <Pause size={28} /> : <Play size={28} />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+            {score.tempoHistory?.slice().reverse().map((h, i) => (
+              <div key={i} className="flex items-center justify-between bg-white/5 p-3 rounded-xl">
+                <span className="text-xs text-text-muted font-bold">{new Date(h.date).toLocaleDateString()}</span>
+                <span className="font-mono font-bold text-emerald-500">{h.bpm} BPM</span>
+              </div>
+            )) || <p className="text-xs text-text-muted text-center py-8">尚無速度紀錄</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Recorder Overlay */}
+      {showRecorder && (
+        <div className={cn(
+          "fixed z-40 transition-all duration-500 ease-in-out",
+          isSplitScreen ? "inset-y-0 right-0 w-1/2 bg-surface-warm border-l border-white/10" : 
+          cn(
+            recorderPosition === 'top-right' && "top-20 right-24",
+            recorderPosition === 'top-left' && "top-20 left-24",
+            recorderPosition === 'bottom-right' && "bottom-20 right-24",
+            recorderPosition === 'bottom-left' && "bottom-20 left-24",
+            isRecorderMinimized ? "w-16 h-16" : "w-80 h-[60vh] max-h-[600px]"
+          )
+        )}>
+          <div className="w-full h-full relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black">
+            <VideoRecorder 
+              activeScoreName={score.name} 
+              isMinimized={isRecorderMinimized}
+              onToggleMinimize={() => setIsRecorderMinimized(!isRecorderMinimized)}
+            />
+            {!isSplitScreen && (
+              <button 
+                onClick={() => {
+                  const positions: ('top-right' | 'top-left' | 'bottom-right' | 'bottom-left')[] = ['top-right', 'bottom-right', 'bottom-left', 'top-left'];
+                  const currentIndex = positions.indexOf(recorderPosition);
+                  setRecorderPosition(positions[(currentIndex + 1) % positions.length]);
+                }}
+                className="absolute top-2 left-2 p-1.5 bg-black/50 text-white/70 hover:text-white rounded-lg backdrop-blur-md z-50"
+              >
+                <LayoutDashboard size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Smart Page Turn Camera Preview (Hidden) */}
+      <video ref={videoRef} className="hidden" playsInline muted />
     </div>
   );
 };

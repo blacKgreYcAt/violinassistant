@@ -232,116 +232,139 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
 
   return (
     <div className={cn("bg-surface-warm backdrop-blur-md rounded-3xl shadow-xl border border-white/5 p-6 flex flex-col transition-all", className)}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2 bg-white/5 p-1 rounded-xl">
-          <button
-            onClick={() => setActiveTab('tuner')}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
-              activeTab === 'tuner' ? "bg-accent-warm text-bg-warm shadow-md" : "text-text-muted hover:text-text-warm"
-            )}
-          >
-            <Settings2 size={16} />
-            調音器
-          </button>
-          <button
-            onClick={() => setActiveTab('drone')}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
-              activeTab === 'drone' ? "bg-accent-warm text-bg-warm shadow-md" : "text-text-muted hover:text-text-warm"
-            )}
-          >
-            <Volume2 size={16} />
-            基準音
-          </button>
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between shrink-0 h-10 mb-6">
+          <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/5">
+            <button
+              onClick={() => setActiveTab('tuner')}
+              className={cn(
+                "px-6 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+                activeTab === 'tuner' 
+                  ? "bg-accent-warm text-bg-warm shadow-lg shadow-accent-warm/20" 
+                  : "text-text-muted hover:text-text-warm hover:bg-white/5"
+              )}
+            >
+              <Settings2 size={16} />
+              調音器
+            </button>
+            <button
+              onClick={() => setActiveTab('drone')}
+              className={cn(
+                "px-6 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+                activeTab === 'drone' 
+                  ? "bg-accent-warm text-bg-warm shadow-lg shadow-accent-warm/20" 
+                  : "text-text-muted hover:text-text-warm hover:bg-white/5"
+              )}
+            >
+              <Volume2 size={16} />
+              基準音
+            </button>
+          </div>
+          {activeTab === 'tuner' && (
+            <button
+              onClick={toggleTuner}
+              className={cn(
+                "p-2 rounded-xl transition-all",
+                isListening ? "bg-red-500/20 text-red-400" : "bg-white/5 text-text-muted hover:text-text-warm"
+              )}
+            >
+              {isListening ? <Mic size={20} /> : <MicOff size={20} />}
+            </button>
+          )}
         </div>
-        {activeTab === 'tuner' && (
-          <button
-            onClick={toggleTuner}
-            className={cn(
-              "p-2 rounded-xl transition-all",
-              isListening ? "bg-red-500/20 text-red-400" : "bg-white/5 text-text-muted hover:text-text-warm"
-            )}
-          >
-            {isListening ? <Mic size={20} /> : <MicOff size={20} />}
-          </button>
-        )}
-      </div>
 
-      {activeTab === 'tuner' ? (
-        <div className="flex-1 flex flex-col items-center justify-center relative">
-          <div className="text-[80px] font-bold leading-none text-text-warm tracking-tighter mb-2">
-            {note}
-          </div>
-          <div className="text-sm text-text-muted font-mono mb-8">
-            {pitch > 0 ? `${pitch.toFixed(1)} Hz` : '--- Hz'}
-          </div>
-
-          {/* Tuning Meter */}
-          <div className="w-full max-w-[200px] h-2 bg-white/10 rounded-full relative overflow-hidden">
-            <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/30 -translate-x-1/2" />
-            {isListening && note !== '-' && (
-              <div 
-                className={cn(
-                  "absolute top-0 bottom-0 w-2 rounded-full -translate-x-1/2 transition-all duration-75",
-                  Math.abs(cents) < 5 ? "bg-emerald-500" : "bg-accent-warm"
-                )}
-                style={{ left: `${Math.max(0, Math.min(100, 50 + (cents / 50) * 50))}%` }}
-              />
-            )}
-          </div>
-          <div className="flex justify-between w-full max-w-[200px] mt-2 text-[10px] text-text-muted font-bold">
-            <span>-50</span>
-            <span className={Math.abs(cents) < 5 ? "text-emerald-500" : ""}>0</span>
-            <span>+50</span>
-          </div>
+        <div className="flex flex-col items-center justify-center h-40 shrink-0 mb-6">
+          {activeTab === 'tuner' ? (
+            <>
+              <div className="text-7xl font-bold leading-none text-text-warm tracking-tighter">
+                {note}
+              </div>
+              <div className="text-[10px] font-bold text-text-muted font-mono mt-2">
+                {pitch > 0 ? `${pitch.toFixed(1)} Hz` : '--- Hz'}
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-4">
+              <select
+                value={droneNote}
+                onChange={(e) => setDroneNote(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-2xl font-bold text-text-warm focus:outline-none focus:border-accent-warm appearance-none text-center"
+              >
+                {noteStrings.map(n => <option key={n} value={n} className="bg-bg-warm">{n}</option>)}
+              </select>
+              <select
+                value={droneOctave}
+                onChange={(e) => setDroneOctave(Number(e.target.value))}
+                className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-2xl font-bold text-text-warm focus:outline-none focus:border-accent-warm appearance-none text-center"
+              >
+                {[2, 3, 4, 5, 6].map(o => <option key={o} value={o} className="bg-bg-warm">{o}</option>)}
+              </select>
+            </div>
+          )}
         </div>
-      ) : (
+
         <div className="flex-1 flex flex-col items-center justify-center gap-6">
-          <div className="flex items-center gap-4">
-            <select
-              value={droneNote}
-              onChange={(e) => setDroneNote(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-2xl font-bold text-text-warm focus:outline-none focus:border-accent-warm appearance-none text-center"
-            >
-              {noteStrings.map(n => <option key={n} value={n} className="bg-bg-warm">{n}</option>)}
-            </select>
-            <select
-              value={droneOctave}
-              onChange={(e) => setDroneOctave(Number(e.target.value))}
-              className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-2xl font-bold text-text-warm focus:outline-none focus:border-accent-warm appearance-none text-center"
-            >
-              {[2, 3, 4, 5, 6].map(o => <option key={o} value={o} className="bg-bg-warm">{o}</option>)}
-            </select>
-          </div>
-
-          <button
-            onClick={toggleDrone}
-            className={cn(
-              "w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl",
-              isDronePlaying 
-                ? "bg-accent-warm text-bg-warm hover:scale-95" 
-                : "bg-white/5 text-text-warm hover:bg-white/10 hover:scale-105"
-            )}
-          >
-            {isDronePlaying ? <Square size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-2" />}
-          </button>
-
-          <div className="w-full max-w-[200px] flex items-center gap-3">
-            <VolumeX size={16} className="text-text-muted" />
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={droneVolume}
-              onChange={(e) => setDroneVolume(Number(e.target.value))}
-              className="flex-1 h-2 bg-white/10 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-accent-warm [&::-webkit-slider-thumb]:rounded-full cursor-pointer"
-            />
-            <Volume2 size={16} className="text-text-muted" />
-          </div>
+          {activeTab === 'tuner' ? (
+            <div className="w-full flex flex-col items-center">
+              <div className="w-full max-w-[200px] h-2 bg-white/10 rounded-full relative overflow-hidden">
+                <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/30 -translate-x-1/2" />
+                {isListening && note !== '-' && (
+                  <div 
+                    className={cn(
+                      "absolute top-0 bottom-0 w-2 rounded-full -translate-x-1/2 transition-all duration-75",
+                      Math.abs(cents) < 5 ? "bg-emerald-500" : "bg-accent-warm"
+                    )}
+                    style={{ left: `${Math.max(0, Math.min(100, 50 + (cents / 50) * 50))}%` }}
+                  />
+                )}
+              </div>
+              <div className="flex justify-between w-full max-w-[200px] mt-2 text-[10px] text-text-muted font-bold">
+                <span>-50</span>
+                <span className={Math.abs(cents) < 5 ? "text-emerald-500" : ""}>0</span>
+                <span>+50</span>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full flex flex-col items-center gap-6">
+              <div className="w-full max-w-[200px] flex items-center gap-3">
+                <VolumeX size={16} className="text-text-muted" />
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={droneVolume}
+                  onChange={(e) => setDroneVolume(Number(e.target.value))}
+                  className="flex-1 h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-accent-warm"
+                />
+                <Volume2 size={16} className="text-text-muted" />
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        <div className="mt-auto pt-6">
+          {activeTab === 'drone' ? (
+            <button
+              onClick={toggleDrone}
+              className={cn(
+                "w-full h-16 rounded-2xl flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-[0.98]",
+                isDronePlaying 
+                  ? "bg-white/10 text-text-warm" 
+                  : "bg-accent-warm text-bg-warm shadow-lg shadow-accent-warm/20 hover:bg-accent-warm/90"
+              )}
+            >
+              {isDronePlaying ? (
+                <><Square size={24} fill="currentColor" /> 停止</>
+              ) : (
+                <><Play size={24} fill="currentColor" /> 開始</>
+              )}
+            </button>
+          ) : (
+            <div className="h-16" /> // Placeholder to maintain height
+          )}
+        </div>
+      </div>
     </div>
   );
 };
