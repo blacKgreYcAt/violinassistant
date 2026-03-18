@@ -134,7 +134,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
     {
       icon: <Star className="text-accent-warm" />,
       title: "音樂集點卡與徽章",
-      content: "點擊右上角的「星星」圖示開啟集點卡！每完成 30 分鐘的練習即可獲得 1 個音符 🎵。集滿 10 個音符可獲得隨機的「樂器拼圖碎片」，集滿所有拼圖即可解鎖終極徽章「首席提琴手」！"
+      content: "點擊右上角的「星星」圖示開啟集點卡！每完成 30 分鐘的練習即可獲得 1 個音符 🎵。集滿 10 個音符可獲得隨機的「樂器拼圖碎片」，集滿所有拼圖即可解鎖終極徽章「首席演奏家」！"
     },
     {
       icon: <Calendar className="text-accent-warm" />,
@@ -177,67 +177,67 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
       content: "開啟樂譜後點擊上方「智能翻頁」。支援「水平」與「橫放」兩種模式，旁邊的小按鈕可切換「頭部動作」或「眨眼」模式。為避免連續誤觸，每次翻頁後有「2 秒鐘冷卻時間」。",
       className: "md:col-span-2",
       customContent: (
-        <div className="mt-4 space-y-3">
-          <div className="bg-bg-warm/50 p-3 rounded-xl border border-white/5">
-            <div className="text-xs font-bold text-accent-warm mb-2 flex items-center gap-2">
-              <Smile size={14} /> 水平/橫放模式 (頭部動作)
+        <div className="mt-4 space-y-4">
+          <div className="bg-bg-warm/50 p-4 rounded-2xl border border-white/5">
+            <div className="text-sm font-bold text-accent-warm mb-3 flex items-center gap-2">
+              <Smile size={16} /> 水平/橫放模式 (頭部動作)
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[10px] text-text-muted w-10">下一頁</span>
-                <div className="flex flex-col items-center gap-1">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-text-muted w-12 font-bold">下一頁</span>
+                <div className="flex flex-col items-center gap-2">
                   <HeadIcon type="right" />
-                  <span className="text-[10px] text-text-muted">1. 向右看</span>
+                  <span className="text-xs text-text-muted font-bold">1. 向右看</span>
                 </div>
-                <ArrowRight className="text-white/20 w-4 h-4" />
-                <div className="flex flex-col items-center gap-1">
+                <ArrowRight className="text-white/20 w-5 h-5" />
+                <div className="flex flex-col items-center gap-2">
                   <HeadIcon type="down" />
-                  <span className="text-[10px] text-text-muted">2. 向下點頭</span>
+                  <span className="text-xs text-text-muted font-bold">2. 向下點頭</span>
                 </div>
-                <ArrowRight className="text-white/20 w-4 h-4" />
-                <div className="flex flex-col items-center gap-1">
+                <ArrowRight className="text-white/20 w-5 h-5" />
+                <div className="flex flex-col items-center gap-2">
                   <HeadIcon type="center" />
-                  <span className="text-[10px] text-text-muted">3. 頭回正</span>
+                  <span className="text-xs text-text-muted font-bold">3. 頭回正</span>
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-1 pt-2 border-t border-white/5">
-                <span className="text-[10px] text-text-muted w-10">上一頁</span>
-                <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center justify-between gap-2 pt-4 border-t border-white/5">
+                <span className="text-xs text-text-muted w-12 font-bold">上一頁</span>
+                <div className="flex flex-col items-center gap-2">
                   <HeadIcon type="left" />
-                  <span className="text-[10px] text-text-muted">1. 向左看</span>
+                  <span className="text-xs text-text-muted font-bold">1. 向左看</span>
                 </div>
-                <ArrowRight className="text-white/20 w-4 h-4" />
-                <div className="flex flex-col items-center gap-1">
+                <ArrowRight className="text-white/20 w-5 h-5" />
+                <div className="flex flex-col items-center gap-2">
                   <HeadIcon type="up" />
-                  <span className="text-[10px] text-text-muted">2. 向上抬頭</span>
+                  <span className="text-xs text-text-muted font-bold">2. 向上抬頭</span>
                 </div>
-                <ArrowRight className="text-white/20 w-4 h-4" />
-                <div className="flex flex-col items-center gap-1">
+                <ArrowRight className="text-white/20 w-5 h-5" />
+                <div className="flex flex-col items-center gap-2">
                   <HeadIcon type="center" />
-                  <span className="text-[10px] text-text-muted">3. 頭回正</span>
+                  <span className="text-xs text-text-muted font-bold">3. 頭回正</span>
                 </div>
               </div>
             </div>
           </div>
           
-          <div className="bg-bg-warm/50 p-3 rounded-xl border border-white/5">
-            <div className="text-xs font-bold text-accent-warm mb-2 flex items-center gap-2">
-              <Eye size={14} /> 眨眼模式 (提琴手推薦)
+          <div className="bg-bg-warm/50 p-4 rounded-2xl border border-white/5">
+            <div className="text-sm font-bold text-accent-warm mb-3 flex items-center gap-2">
+              <Eye size={16} /> 眨眼模式 (演奏者推薦)
             </div>
-            <div className="flex items-center gap-4 mb-3">
-              <div className="flex-1 bg-white/5 p-2 rounded-lg text-center flex flex-col items-center gap-1">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex-1 bg-white/5 p-3 rounded-xl text-center flex flex-col items-center gap-2">
                 <WinkIcon type="right" />
-                <div className="text-[10px] text-text-muted">下一頁</div>
-                <div className="text-sm font-bold text-text-warm">單眨右眼</div>
+                <div className="text-xs text-text-muted font-bold">下一頁</div>
+                <div className="text-base font-bold text-text-warm">單眨右眼</div>
               </div>
-              <div className="flex-1 bg-white/5 p-2 rounded-lg text-center flex flex-col items-center gap-1">
+              <div className="flex-1 bg-white/5 p-3 rounded-xl text-center flex flex-col items-center gap-2">
                 <WinkIcon type="left" />
-                <div className="text-[10px] text-text-muted">上一頁</div>
-                <div className="text-sm font-bold text-text-warm">單眨左眼</div>
+                <div className="text-xs text-text-muted font-bold">上一頁</div>
+                <div className="text-base font-bold text-text-warm">單眨左眼</div>
               </div>
             </div>
-            <ul className="text-[10px] text-text-muted space-y-1 pl-3 list-disc">
-              <li>為避免正常雙眼眨眼誤觸，請確實做出<strong className="text-accent-warm font-normal">「單眼眨眼 (Wink)」</strong>動作。</li>
+            <ul className="text-xs text-text-muted space-y-2 pl-4 list-disc leading-relaxed">
+              <li>為避免正常雙眼眨眼誤觸，請確實做出<strong className="text-accent-warm font-bold">「單眼眨眼 (Wink)」</strong>動作。</li>
               <li>相機需清楚捕捉到眼睛，建議在光線充足處使用，並避免鏡片嚴重反光。</li>
             </ul>
           </div>

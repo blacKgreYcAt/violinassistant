@@ -153,15 +153,15 @@ export const Metronome: React.FC<MetronomeProps> = ({ className }) => {
             <button 
               onClick={() => setIsProgressiveMode(!isProgressiveMode)}
               className={cn(
-                "px-3 py-2 rounded-xl transition-all flex items-center gap-2 border",
+                "px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 border",
                 isProgressiveMode 
                   ? "bg-accent-warm text-bg-warm border-accent-warm shadow-lg shadow-accent-warm/20" 
                   : "hover:bg-white/5 text-text-muted border-white/5"
               )}
               title="速度漸進模式"
             >
-              <TrendingUp size={18} />
-              <span className="text-xs font-bold uppercase tracking-wider">漸進模式</span>
+              <TrendingUp size={20} />
+              <span className="text-sm font-bold uppercase tracking-wider">漸進模式</span>
             </button>
             <button 
               onClick={() => setIsMuted(!isMuted)}
@@ -174,47 +174,47 @@ export const Metronome: React.FC<MetronomeProps> = ({ className }) => {
 
         <div className="flex flex-col justify-center h-40 shrink-0 mb-6">
           {isProgressiveMode ? (
-            <div className="bg-white/5 p-4 rounded-2xl space-y-3 border border-white/5 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="bg-white/5 p-5 rounded-2xl space-y-4 border border-white/5 animate-in fade-in slide-in-from-top-2 duration-300">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-text-muted">
-                  <Target size={14} />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">目標速度</span>
+                  <Target size={16} />
+                  <span className="text-xs font-bold uppercase tracking-wider">目標速度</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setTargetBpm(Math.max(bpm + 1, targetBpm - 5))} className="p-1 hover:bg-white/10 rounded"><Minus size={14} /></button>
-                  <span className="text-sm font-mono font-bold w-8 text-center">{targetBpm}</span>
-                  <button onClick={() => setTargetBpm(Math.min(300, targetBpm + 5))} className="p-1 hover:bg-white/10 rounded"><Plus size={14} /></button>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setTargetBpm(Math.max(bpm + 1, targetBpm - 5))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Minus size={16} /></button>
+                  <span className="text-base font-mono font-bold w-10 text-center text-text-warm">{targetBpm}</span>
+                  <button onClick={() => setTargetBpm(Math.min(300, targetBpm + 5))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Plus size={16} /></button>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-text-muted">
-                  <TrendingUp size={14} />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">每次增加</span>
+                  <TrendingUp size={16} />
+                  <span className="text-xs font-bold uppercase tracking-wider">每次增加</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setBpmIncrement(Math.max(1, bpmIncrement - 1))} className="p-1 hover:bg-white/10 rounded"><Minus size={14} /></button>
-                  <span className="text-sm font-mono font-bold w-8 text-center">+{bpmIncrement}</span>
-                  <button onClick={() => setBpmIncrement(Math.min(20, bpmIncrement + 1))} className="p-1 hover:bg-white/10 rounded"><Plus size={14} /></button>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setBpmIncrement(Math.max(1, bpmIncrement - 1))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Minus size={16} /></button>
+                  <span className="text-base font-mono font-bold w-10 text-center text-text-warm">+{bpmIncrement}</span>
+                  <button onClick={() => setBpmIncrement(Math.min(20, bpmIncrement + 1))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Plus size={16} /></button>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-text-muted">
-                  <RefreshCw size={14} />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">間隔小節</span>
+                  <RefreshCw size={16} />
+                  <span className="text-xs font-bold uppercase tracking-wider">間隔小節</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setIncrementInterval(Math.max(1, incrementInterval - 1))} className="p-1 hover:bg-white/10 rounded"><Minus size={14} /></button>
-                  <span className="text-sm font-mono font-bold w-8 text-center">{incrementInterval}</span>
-                  <button onClick={() => setIncrementInterval(Math.min(32, incrementInterval + 1))} className="p-1 hover:bg-white/10 rounded"><Plus size={14} /></button>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setIncrementInterval(Math.max(1, incrementInterval - 1))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Minus size={16} /></button>
+                  <span className="text-base font-mono font-bold w-10 text-center text-text-warm">{incrementInterval}</span>
+                  <button onClick={() => setIncrementInterval(Math.min(32, incrementInterval + 1))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Plus size={16} /></button>
                 </div>
               </div>
               {isPlaying && (
-                <div className="pt-2 border-t border-white/5">
-                  <div className="flex justify-between items-center text-[10px] text-text-muted font-bold uppercase tracking-wider mb-1">
+                <div className="pt-3 border-t border-white/5">
+                  <div className="flex justify-between items-center text-xs text-text-muted font-bold uppercase tracking-wider mb-2">
                     <span>進度</span>
                     <span>{measuresCount}/{incrementInterval} 小節</span>
                   </div>
-                  <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-accent-warm transition-all duration-300" 
                       style={{ width: `${(measuresCount / incrementInterval) * 100}%` }}
@@ -233,11 +233,11 @@ export const Metronome: React.FC<MetronomeProps> = ({ className }) => {
           )}
         </div>
 
-        <div className="flex-1 flex flex-col gap-6 justify-center">
-          <div className="flex items-center gap-3 h-12">
+        <div className="flex-1 flex flex-col">
+          <div className="flex items-center gap-4 h-12 mb-4">
             <button 
               onClick={() => handleBpmChange(bpm - 1)}
-              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95"
+              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
             >
               <Minus size={20} />
             </button>
@@ -255,7 +255,7 @@ export const Metronome: React.FC<MetronomeProps> = ({ className }) => {
 
             <button 
               onClick={() => handleBpmChange(bpm + 1)}
-              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95"
+              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
             >
               <Plus size={20} />
             </button>
@@ -276,7 +276,7 @@ export const Metronome: React.FC<MetronomeProps> = ({ className }) => {
             <select 
               value={beatsPerMeasure}
               onChange={(e) => setBeatsPerMeasure(parseInt(e.target.value))}
-              className="text-sm font-semibold bg-white/5 text-text-warm px-3 py-1 rounded-lg outline-none"
+              className="text-base font-bold bg-white/5 text-text-warm px-4 py-2 rounded-xl outline-none border border-white/5 hover:border-white/10 transition-all cursor-pointer"
             >
               <option value="2">2/4</option>
               <option value="3">3/4</option>

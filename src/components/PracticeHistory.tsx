@@ -44,7 +44,7 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
 
     const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
-    let text = "🎻 我的提琴練習紀錄\n\n";
+    let text = "🎻 我的練琴練習紀錄\n\n";
     let totalSeconds = 0;
     
     text += "【每日練習時間】\n";
@@ -55,21 +55,21 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
     });
 
     text += `\n總計練習：${Math.round(totalSeconds / 60)} 分鐘\n`;
-    text += "來自「提琴練習小幫手」";
+    text += "來自「練琴練習小幫手」";
 
     try {
       if (navigator.canShare && navigator.canShare({ text })) {
         await navigator.share({
-          title: '我的提琴練習紀錄',
+          title: '我的練琴練習紀錄',
           text: text,
         });
       } else {
-        window.location.href = `mailto:?subject=${encodeURIComponent('我的提琴練習紀錄')}&body=${encodeURIComponent(text)}`;
+        window.location.href = `mailto:?subject=${encodeURIComponent('我的練琴練習紀錄')}&body=${encodeURIComponent(text)}`;
       }
     } catch (error) {
       console.error("Share failed:", error);
       if ((error as any).name !== 'AbortError') {
-        window.location.href = `mailto:?subject=${encodeURIComponent('我的提琴練習紀錄')}&body=${encodeURIComponent(text)}`;
+        window.location.href = `mailto:?subject=${encodeURIComponent('我的練琴練習紀錄')}&body=${encodeURIComponent(text)}`;
       }
     }
   };
@@ -129,18 +129,18 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
         <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 min-h-0">
           {/* Stats & Add Manual */}
           <div className="md:col-span-2 flex flex-col gap-3">
-            <div className="bg-white/5 px-3 py-4 rounded-2xl border border-white/5 flex flex-col justify-center flex-1">
-              <div className="text-xs font-bold text-text-muted uppercase tracking-[0.2em] mb-1">今日練習</div>
+            <div className="bg-white/5 px-4 py-6 rounded-2xl border border-white/5 flex flex-col justify-center flex-1">
+              <div className="text-xs font-bold text-text-muted uppercase tracking-[0.2em] mb-2">今日練習</div>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold font-mono text-text-warm">{todayMinutes}</span>
-                <span className="text-xs text-text-muted font-bold">分鐘</span>
+                <span className="text-4xl font-bold font-mono text-text-warm">{todayMinutes}</span>
+                <span className="text-base text-text-muted font-bold">分鐘</span>
               </div>
             </div>
-            <div className="bg-white/5 px-3 py-4 rounded-2xl border border-white/5 flex flex-col justify-center flex-1">
-              <div className="text-xs font-bold text-text-muted uppercase tracking-[0.2em] mb-1">近七天累計</div>
+            <div className="bg-white/5 px-4 py-6 rounded-2xl border border-white/5 flex flex-col justify-center flex-1">
+              <div className="text-xs font-bold text-text-muted uppercase tracking-[0.2em] mb-2">近七天累計</div>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold font-mono text-accent-warm">{totalMinutes}</span>
-                <span className="text-xs text-text-muted font-bold">分鐘</span>
+                <span className="text-4xl font-bold font-mono text-accent-warm">{totalMinutes}</span>
+                <span className="text-base text-text-muted font-bold">分鐘</span>
               </div>
             </div>
           </div>
@@ -154,17 +154,17 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: '#8E9299', fontSize: 11, fontWeight: 'bold' }} 
-                    dy={5}
+                    tick={{ fill: '#8E9299', fontSize: 14, fontWeight: 'bold' }} 
+                    dy={10}
                   />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: '#8E9299', fontSize: 11, fontWeight: 'bold' }} 
+                    tick={{ fill: '#8E9299', fontSize: 14, fontWeight: 'bold' }} 
                   />
                   <Tooltip 
                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    contentStyle={{ backgroundColor: '#151619', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontWeight: 'bold', fontSize: '10px' }}
+                    contentStyle={{ backgroundColor: '#151619', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontWeight: 'bold', fontSize: '14px', padding: '12px' }}
                     itemStyle={{ color: '#F27D26' }}
                     formatter={(value: number) => [`${value} 分鐘`, '練習時間']}
                   />
@@ -180,7 +180,7 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
 
           {/* Recent Notes */}
           <div className="md:col-span-4 flex flex-col gap-2 min-h-0">
-            <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider shrink-0">近期筆記</h3>
+            <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider shrink-0">近期筆記</h3>
             <div className="flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar flex-1">
               {history.filter(s => s.note).length > 0 ? (
                 history
@@ -190,14 +190,14 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
                   .map((session) => (
                     <div key={session.id} className="bg-white/5 p-3 rounded-xl border border-white/5 shrink-0">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-bold text-accent-warm">{session.date}</span>
-                        <span className="text-[10px] text-text-muted">{Math.round(session.durationSeconds / 60)} 分鐘</span>
+                        <span className="text-sm font-bold text-accent-warm">{session.date}</span>
+                        <span className="text-xs text-text-muted">{Math.round(session.durationSeconds / 60)} 分鐘</span>
                       </div>
-                      <p className="text-sm text-text-warm whitespace-pre-wrap line-clamp-2 leading-relaxed">{session.note}</p>
+                      <p className="text-base text-text-warm whitespace-pre-wrap line-clamp-2 leading-relaxed">{session.note}</p>
                     </div>
                   ))
               ) : (
-                <div className="flex-1 flex items-center justify-center text-text-muted text-xs font-bold italic bg-white/5 rounded-xl border border-dashed border-white/10">
+                <div className="flex-1 flex items-center justify-center text-text-muted text-sm font-bold italic bg-white/5 rounded-xl border border-dashed border-white/10">
                   尚無筆記
                 </div>
               )}

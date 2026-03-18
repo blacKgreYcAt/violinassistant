@@ -13,9 +13,9 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
-          name: '提琴練習小幫手',
-          short_name: '提琴小幫手',
-          description: '專為提琴演奏者設計的練習工具',
+          name: '練琴練習小幫手',
+          short_name: '練琴小幫手',
+          description: '專為演奏者設計的練習工具',
           theme_color: '#ffffff',
         }
       })

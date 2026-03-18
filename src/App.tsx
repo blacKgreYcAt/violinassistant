@@ -7,22 +7,10 @@ import { ScoreLibrary } from './components/ScoreLibrary';
 import { ScoreViewer } from './components/ScoreViewer';
 import { UserGuide } from './components/UserGuide';
 import { RewardCard } from './components/RewardCard';
-import { PracticeDashboard } from './components/PracticeDashboard';
 import { PracticeHistory } from './components/PracticeHistory';
-import { PracticeRoutine } from './lib/storage';
+import { PracticeRoutine, Score } from './lib/storage';
 import { Music, LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail, Star } from 'lucide-react';
 import { cn } from './lib/utils';
-
-interface Score {
-  id: string;
-  name: string;
-  type: 'file' | 'link';
-  data: string | string[];
-  date: number;
-  rotations?: number[];
-  annotations?: string[];
-  mastery?: number;
-}
 
 export default function App() {
   const [activeScore, setActiveScore] = useState<Score | null>(null);
@@ -154,17 +142,17 @@ export default function App() {
                 <Timer activeRoutine={activeRoutine} onClearRoutine={() => setActiveRoutine(null)} className="min-h-[540px] md:h-full" />
               </div>
             ) : (
-              <div className="h-full flex flex-col gap-4 overflow-hidden">
-                <div className="flex-[1.2] grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0">
-                  <ScoreLibrary onSelectScore={setActiveScore} className="h-full" />
-                  {!activeScore && (
-                    <VideoRecorder activeScoreName={activeScore?.name} className="h-full" />
-                  )}
-                </div>
+              <div className="h-full flex flex-col gap-4 overflow-y-auto md:overflow-hidden custom-scrollbar p-1">
                 {!activeScore && (
-                  <div className="flex-1 min-h-0">
-                    <PracticeHistory className="h-full" />
-                  </div>
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0 min-h-[500px]">
+                      <ScoreLibrary onSelectScore={setActiveScore} className="h-full" />
+                      <VideoRecorder activeScoreName={activeScore?.name} className="h-full" />
+                    </div>
+                    <div className="shrink-0 min-h-[400px]">
+                      <PracticeHistory className="h-full" />
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -176,7 +164,7 @@ export default function App() {
       {/* Footer */}
       <footer className="shrink-0 border-t border-white/5 py-3 px-4 md:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-muted bg-surface-warm/30 z-10">
         <div>
-          &copy; 2026 BERK STUDIO 提琴小幫手 - Concept by Rex CHU
+          &copy; 2026 BERK STUDIO 練琴小幫手 - Concept by Rex CHU
         </div>
         <div className="flex items-center gap-4">
           <a 

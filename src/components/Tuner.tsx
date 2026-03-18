@@ -279,7 +279,7 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
               <div className="text-7xl font-bold leading-none text-text-warm tracking-tighter">
                 {note}
               </div>
-              <div className="text-[10px] font-bold text-text-muted font-mono mt-2">
+              <div className="text-sm font-bold text-text-muted font-mono mt-3">
                 {pitch > 0 ? `${pitch.toFixed(1)} Hz` : '--- Hz'}
               </div>
             </>
@@ -303,43 +303,66 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
           )}
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center gap-6">
+        <div className="flex-1 flex flex-col">
           {activeTab === 'tuner' ? (
-            <div className="w-full flex flex-col items-center">
-              <div className="w-full max-w-[200px] h-2 bg-white/10 rounded-full relative overflow-hidden">
-                <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/30 -translate-x-1/2" />
-                {isListening && note !== '-' && (
-                  <div 
-                    className={cn(
-                      "absolute top-0 bottom-0 w-2 rounded-full -translate-x-1/2 transition-all duration-75",
-                      Math.abs(cents) < 5 ? "bg-emerald-500" : "bg-accent-warm"
+            <div className="w-full flex flex-col">
+              <div className="flex items-center gap-4 h-12 mb-4">
+                <div className="w-10 shrink-0" />
+                <div className="flex-1 flex items-center h-full">
+                  <div className="w-full h-2 bg-white/10 rounded-full relative overflow-hidden">
+                    <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/30 -translate-x-1/2" />
+                    {isListening && note !== '-' && (
+                      <div 
+                        className={cn(
+                          "absolute top-0 bottom-0 w-2 rounded-full -translate-x-1/2 transition-all duration-75",
+                          Math.abs(cents) < 5 ? "bg-emerald-500" : "bg-accent-warm"
+                        )}
+                        style={{ left: `${Math.max(0, Math.min(100, 50 + (cents / 50) * 50))}%` }}
+                      />
                     )}
-                    style={{ left: `${Math.max(0, Math.min(100, 50 + (cents / 50) * 50))}%` }}
-                  />
-                )}
+                  </div>
+                </div>
+                <div className="w-10 shrink-0" />
               </div>
-              <div className="flex justify-between w-full max-w-[200px] mt-2 text-[10px] text-text-muted font-bold">
-                <span>-50</span>
-                <span className={Math.abs(cents) < 5 ? "text-emerald-500" : ""}>0</span>
-                <span>+50</span>
+              <div className="flex items-center justify-center h-12">
+                <div className="flex justify-between w-full max-w-[200px] text-xs text-text-muted font-bold">
+                  <span>-50</span>
+                  <span className={cn("transition-colors", Math.abs(cents) < 5 ? "text-emerald-500 scale-110" : "")}>0</span>
+                  <span>+50</span>
+                </div>
               </div>
             </div>
           ) : (
-            <div className="w-full flex flex-col items-center gap-6">
-              <div className="w-full max-w-[200px] flex items-center gap-3">
-                <VolumeX size={16} className="text-text-muted" />
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={droneVolume}
-                  onChange={(e) => setDroneVolume(Number(e.target.value))}
-                  className="flex-1 h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-accent-warm"
-                />
-                <Volume2 size={16} className="text-text-muted" />
+            <>
+              <div className="flex items-center gap-4 h-12 mb-4">
+                <button 
+                  onClick={() => setDroneVolume(Math.max(0, droneVolume - 0.1))}
+                  className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
+                >
+                  <VolumeX size={18} />
+                </button>
+                
+                <div className="flex-1 flex items-center h-full">
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={droneVolume}
+                    onChange={(e) => setDroneVolume(Number(e.target.value))}
+                    className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-accent-warm"
+                  />
+                </div>
+
+                <button 
+                  onClick={() => setDroneVolume(Math.min(1, droneVolume + 0.1))}
+                  className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
+                >
+                  <Volume2 size={18} />
+                </button>
               </div>
-            </div>
+              <div className="h-12" />
+            </>
           )}
         </div>
 

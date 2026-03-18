@@ -315,7 +315,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
         await navigator.share({
           files: [file],
           title: '練習錄影',
-          text: `這是我的提琴練習錄影：${activeScoreName || ''}`,
+          text: `這是我的練琴練習錄影：${activeScoreName || ''}`,
         });
       } else {
         downloadVideo();

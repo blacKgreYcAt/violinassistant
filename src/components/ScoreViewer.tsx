@@ -33,7 +33,63 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
   const [showMasteryPopover, setShowMasteryPopover] = useState(false);
   const [showTempoHistory, setShowTempoHistory] = useState(false);
   const [currentBpm, setCurrentBpm] = useState(100);
+  const bpmRef = useRef(currentBpm);
   const [isMetronomePlaying, setIsMetronomePlaying] = useState(false);
+  const metronomeAudioCtxRef = useRef<AudioContext | null>(null);
+  const metronomeNextNoteTimeRef = useRef(0);
+  const metronomeTimerIDRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    bpmRef.current = currentBpm;
+  }, [currentBpm]);
+
+  const playMetronomeClick = (time: number) => {
+    if (!metronomeAudioCtxRef.current) return;
+    const osc = metronomeAudioCtxRef.current.createOscillator();
+    const envelope = metronomeAudioCtxRef.current.createGain();
+
+    osc.frequency.value = 1000;
+    envelope.gain.value = 1;
+    envelope.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+
+    osc.connect(envelope);
+    envelope.connect(metronomeAudioCtxRef.current.destination);
+
+    osc.start(time);
+    osc.stop(time + 0.1);
+  };
+
+  const scheduler = () => {
+    if (!metronomeAudioCtxRef.current || !isMetronomePlaying) return;
+    while (metronomeNextNoteTimeRef.current < metronomeAudioCtxRef.current.currentTime + 0.1) {
+      playMetronomeClick(metronomeNextNoteTimeRef.current);
+      const secondsPerBeat = 60.0 / bpmRef.current;
+      metronomeNextNoteTimeRef.current += secondsPerBeat;
+    }
+    metronomeTimerIDRef.current = window.setTimeout(scheduler, 25);
+  };
+
+  useEffect(() => {
+    if (isMetronomePlaying) {
+      if (!metronomeAudioCtxRef.current) {
+        metronomeAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      if (metronomeAudioCtxRef.current.state === 'suspended') {
+        metronomeAudioCtxRef.current.resume();
+      }
+      metronomeNextNoteTimeRef.current = metronomeAudioCtxRef.current.currentTime;
+      scheduler();
+    } else {
+      if (metronomeTimerIDRef.current) {
+        clearTimeout(metronomeTimerIDRef.current);
+      }
+    }
+    return () => {
+      if (metronomeTimerIDRef.current) {
+        clearTimeout(metronomeTimerIDRef.current);
+      }
+    };
+  }, [isMetronomePlaying]);
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [recorderPosition, setRecorderPosition] = useState<'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'>('top-right');
   const [isRecorderMinimized, setIsRecorderMinimized] = useState(false);
@@ -459,6 +515,16 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({ score: initialScore, o
         </div>
 
         <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setIsMetronomePlaying(!isMetronomePlaying)}
+            className={cn(
+              "px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
+              isMetronomePlaying ? "bg-accent-warm text-bg-warm shadow-lg shadow-accent-warm/20" : "bg-white/5 text-text-muted hover:text-text-warm"
+            )}
+          >
+            <Music size={18} />
+            <span className="hidden sm:inline">{currentBpm} BPM</span>
+          </button>
           {hasUnsavedChanges && (
             <button 
               onClick={saveAnnotationsAndRotations}

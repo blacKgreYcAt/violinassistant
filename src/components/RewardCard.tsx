@@ -205,14 +205,14 @@ export const RewardCard: React.FC<RewardCardProps> = ({ isOpen, onClose }) => {
               "text-xl font-black tracking-widest",
               rewards.concertmasterUnlocked ? "text-yellow-700" : "text-black/40"
             )}>
-              首席提琴手
+              首席演奏家
             </h3>
             <p className={cn(
               "text-sm mt-2 max-w-xs",
               rewards.concertmasterUnlocked ? "text-yellow-600/80" : "text-black/30"
             )}>
               {rewards.concertmasterUnlocked 
-                ? "太棒了！你已經收集了所有樂器拼圖，成為了真正的首席提琴手！" 
+                ? "太棒了！你已經收集了所有樂器拼圖，成為了真正的首席演奏家！" 
                 : "收集所有樂器拼圖（共 36 片）即可解鎖終極徽章！"}
             </p>
           </div>

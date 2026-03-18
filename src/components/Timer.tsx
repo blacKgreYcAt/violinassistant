@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Timer as TimerIcon, Play, Pause, RotateCcw, Bell, Edit3, Check, X, ListMusic, SkipForward } from 'lucide-react';
+import { Timer as TimerIcon, Play, Pause, RotateCcw, Bell, Edit3, Check, X, ListMusic, SkipForward, Minus, Plus } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { addPracticeSession, PracticeRoutine, processPracticeReward, RewardResult } from '../lib/storage';
 
@@ -34,12 +34,13 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
   }, [activeRoutine]);
 
   useEffect(() => {
-    if (isActive && remainingSeconds > 0) {
+    if (isActive) {
       timerRef.current = window.setInterval(() => {
         setRemainingSeconds(prev => {
           if (prev <= 1) {
             setIsActive(false);
             setIsFinished(true);
+            if (timerRef.current) clearInterval(timerRef.current);
             return 0;
           }
           return prev - 1;
@@ -52,7 +53,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isActive, remainingSeconds]);
+  }, [isActive]);
 
   useEffect(() => {
     if (isFinished) {
@@ -233,9 +234,9 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
           )}
         </div>
 
-        <div className="flex-1 flex flex-col gap-6 justify-center">
+        <div className="flex-1 flex flex-col">
           {activeRoutine ? (
-            <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex flex-col gap-2">
+            <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex flex-col gap-2 h-28 justify-center">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-accent-warm flex items-center gap-1">
                   <ListMusic size={14} />
@@ -250,8 +251,50 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-4 gap-2">
+            <>
+              <div className="flex items-center gap-4 h-12 mb-4">
+                <button 
+                  onClick={() => {
+                    const val = Math.max(1, inputMinutes - 1);
+                    setInputMinutes(val);
+                    setRemainingSeconds(val * 60);
+                  }}
+                  disabled={isActive}
+                  className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0 disabled:opacity-30"
+                >
+                  <Minus size={20} />
+                </button>
+                
+                <div className="flex-1 flex items-center h-full">
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="120" 
+                    value={inputMinutes} 
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setInputMinutes(val);
+                      setRemainingSeconds(val * 60);
+                    }}
+                    disabled={isActive}
+                    className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-accent-warm disabled:opacity-50"
+                  />
+                </div>
+
+                <button 
+                  onClick={() => {
+                    const val = Math.min(120, inputMinutes + 1);
+                    setInputMinutes(val);
+                    setRemainingSeconds(val * 60);
+                  }}
+                  disabled={isActive}
+                  className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0 disabled:opacity-30"
+                >
+                  <Plus size={20} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-4 gap-2 h-12">
                 {[15, 30, 45, 60].map((mins) => (
                   <button
                     key={mins}
@@ -268,27 +311,10 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
                   </button>
                 ))}
               </div>
-              
-              <div className="flex items-center gap-3 bg-white/5 p-2 rounded-2xl border border-white/5">
-                <span className="text-xs font-bold text-text-muted uppercase tracking-wider pl-2 shrink-0">自訂分鐘</span>
-                <input 
-                  type="number"
-                  min="1"
-                  max="999"
-                  value={inputMinutes}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value) || 0;
-                    setInputMinutes(val);
-                    setRemainingSeconds(val * 60);
-                  }}
-                  disabled={isActive}
-                  className="flex-1 bg-transparent border-none text-right pr-2 font-bold text-lg text-text-warm focus:outline-none disabled:opacity-50"
-                />
-              </div>
-            </div>
+            </>
           )}
 
-          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mt-8">
             <div 
               className={cn(
                 "h-full transition-all duration-1000",
@@ -366,7 +392,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
                 <div className="text-5xl mb-2">🏆</div>
                 <h3 className="font-black text-yellow-700 mb-1 tracking-widest">解鎖終極徽章</h3>
                 <p className="text-sm text-yellow-600 font-medium">
-                  恭喜你收集了所有拼圖，成為了「首席提琴手」！
+                  恭喜你收集了所有拼圖，成為了「首席演奏家」！
                 </p>
               </div>
             )}

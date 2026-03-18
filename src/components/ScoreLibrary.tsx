@@ -16,6 +16,9 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [editingTags, setEditingTags] = useState('');
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [editingFolderName, setEditingFolderName] = useState('');
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -74,6 +77,30 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
       await saveScores(newScores);
       if (currentFolderId === id) setCurrentFolderId(null);
     }
+  };
+
+  const startEditingFolder = (e: React.MouseEvent, folder: Folder) => {
+    e.stopPropagation();
+    setEditingFolderId(folder.id);
+    setEditingFolderName(folder.name);
+  };
+
+  const cancelEditingFolder = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingFolderId(null);
+    setEditingFolderName('');
+  };
+
+  const saveFolderRename = async (e: React.MouseEvent | React.KeyboardEvent, id: string) => {
+    e.stopPropagation();
+    if (!editingFolderName.trim()) return;
+    
+    const newFolders = folders.map(f => 
+      f.id === id ? { ...f, name: editingFolderName.trim() } : f
+    );
+    await saveFolders(newFolders);
+    setEditingFolderId(null);
+    setEditingFolderName('');
   };
 
   const moveToFolder = async (scoreId: string, folderId: string | undefined, e: React.MouseEvent) => {
@@ -204,7 +231,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
         await navigator.share({
           files: [file],
           title: '樂譜圖書館備份',
-          text: '這是我的提琴練習小幫手樂譜備份檔案。',
+          text: '這是我的練琴練習小幫手樂譜備份檔案。',
         });
       } else {
         // Fallback to download if sharing is not supported
@@ -471,14 +498,14 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
           </div>
         )}
 
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+        <div className="relative group shrink-0">
+          <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent-warm transition-colors" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜尋樂譜或標籤..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-text-warm focus:outline-none focus:border-accent-warm transition-all"
+            placeholder="搜尋樂譜、標籤或作曲家..."
+            className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-lg font-bold text-text-warm focus:outline-none focus:border-accent-warm focus:ring-4 focus:ring-accent-warm/10 transition-all shadow-inner"
           />
         </div>
 
@@ -489,23 +516,61 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
               onClick={() => setCurrentFolderId(folder.id)}
               className="group flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-accent-warm/30 transition-all cursor-pointer"
             >
-              <div className="flex items-center gap-3 overflow-hidden">
+              <div className="flex items-center gap-3 overflow-hidden flex-1">
                 <div className="w-10 h-10 rounded-xl bg-accent-warm/10 flex items-center justify-center shrink-0">
                   <FolderIcon size={20} className="text-accent-warm" />
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-sm text-text-warm truncate">{folder.name}</span>
-                  <span className="text-xs text-text-muted truncate">
-                    {scores.filter(s => s.folderId === folder.id).length} 份樂譜
-                  </span>
-                </div>
+                {editingFolderId === folder.id ? (
+                  <div className="flex items-center gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      autoFocus
+                      type="text"
+                      value={editingFolderName}
+                      onChange={(e) => setEditingFolderName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveFolderRename(e, folder.id);
+                        if (e.key === 'Escape') cancelEditingFolder(e as any);
+                      }}
+                      className="flex-1 bg-bg-warm border border-white/10 rounded-lg px-2 py-1.5 text-sm font-bold text-text-warm outline-none focus:ring-2 focus:ring-accent-warm/20"
+                    />
+                    <button 
+                      onClick={(e) => saveFolderRename(e, folder.id)}
+                      className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-colors shrink-0"
+                    >
+                      <Check size={16} />
+                    </button>
+                    <button 
+                      onClick={cancelEditingFolder}
+                      className="p-1.5 text-text-muted hover:bg-white/5 rounded-md transition-colors shrink-0"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-base text-text-warm truncate">{folder.name}</span>
+                    <span className="text-xs text-text-muted truncate">
+                      {scores.filter(s => s.folderId === folder.id).length} 份樂譜
+                    </span>
+                  </div>
+                )}
               </div>
-              <button 
-                onClick={(e) => deleteFolder(folder.id, e)}
-                className="p-2 text-text-muted hover:text-red-400 opacity-60 hover:opacity-100 transition-all rounded-xl hover:bg-white/5"
-              >
-                <Trash2 size={16} />
-              </button>
+              <div className="flex items-center gap-1">
+                {editingFolderId !== folder.id && (
+                  <button 
+                    onClick={(e) => startEditingFolder(e, folder)}
+                    className="p-2 text-text-muted hover:text-text-warm opacity-60 hover:opacity-100 transition-all rounded-xl hover:bg-white/5"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                )}
+                <button 
+                  onClick={(e) => deleteFolder(folder.id, e)}
+                  className="p-2 text-text-muted hover:text-red-400 opacity-60 hover:opacity-100 transition-all rounded-xl hover:bg-white/5"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))}
 
@@ -568,8 +633,8 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1">
-                    <p className="text-sm font-bold text-text-warm line-clamp-2 leading-tight group-hover:text-accent-warm transition-colors pr-2">{score.name}</p>
-                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                    <p className="text-base font-bold text-text-warm line-clamp-2 leading-tight group-hover:text-accent-warm transition-colors pr-2">{score.name}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
                       <p className="text-[10px] text-text-muted uppercase font-bold tracking-tighter shrink-0">
                         {new Date(score.date).toLocaleDateString()}
                       </p>
@@ -605,36 +670,54 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-0.5 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 {folders.length > 0 && (
-                  <div className="relative group/menu">
+                  <div className="relative">
                     <button 
-                      onClick={(e) => e.stopPropagation()}
-                      className="p-1.5 text-text-muted hover:text-accent-warm hover:bg-white/5 rounded-lg transition-colors opacity-60 hover:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMenuId(activeMenuId === score.id ? null : score.id);
+                      }}
+                      className={cn(
+                        "p-2 text-text-muted hover:text-accent-warm hover:bg-white/5 rounded-xl transition-all",
+                        activeMenuId === score.id ? "bg-accent-warm/10 text-accent-warm" : "opacity-60 hover:opacity-100"
+                      )}
                       title="移動到資料夾"
                     >
-                      <FolderIcon size={16} />
+                      <FolderIcon size={18} />
                     </button>
-                    <div className="absolute right-0 bottom-full mb-2 hidden group-hover/menu:block bg-surface-warm border border-white/10 rounded-xl shadow-xl p-2 min-w-[150px] z-10">
-                      <div className="text-xs font-bold text-text-muted mb-2 px-2">移動到...</div>
-                      {currentFolderId && (
-                        <button 
-                          onClick={(e) => moveToFolder(score.id, undefined, e)}
-                          className="w-full text-left px-2 py-1.5 text-sm text-text-warm hover:bg-white/5 rounded-lg"
-                        >
-                          (移出資料夾)
-                        </button>
-                      )}
-                      {folders.filter(f => f.id !== currentFolderId).map(f => (
-                        <button 
-                          key={f.id}
-                          onClick={(e) => moveToFolder(score.id, f.id, e)}
-                          className="w-full text-left px-2 py-1.5 text-sm text-text-warm hover:bg-white/5 rounded-lg truncate"
-                        >
-                          {f.name}
-                        </button>
-                      ))}
-                    </div>
+                    {activeMenuId === score.id && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-10" 
+                          onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); }}
+                        />
+                        <div className="absolute right-0 bottom-full mb-2 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-3 min-w-[180px] z-20 animate-in fade-in slide-in-from-bottom-2">
+                          <div className="text-xs font-bold text-text-muted mb-3 px-2 uppercase tracking-widest">移動到資料夾</div>
+                          <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto custom-scrollbar">
+                            {currentFolderId && (
+                              <button 
+                                onClick={(e) => { moveToFolder(score.id, undefined, e); setActiveMenuId(null); }}
+                                className="w-full text-left px-3 py-2.5 text-sm text-text-warm hover:bg-white/5 rounded-xl transition-colors flex items-center gap-2"
+                              >
+                                <X size={14} className="text-text-muted" />
+                                <span>(移出資料夾)</span>
+                              </button>
+                            )}
+                            {folders.filter(f => f.id !== currentFolderId).map(f => (
+                              <button 
+                                key={f.id}
+                                onClick={(e) => { moveToFolder(score.id, f.id, e); setActiveMenuId(null); }}
+                                className="w-full text-left px-3 py-2.5 text-sm text-text-warm hover:bg-white/5 rounded-xl transition-colors truncate flex items-center gap-2"
+                              >
+                                <FolderIcon size={14} className="text-accent-warm" />
+                                <span className="truncate">{f.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
                 {editingId !== score.id && (
@@ -646,24 +729,24 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
                         setCropPage(0);
                         setCropRect(score.cropData?.[0] || { x: 0, y: 0, width: 100, height: 100 });
                       }}
-                      className="p-1.5 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-lg transition-colors opacity-60 hover:opacity-100"
+                      className="p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all opacity-60 hover:opacity-100"
                       title="裁切樂譜"
                     >
-                      <Crop size={16} />
+                      <Crop size={18} />
                     </button>
                     <button 
                       onClick={(e) => startEditing(e, score)}
-                      className="p-1.5 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-lg transition-colors opacity-60 hover:opacity-100"
+                      className="p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all opacity-60 hover:opacity-100"
                     >
-                      <Edit2 size={16} />
+                      <Edit2 size={18} />
                     </button>
                   </>
                 )}
                 <button 
                   onClick={(e) => deleteScore(score.id, e)}
-                  className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors opacity-60 hover:opacity-100"
+                  className="p-2 text-text-muted hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all opacity-60 hover:opacity-100"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={18} />
                 </button>
               </div>
             </div>
