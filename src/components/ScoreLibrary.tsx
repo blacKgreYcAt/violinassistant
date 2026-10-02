@@ -1,15 +1,17 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, Music, FileText, Trash2, Edit2, Check, X, Camera, Wand2, Download, UploadCloud, Share2, Library, Folder as FolderIcon, Plus, ChevronLeft, Search, Tag, Star, Crop, Zap } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { Upload, Music, Trash2, Edit2, Check, X, Download, UploadCloud, Share2, Library, Folder as FolderIcon, Plus, ChevronLeft, Search, Tag, Star, Crop, Zap } from 'lucide-react';
+import { cn, isAbortError } from '../lib/utils';
 import { Score, Folder, getScores, saveScores as saveScoresToDb, getFolders, saveFolders as saveFoldersToDb } from '../lib/storage';
 
 interface ScoreLibraryProps {
   onSelectScore: (score: Score) => void;
-  className?: string;
+  // 這裡刻意沒有 className：本元件回傳的是 Fragment（上傳卡 + 清單卡兩張並排），
+  // 沒有單一根元素可以套用，原本宣告了卻從未使用，呼叫端傳進來的樣式會被默默丟掉。
+  // 版面由外層的 grid 控制。
 }
 
-export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, className }) => {
+export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => {
   const [scores, setScores] = useState<Score[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -60,7 +62,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
   const createFolder = async () => {
     if (!newFolderName.trim()) return;
     const newFolder: Folder = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       name: newFolderName.trim(),
       color: '#F27D26' // Default color
     };
@@ -85,7 +87,9 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
     setEditingFolderName(folder.name);
   };
 
-  const cancelEditingFolder = (e: React.MouseEvent) => {
+  // 用 SyntheticEvent 而非 MouseEvent：這個函式也會被 onKeyDown（Escape）呼叫，
+  // 它只用到 stopPropagation()。原本是用 `as any` 硬轉，掩蓋了真正的型別不符。
+  const cancelEditingFolder = (e: React.SyntheticEvent) => {
     e.stopPropagation();
     setEditingFolderId(null);
     setEditingFolderName('');
@@ -164,17 +168,25 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
       const sortedFiles = [...files].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
       
       const filePromises = sortedFiles.map(file => {
-        return new Promise<string>((resolve) => {
+        return new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = async () => {
-            const base64 = reader.result as string;
-            if (file.type.startsWith('image/')) {
-              const enhanced = await enhanceImage(base64);
-              resolve(enhanced);
-            } else {
-              resolve(base64);
+            try {
+              const base64 = reader.result as string;
+              if (file.type.startsWith('image/')) {
+                const enhanced = await enhanceImage(base64);
+                resolve(enhanced);
+              } else {
+                resolve(base64);
+              }
+            } catch (err) {
+              reject(err);
             }
           };
+          // 一定要處理 onerror：否則讀檔失敗時這個 Promise 永遠不會 settle，
+          // Promise.all 會一直等下去，上傳中的轉圈動畫就再也停不下來。
+          reader.onerror = () => reject(reader.error || new Error(`無法讀取檔案：${file.name}`));
+          reader.onabort = () => reject(new Error(`檔案讀取被中斷：${file.name}`));
           reader.readAsDataURL(file);
         });
       });
@@ -182,7 +194,9 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
       const results = await Promise.all(filePromises);
       
       const newScore: Score = {
-        id: Math.random().toString(36).substr(2, 9),
+        // 原本用 Math.random().toString(36).substr(2, 9)：substr 已被棄用，
+        // 而且遇到像 0.5 這種值會產生極短的 ID，增加碰撞風險。
+        id: crypto.randomUUID(),
         name: sortedFiles.length > 1 
           ? sortedFiles[0].name.replace(/\.[^/.]+$/, "") + " (多頁)"
           : sortedFiles[0].name.replace(/\.[^/.]+$/, ""),
@@ -191,29 +205,41 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
         date: Date.now(),
         folderId: currentFolderId || undefined,
       };
-      await saveScores([newScore, ...scores]);
+      // 這裡重新讀一次目前的樂譜再合併，而不是直接用 render 當下閉包裡的 scores。
+      // 否則連續快速上傳時，第二次會拿著過期的清單覆寫，第一次上傳的樂譜就不見了。
+      const latestScores = await getScores();
+      await saveScores([newScore, ...latestScores]);
     } catch (error) {
       console.error("Processing failed:", error);
+      // 原本這裡只有 console.error，使用者看到轉圈結束、樂譜卻沒出現，
+      // 完全不知道發生什麼事（storage 在空間不足時是會 throw 的）。
+      alert(error instanceof Error ? `上傳失敗：${error.message}` : '上傳失敗，請重試。');
     } finally {
       setIsUploading(false);
     }
   };
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    processFiles(acceptedFiles);
-  }, [scores]);
-
   const exportLibrary = () => {
     try {
       const dataStr = JSON.stringify(scores);
-      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-      
+      // 必須用 Blob 而不是 data: URI。
+      // 樂譜是以 base64 圖片存放的，備份檔很容易就好幾十 MB，
+      // 而瀏覽器對 data: URI 的長度有上限，超過就會下載失敗或產生壞檔。
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
       const exportFileDefaultName = `viola-scores-backup-${new Date().toISOString().split('T')[0]}.json`;
-      
+
       const linkElement = document.createElement('a');
-      linkElement.setAttribute('href', dataUri);
-      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.href = url;
+      linkElement.download = exportFileDefaultName;
+      document.body.appendChild(linkElement);
       linkElement.click();
+
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        document.body.removeChild(linkElement);
+      }, 100);
     } catch (error) {
       console.error("Export failed:", error);
       alert("匯出失敗，請稍後再試。");
@@ -240,7 +266,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
     } catch (error) {
       console.error("Share failed:", error);
       // If user cancels or error occurs, don't necessarily alert unless it's a real error
-      if ((error as any).name !== 'AbortError') {
+      if (!isAbortError(error)) {
         exportLibrary();
       }
     }
@@ -254,13 +280,26 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
     reader.onload = async (event) => {
       try {
         const importedScores = JSON.parse(event.target?.result as string);
-        if (Array.isArray(importedScores)) {
-          if (confirm(`確定要匯入 ${importedScores.length} 份樂譜嗎？這將會取代目前的圖書館。`)) {
-            await saveScores(importedScores);
-            alert("匯入成功！");
-          }
-        } else {
-          alert("無效的備份檔案格式。");
+
+        // 原本只檢查 Array.isArray 就直接取代整個圖書館：
+        // 隨便一個剛好是陣列的 JSON 都會把使用者的樂譜全部洗掉。
+        // 這裡確認每一筆至少具備樂譜該有的欄位。
+        const looksLikeScore = (item: unknown): boolean => {
+          if (!item || typeof item !== 'object') return false;
+          const s = item as Partial<Score>;
+          return typeof s.id === 'string'
+            && typeof s.name === 'string'
+            && (typeof s.data === 'string' || Array.isArray(s.data));
+        };
+
+        if (!Array.isArray(importedScores) || !importedScores.every(looksLikeScore)) {
+          alert("無效的備份檔案格式。請選擇本 App 匯出的備份檔。");
+          return;
+        }
+
+        if (confirm(`確定要匯入 ${importedScores.length} 份樂譜嗎？這將會「完全取代」目前圖書館中的 ${scores.length} 份樂譜，且無法復原。\n\n建議先用「下載備份」保存目前的內容。`)) {
+          await saveScores(importedScores);
+          alert("匯入成功！");
         }
       } catch (error) {
         console.error("Import failed:", error);
@@ -272,8 +311,11 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
     e.target.value = '';
   };
 
+  // 直接把 processFiles 交給 useDropzone。
+  // 原本外面包了一層 useCallback 且依賴 [scores]，但 processFiles 現在是
+  // 重新從資料庫讀取最新清單再合併（避免連續上傳互相覆蓋），不需要這個依賴。
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
-    onDrop,
+    onDrop: processFiles,
     accept: {
       'image/*': ['.png', '.jpg', '.jpeg']
     }
@@ -286,7 +328,9 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
     setEditingTags(score.tags ? score.tags.join(', ') : '');
   };
 
-  const cancelEditing = (e: React.MouseEvent) => {
+  // 用 SyntheticEvent 而非 MouseEvent：這個函式也會被 onKeyDown（Escape）呼叫，
+  // 它只用到 stopPropagation()。原本是用 `as any` 硬轉，掩蓋了真正的型別不符。
+  const cancelEditing = (e: React.SyntheticEvent) => {
     e.stopPropagation();
     setEditingId(null);
     setEditingName('');
@@ -529,7 +573,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
                       onChange={(e) => setEditingFolderName(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') saveFolderRename(e, folder.id);
-                        if (e.key === 'Escape') cancelEditingFolder(e as any);
+                        if (e.key === 'Escape') cancelEditingFolder(e);
                       }}
                       className="flex-1 bg-bg-warm border border-white/10 rounded-lg px-2 py-1.5 text-sm font-bold text-text-warm outline-none focus:ring-2 focus:ring-accent-warm/20"
                     />
@@ -613,7 +657,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore, class
                         placeholder="標籤 (用逗號分隔，如: 音階, 練習曲)"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') saveRename(e, score.id);
-                          if (e.key === 'Escape') cancelEditing(e as any);
+                          if (e.key === 'Escape') cancelEditing(e);
                         }}
                         className="flex-1 bg-bg-warm border border-white/10 rounded-lg px-2 py-1 text-xs text-text-warm outline-none focus:ring-2 focus:ring-accent-warm/20"
                       />

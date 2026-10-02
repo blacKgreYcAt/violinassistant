@@ -25,6 +25,33 @@
   }
 }
 
+/*
+ * 「滑過才顯示」的控制項。
+ *
+ * 原本這類按鈕直接寫 `opacity-0 group-hover:opacity-100`，但觸控裝置沒有滑鼠 hover，
+ * 結果就是按鈕在平板上看不見（行動瀏覽器頂多在點擊時模擬 hover，變成沒有任何
+ * 視覺提示的兩段式點擊）。這個 App 主打平板，練習計畫的「開始練習」按鈕正是受害者。
+ *
+ * 作法：預設一律顯示；只有在「真的支援 hover 的裝置」上才隱藏並於滑過時淡入。
+ * （不用 Tailwind 的任意變體 `[@media(hover:hover)]:` 是因為實測 v4.3.2 不會編譯出來。）
+ */
+.hover-reveal {
+  opacity: 1;
+  transition: opacity 150ms ease;
+}
+
+@media (hover: hover) {
+  .hover-reveal {
+    opacity: 0;
+  }
+
+  .group:hover .hover-reveal,
+  .hover-reveal:focus-visible,
+  .hover-reveal:focus-within {
+    opacity: 1;
+  }
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 4px;

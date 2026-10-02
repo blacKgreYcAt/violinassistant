@@ -8,6 +8,7 @@ import { ScoreViewer } from './components/ScoreViewer';
 import { UserGuide } from './components/UserGuide';
 import { RewardCard } from './components/RewardCard';
 import { PracticeHistory } from './components/PracticeHistory';
+import { PracticeDashboard } from './components/PracticeDashboard';
 import { PracticeRoutine, Score } from './lib/storage';
 import { Music, LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail, Star, Smartphone } from 'lucide-react';
 import { cn } from './lib/utils';
@@ -62,12 +63,24 @@ export default function App() {
     setIsEditingTitle(true);
   };
 
+  // 開場動畫固定要等 3.5 秒，對每天都會開好幾次的練習工具來說太久。
+  // 保留動畫，但讓使用者可以點一下直接跳過。
+  const skipSplash = () => {
+    setIsExiting(true);
+    setShowSplash(false);
+  };
+
   if (showSplash) {
     return (
-      <div className={cn(
-        "fixed inset-0 z-[200] bg-bg-warm flex flex-col items-center justify-center transition-opacity duration-1000",
-        isExiting ? "opacity-0" : "opacity-100"
-      )}>
+      <div
+        onClick={skipSplash}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') skipSplash(); }}
+        className={cn(
+          "fixed inset-0 z-[200] bg-bg-warm flex flex-col items-center justify-center transition-opacity duration-1000 cursor-pointer",
+          isExiting ? "opacity-0" : "opacity-100"
+        )}>
         <div className="flex flex-col items-center gap-8 animate-in fade-in zoom-in duration-700">
           <div className="relative w-32 h-32 flex items-center justify-center bg-surface-warm rounded-full shadow-2xl border border-white/5">
             <Smartphone 
@@ -81,6 +94,7 @@ export default function App() {
             <p className="text-accent-warm text-sm md:text-base font-bold tracking-widest bg-accent-warm/10 px-4 py-2 rounded-full border border-accent-warm/20">
               請將平板直式放置，以便取得最佳效果
             </p>
+            <p className="text-text-muted text-xs tracking-widest pt-2">點擊畫面任一處可直接進入</p>
           </div>
         </div>
       </div>
@@ -182,7 +196,9 @@ export default function App() {
           {/* Tab Content */}
           <div className="flex-1 min-h-0 overflow-hidden relative">
             <div 
-              className="h-full grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 overflow-y-auto md:overflow-hidden p-1"
+              /* 不要用 md:overflow-hidden：子元件有 min-h-[540px]，視窗高度不足時
+                 內容會被切掉而且完全捲不動。改成一律允許捲動，放得下時本來就不會出現捲軸。 */
+              className="h-full grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 overflow-y-auto custom-scrollbar p-1"
               style={{ display: activeTab === 'tools' ? '' : 'none' }}
             >
               <Metronome 
@@ -197,17 +213,35 @@ export default function App() {
             </div>
             
             <div 
-              className="h-full flex flex-col gap-4 overflow-y-auto md:overflow-hidden custom-scrollbar p-1"
+              /* 同上。這一頁內容至少 924px（樂譜區 500 + 練習紀錄 400 + 間距），
+                 在 1024×768 的 iPad 橫向下有 378px 完全看不到且無法捲動。 */
+              className="h-full flex flex-col gap-4 overflow-y-auto custom-scrollbar p-1"
               style={{ display: activeTab === 'library' ? '' : 'none' }}
             >
               {!activeScore && (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0 min-h-[500px]">
-                    <ScoreLibrary onSelectScore={setActiveScore} className="h-full" />
-                    <VideoRecorder activeScoreName={activeScore?.name} className="h-full" />
+                    <ScoreLibrary onSelectScore={setActiveScore} />
+                    {/* 這個區塊只在沒有選取樂譜時才會渲染，所以不會有可關聯的樂譜；
+                        原本傳的 activeScoreName={activeScore?.name} 必定是 undefined。
+                        要把錄影歸到某一份樂譜底下，請從樂譜檢視器裡的錄影模式錄製。 */}
+                    <VideoRecorder className="h-full" />
                   </div>
-                  <div className="shrink-0 min-h-[400px]">
-                    <PracticeHistory className="h-full" />
+                  {/* 「練習計畫 / 練習目標」放在「練習紀錄」旁邊 ——
+                      這正是使用說明所描述的位置（「在『練習紀錄』旁的『練習計畫』分頁」）。
+                      PracticeDashboard 這個容器元件先前完全沒有被掛載，
+                      導致 activeRoutine 永遠是 null、Timer 裡整套計畫執行邏輯變成死碼。 */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 shrink-0 min-h-[400px]">
+                    <PracticeHistory className="lg:col-span-2 h-full" />
+                    <PracticeDashboard
+                      onStartRoutine={(routine) => {
+                        setActiveRoutine(routine);
+                        // 計畫是由「練習工具」分頁的計時器執行，所以直接切過去，
+                        // 否則使用者按了播放卻看不到任何反應。
+                        setActiveTab('tools');
+                      }}
+                      className="h-full"
+                    />
                   </div>
                 </>
               )}
@@ -233,7 +267,7 @@ export default function App() {
           <div className="w-px h-3 bg-white/10" />
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-bold uppercase tracking-widest">v2.2.1</span>
+            <span className="font-bold uppercase tracking-widest">v2.3.0</span>
           </div>
         </div>
       </footer>

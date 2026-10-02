@@ -1,4 +1,4 @@
-import { get, set, del } from 'idb-keyval';
+import { get, set } from 'idb-keyval';
 
 export interface Score {
   id: string;
@@ -134,7 +134,7 @@ export async function saveScores(scores: Score[]): Promise<void> {
     window.dispatchEvent(new CustomEvent('scores-updated'));
   } catch (error) {
     console.error('Failed to save scores to storage:', error);
-    throw new Error('儲存失敗：設備空間可能不足。');
+    throw new Error('儲存失敗：設備空間可能不足。', { cause: error });
   }
 }
 
@@ -168,7 +168,9 @@ export async function addPracticeSession(durationSeconds: number, note?: string)
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
     const newSession: PracticeSession = {
-      id: Math.random().toString(36).substring(2, 9),
+      // 這個 id 會被當成 React key 使用，統一改用 crypto.randomUUID()
+      // （原本的 7 碼亂數有碰撞機率，碰撞時清單會出現重複 key）
+      id: crypto.randomUUID(),
       date: dateStr,
       durationSeconds,
       timestamp: Date.now(),
@@ -217,7 +219,7 @@ export async function saveRecording(recording: Recording): Promise<void> {
     await set(RECORDINGS_KEY, [...recordings, recording]);
   } catch (error) {
     console.error('Failed to save recording:', error);
-    throw new Error('儲存錄音/錄影失敗：設備空間可能不足。');
+    throw new Error('儲存錄音/錄影失敗：設備空間可能不足。', { cause: error });
   }
 }
 
@@ -280,7 +282,7 @@ export async function saveRewards(state: RewardsState): Promise<void> {
 
 export async function processPracticeReward(seconds: number): Promise<RewardResult> {
   try {
-    let state = await getRewards();
+    const state = await getRewards();
     
     // Accumulate seconds
     const totalUnrewarded = (state.unrewardedSeconds || 0) + seconds;
@@ -296,8 +298,8 @@ export async function processPracticeReward(seconds: number): Promise<RewardResu
       return { earnedNotes: 0, earnedPieces: [], unlockedConcertmaster: false };
     }
 
-    let newNotes = state.currentNotes + earnedNotes;
-    let piecesToAward = Math.floor(newNotes / 10);
+    const newNotes = state.currentNotes + earnedNotes;
+    const piecesToAward = Math.floor(newNotes / 10);
     
     state.currentNotes = newNotes % 10;
     state.totalNotes += earnedNotes;
@@ -343,7 +345,7 @@ export async function getGoals(): Promise<PracticeGoal[]> {
   try {
     const goals = await get<PracticeGoal[]>(GOALS_KEY);
     return goals || [];
-  } catch (error) {
+  } catch {
     return [];
   }
 }

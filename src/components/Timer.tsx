@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Timer as TimerIcon, Play, Pause, RotateCcw, Bell, Edit3, Check, X, ListMusic, SkipForward, Minus, Plus } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { createAudioContext } from '../lib/audio';
 import { addPracticeSession, PracticeRoutine, processPracticeReward, RewardResult } from '../lib/storage';
+// 計時的純計算邏輯抽到 lib 以便測試（見 practiceTimer.test.ts）
+import { computeTimerTick, getStepDuration } from '../lib/practiceTimer';
 
 interface TimerProps {
   activeRoutine?: PracticeRoutine | null;
@@ -21,11 +24,15 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
   const [rewardResult, setRewardResult] = useState<RewardResult | null>(null);
   
   const timerRef = useRef<number | null>(null);
+  // 計時以「開始當下的時間戳」為基準，而不是累加 tick 次數（見下方 useEffect 說明）
+  const startTimestampRef = useRef(0);
+  const remainingAtStartRef = useRef(0);
+  const practicedAtStartRef = useRef(0);
 
   useEffect(() => {
     if (activeRoutine && activeRoutine.steps.length > 0) {
       setCurrentStepIndex(0);
-      const firstStepDuration = activeRoutine.steps[0].duration || (activeRoutine.steps[0] as any).durationSeconds || 30;
+      const firstStepDuration = getStepDuration(activeRoutine.steps[0]);
       setInputMinutes(firstStepDuration);
       setRemainingSeconds(firstStepDuration * 60);
       setIsActive(false);
@@ -34,25 +41,59 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
   }, [activeRoutine]);
 
   useEffect(() => {
-    if (isActive) {
-      timerRef.current = window.setInterval(() => {
-        setRemainingSeconds(prev => {
-          if (prev <= 1) {
-            setIsActive(false);
-            setIsFinished(true);
-            if (timerRef.current) clearInterval(timerRef.current);
-            return 0;
-          }
-          return prev - 1;
-        });
-        setPracticedSeconds(prev => prev + 1);
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
+    if (!isActive) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
     }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+
+    // 以時間戳計算經過時間，而不是每秒累加一次。
+    // setInterval 在螢幕關閉或切到其他 App 時會被瀏覽器節流（甚至完全暫停），
+    // 用計次的話練習時間會嚴重少算 —— 而「把手機放在一旁開始練琴」
+    // 正是這個 App 最主要的使用情境。
+    // 這裡刻意只依賴 isActive：要在「開始/繼續」的那一刻擷取基準值。
+    startTimestampRef.current = Date.now();
+    remainingAtStartRef.current = remainingSeconds;
+    practicedAtStartRef.current = practicedSeconds;
+
+    const tick = () => {
+      const { remaining, practiced, finished } = computeTimerTick({
+        startTimestamp: startTimestampRef.current,
+        remainingAtStart: remainingAtStartRef.current,
+        practicedAtStart: practicedAtStartRef.current,
+        now: Date.now(),
+      });
+
+      setRemainingSeconds(remaining);
+      setPracticedSeconds(practiced);
+
+      if (finished) {
+        setIsActive(false);
+        setIsFinished(true);
+      }
     };
+
+    timerRef.current = window.setInterval(tick, 500);
+
+    // 從背景切回來時立即校正一次，不用等下一個 tick
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+    // remainingSeconds / practicedSeconds 刻意不列入依賴：
+    // 這個 effect 的用途就是在「開始／繼續」的那一刻把它們擷取成基準值，
+    // 若列入依賴，每一次 tick 更新 state 都會重建計時器，時間就永遠歸零重算。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
   useEffect(() => {
@@ -60,7 +101,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
       if (activeRoutine) {
         // Play a sound to notify step completion
         try {
-          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const audioCtx = createAudioContext();
           const oscillator = audioCtx.createOscillator();
           const gainNode = audioCtx.createGain();
           oscillator.connect(gainNode);
@@ -80,7 +121,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
           // Let's require manual start for the next step, but load it up
           const nextIndex = currentStepIndex + 1;
           setCurrentStepIndex(nextIndex);
-          const nextDuration = activeRoutine.steps[nextIndex].duration || (activeRoutine.steps[nextIndex] as any).durationSeconds || 30;
+          const nextDuration = getStepDuration(activeRoutine.steps[nextIndex]);
           setInputMinutes(nextDuration);
           setRemainingSeconds(nextDuration * 60);
           setIsFinished(false);
@@ -102,12 +143,17 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
         }
       }
     }
+    // 只在 isFinished 由 false 轉為 true 的那一刻執行一次。
+    // 列入 activeRoutine / currentStepIndex / practicedSeconds 會讓這段在
+    // 計畫進行中反覆觸發（每次 tick 都會改 practicedSeconds），
+    // 導致重複記錄練習時間與重複發放集點卡獎勵。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFinished]);
 
   const completeReset = () => {
     setIsFinished(false);
     if (activeRoutine && activeRoutine.steps[currentStepIndex]) {
-      setRemainingSeconds(activeRoutine.steps[currentStepIndex].duration * 60);
+      setRemainingSeconds(getStepDuration(activeRoutine.steps[currentStepIndex]) * 60);
     } else {
       setRemainingSeconds(inputMinutes * 60);
     }
@@ -181,7 +227,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
     if (currentStepIndex < activeRoutine.steps.length - 1) {
       const nextIndex = currentStepIndex + 1;
       setCurrentStepIndex(nextIndex);
-      const nextDuration = activeRoutine.steps[nextIndex].duration;
+      const nextDuration = getStepDuration(activeRoutine.steps[nextIndex]);
       setInputMinutes(nextDuration);
       setRemainingSeconds(nextDuration * 60);
       setIsFinished(false);
@@ -190,8 +236,8 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
     }
   };
 
-  const totalInitialSeconds = activeRoutine && activeRoutine.steps[currentStepIndex] 
-    ? activeRoutine.steps[currentStepIndex].duration * 60 
+  const totalInitialSeconds = activeRoutine && activeRoutine.steps[currentStepIndex]
+    ? getStepDuration(activeRoutine.steps[currentStepIndex]) * 60
     : inputMinutes * 60;
   const progress = totalInitialSeconds > 0 
     ? ((totalInitialSeconds - remainingSeconds) / totalInitialSeconds) * 100 

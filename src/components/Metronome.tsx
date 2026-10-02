@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Square, Plus, Minus, Volume2, VolumeX, Activity, TrendingUp, Target, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { createAudioContext } from '../lib/audio';
+
+// BPM 的合法範圍。排程器也會用這兩個值做防護，
+// 確保就算外部傳進超出範圍的值也不會算出 0、負數或 Infinity 的拍長。
+export const MIN_BPM = 30;
+export const MAX_BPM = 300;
 
 interface MetronomeProps {
   className?: string;
@@ -34,6 +40,18 @@ export const Metronome: React.FC<MetronomeProps> = ({
   const lookahead = 25.0; // How frequently to call scheduling function (in milliseconds)
   const scheduleAheadTime = 0.1; // How far ahead to schedule audio (in seconds)
 
+  // 已排程但還沒真正發聲的拍子。音訊是提前最多 scheduleAheadTime 秒排進去的，
+  // 所以畫面不能在「排程當下」就更新，否則燈號會比聲音早最多 100ms
+  // （300 BPM 時等於差半拍）。改由 drawLoop 依照 audioContext.currentTime 來追。
+  const notesInQueue = useRef<{ beat: number; time: number }[]>([]);
+  const drawFrameID = useRef<number | null>(null);
+
+  // 靜音狀態用 ref 保存：playClick 若把 isMuted 放進依賴陣列，
+  // 切換靜音會重建 scheduler，但舊的 scheduler 是靠自己遞迴呼叫 setTimeout 活著的，
+  // 新的永遠接不上 → 播放中按靜音不會有任何反應。
+  const isMutedRef = useRef(isMuted);
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+
   // Use refs for values needed in scheduler to avoid stale closures
   const bpmRef = useRef(bpm);
   const beatsPerMeasureRef = useRef(beatsPerMeasure);
@@ -54,7 +72,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
   useEffect(() => { measuresCountRef.current = measuresCount; }, [measuresCount]);
 
   const playClick = useCallback((time: number, beat: number) => {
-    if (!audioContext.current || isMuted) return;
+    if (!audioContext.current || isMutedRef.current) return;
 
     const osc = audioContext.current.createOscillator();
     const envelope = audioContext.current.createGain();
@@ -71,7 +89,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
 
     osc.start(time);
     osc.stop(time + 0.05);
-  }, [isMuted]);
+  }, []);
 
   const scheduler = useCallback(() => {
     if (!audioContext.current) return;
@@ -79,14 +97,23 @@ export const Metronome: React.FC<MetronomeProps> = ({
     while (nextNoteTime.current < audioContext.current.currentTime + scheduleAheadTime) {
       const beatToPlay = currentBeatRef.current;
       playClick(nextNoteTime.current, beatToPlay);
-      
-      const secondsPerBeat = 60.0 / bpmRef.current;
+      // 記下這一拍「實際會發聲的時間」，交給 drawLoop 在那個時間點才更新畫面。
+      // 需要設上限：分頁切到背景時 requestAnimationFrame 會完全停止（沒人消耗佇列），
+      // 但 setTimeout 仍會以較低頻率繼續排程並推入，佇列會無限成長。
+      // 超過上限就丟掉最舊的，回到前景時 drawLoop 本來就只會顯示最後一拍。
+      notesInQueue.current.push({ beat: beatToPlay, time: nextNoteTime.current });
+      if (notesInQueue.current.length > 256) notesInQueue.current.shift();
+
+      // 必須保證 secondsPerBeat 永遠是正的有限值：
+      // 若 bpm 變成 0 會得到 Infinity（節拍器無聲死掉），
+      // 變成負數則 nextNoteTime 會不斷倒退，這個 while 迴圈永遠跑不完，直接凍結整個分頁。
+      const safeBpm = Math.min(MAX_BPM, Math.max(MIN_BPM, bpmRef.current || MIN_BPM));
+      const secondsPerBeat = 60.0 / safeBpm;
       nextNoteTime.current += secondsPerBeat;
       
-      // Update beat and measure count
+      // 這裡只推進內部計數，不再直接 setCurrentBeat（畫面由 drawLoop 負責）
       const nextBeat = (currentBeatRef.current + 1) % beatsPerMeasureRef.current;
       currentBeatRef.current = nextBeat;
-      setCurrentBeat(nextBeat);
 
       if (nextBeat === 0) {
         // End of measure
@@ -100,19 +127,21 @@ export const Metronome: React.FC<MetronomeProps> = ({
             const newBpm = Math.min(bpmRef.current + bpmIncrementRef.current, targetBpmRef.current);
             bpmRef.current = newBpm;
             setBpm(newBpm);
-            measuresCountRef.current = 0;
-            setMeasuresCount(0);
           }
+          // 不論有沒有真的加速都要歸零：到達目標速度後若不重設，
+          // 計數會一直累加，進度條會顯示成「47/4 小節」這種超過 100% 的數字。
+          measuresCountRef.current = 0;
+          setMeasuresCount(0);
         }
       }
     }
     timerID.current = window.setTimeout(scheduler, lookahead);
-  }, [playClick]);
+  }, [playClick, setBpm]);
 
   useEffect(() => {
     if (isPlaying) {
       if (!audioContext.current) {
-        audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContext.current = createAudioContext();
       }
       if (audioContext.current.state === 'suspended') {
         audioContext.current.resume();
@@ -123,6 +152,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
         setCurrentBeat(0);
         measuresCountRef.current = 0;
         setMeasuresCount(0);
+        notesInQueue.current = [];
         nextNoteTime.current = audioContext.current.currentTime + 0.05;
         scheduler();
       }
@@ -131,8 +161,37 @@ export const Metronome: React.FC<MetronomeProps> = ({
         clearTimeout(timerID.current);
         timerID.current = null;
       }
+      notesInQueue.current = [];
     }
   }, [isPlaying, scheduler]);
+
+  // 畫面更新迴圈：只有當某一拍的排定時間真的到了（以 audioContext 的時鐘為準），
+  // 才把它顯示出來。這樣燈號才會跟耳朵聽到的聲音對齊。
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const drawLoop = () => {
+      const ctx = audioContext.current;
+      if (ctx) {
+        let beatToShow: number | null = null;
+        // 把所有「已經該發聲」的拍子取出，只顯示最後一拍（避免分頁卡頓後補播一堆）
+        while (notesInQueue.current.length && notesInQueue.current[0].time <= ctx.currentTime) {
+          beatToShow = notesInQueue.current[0].beat;
+          notesInQueue.current.shift();
+        }
+        if (beatToShow !== null) {
+          setCurrentBeat(beatToShow);
+        }
+      }
+      drawFrameID.current = requestAnimationFrame(drawLoop);
+    };
+
+    drawFrameID.current = requestAnimationFrame(drawLoop);
+    return () => {
+      if (drawFrameID.current) cancelAnimationFrame(drawFrameID.current);
+      drawFrameID.current = null;
+    };
+  }, [isPlaying]);
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
@@ -141,18 +200,22 @@ export const Metronome: React.FC<MetronomeProps> = ({
   useEffect(() => {
     return () => {
       if (timerID.current) clearTimeout(timerID.current);
-      if (audioContext.current) audioContext.current.close();
+      if (drawFrameID.current) cancelAnimationFrame(drawFrameID.current);
+      if (audioContext.current && audioContext.current.state !== 'closed') {
+        audioContext.current.close();
+      }
     };
   }, []);
 
   const handleBpmChange = (newBpm: number) => {
-    setBpm(Math.min(Math.max(newBpm, 30), 300));
+    if (Number.isNaN(newBpm)) return;
+    setBpm(Math.min(Math.max(newBpm, MIN_BPM), MAX_BPM));
   };
 
   return (
     <div className={cn(
       "bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5 transition-all duration-75",
-      isPlaying && currentBeat === 1 ? "ring-2 ring-accent-warm/50 scale-[1.01]" : "",
+      isPlaying && currentBeat === 0 ? "ring-2 ring-accent-warm/50 scale-[1.01]" : "",
       className
     )}>
       <div className="flex flex-col h-full">
@@ -280,7 +343,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
                   key={i}
                   className={cn(
                     "w-3 h-3 rounded-full transition-all duration-100",
-                    isPlaying && currentBeat === (i + 1) % beatsPerMeasure ? "bg-accent-warm scale-125" : "bg-white/10"
+                    isPlaying && currentBeat === i ? "bg-accent-warm scale-125" : "bg-white/10"
                   )}
                 />
               ))}

@@ -10,3 +10,7 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 .vercel/
+
+# Claude Code 的本機設定。settings.local.json 會累積指令歷史，
+# 可能含有權杖之類的敏感內容，不要進版控。
+.claude/

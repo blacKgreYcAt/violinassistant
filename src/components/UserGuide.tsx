@@ -2,15 +2,11 @@ import React, { useState } from 'react';
 import { 
   Music, 
   Library, 
-  LayoutDashboard, 
   Video, 
   Timer as TimerIcon, 
   Share2, 
-  Download, 
-  Plus, 
   X,
   BookOpen,
-  Settings,
   Smartphone,
   Edit2,
   UploadCloud,
@@ -115,7 +111,15 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-    const sections = [
+    // 明確標註型別：只有部分項目有 className / customContent，
+    // 不標的話 TS 會推出聯集型別，存取 className 就得靠 (section as any) 繞過。
+    const sections: {
+      icon: React.ReactNode;
+      title: string;
+      content: string;
+      className?: string;
+      customContent?: React.ReactNode;
+    }[] = [
     {
       icon: <Library className="text-accent-warm" />,
       title: "樂譜資料夾與標籤",
@@ -259,6 +263,29 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
 
   const changelog = [
     {
+      version: "v2.3.0",
+      date: "2026-10-01",
+      changes: [
+        "🐛 修正節拍器速度被調到下限以下時，可能造成整個頁面卡住無回應的問題。",
+        "🐛 修正「儲存至 App」的錄影無法在該樂譜中找到的問題；並新增「本曲錄影紀錄」面板，可直接播放與刪除過往錄影。",
+        "🔒 修正關閉調音器後麥克風仍持續運作的問題（錄音指示燈不會再一直亮著）。",
+        "⏱️ 練習計時器改以時間戳計算：螢幕關閉或切換到其他 App 時，不會再少算練習時間。",
+        "🐛 修正錄影時「音準分析」圖表一片空白，以及長時間錄影會越來越卡頓的問題。",
+        "🐛 修正節拍器播放中按「靜音」沒有反應的問題；節拍燈號現在會與聲音同步（原本最多會快 100 毫秒）。",
+        "🐛 修正樂譜旋轉後，畫筆標註位置會偏掉的問題。",
+        "🐛 修正以 ESC 離開全螢幕後，全螢幕按鈕狀態顯示錯誤的問題。",
+        "⚡ 大幅優化調音器的音高偵測效能，改善手機發燙與畫面卡頓。",
+        "🐛 修正樂譜較多時「下載備份」會失敗的問題。",
+        "🐛 修正上傳樂譜失敗時沒有任何提示、以及遇到損壞檔案會一直卡在上傳中的問題。",
+        "🛡️ 匯入備份時會先驗證檔案內容，避免選錯檔案就把整個圖書館覆蓋掉。",
+        "📈 「速度紀錄」功能正式生效：節拍器停止後會自動記錄該曲練習到的最高速度。",
+        "✨ 開場畫面可點擊直接跳過，不必每次等待。",
+        "🔧 修復「練習計畫」與「練習目標」無法進入的問題：這兩個功能先前因改版而未被掛上畫面，現已恢復至「練習紀錄」旁。點擊計畫的「開始練習」會自動跳到練習工具分頁並載入計時器。",
+        "🐛 修正平板上「練習紀錄」被切掉且無法捲動的問題（1024×768 時原本有近 380px 的內容完全看不到）。",
+        "🐛 修正「本週練習時數」圖表誤把所有歷史紀錄都加總的問題，現在只統計本週。"
+      ]
+    },
+    {
       version: "v2.2.1",
       date: "2026-03-18",
       changes: [
@@ -378,7 +405,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
               </div>
               <div>
                 <h2 className="text-xl font-bold">使用說明指南</h2>
-                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.2.1</p>
+                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.3.0</p>
               </div>
             </div>
             <button 
@@ -424,7 +451,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {sections.map((section, index) => (
-                  <div key={index} className={cn("bg-white/5 p-6 rounded-2xl border border-white/5 hover:border-accent-warm/30 transition-all group", (section as any).className)}>
+                  <div key={index} className={cn("bg-white/5 p-6 rounded-2xl border border-white/5 hover:border-accent-warm/30 transition-all group", section.className)}>
                     <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       {section.icon}
                     </div>

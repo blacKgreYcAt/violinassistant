@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Settings2, Volume2, VolumeX, Play, Square } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { createAudioContext } from '../lib/audio';
+import {
+  detectPitch,
+  noteNumberFromPitch,
+  centsOffFromPitch,
+  noteNameFromNoteNumber,
+  NOTE_STRINGS
+} from '../lib/pitch';
 
 export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
   const [activeTab, setActiveTab] = useState<'tuner' | 'drone'>('tuner');
@@ -21,93 +29,78 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const rafRef = useRef<number>(0);
+  // 必須保留 getUserMedia 回傳的 stream：
+  // 關閉 AudioContext 並不會停止麥克風，一定要自己把每個 track stop() 掉，
+  // 否則瀏覽器的錄音指示燈會一直亮著、持續耗電。
+  const micStreamRef = useRef<MediaStream | null>(null);
+  // 重複使用同一個緩衝區，避免每一幀都配置新的 Float32Array
+  // 型別要寫成 Float32Array<ArrayBuffer>：getFloatTimeDomainData 不接受
+  // 可能指向 SharedArrayBuffer 的 Float32Array<ArrayBufferLike>
+  const pitchBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
+  // 音高偵測不需要跟著螢幕更新率跑，限制在約 25 次/秒就已經感覺即時
+  const lastDetectTimeRef = useRef(0);
 
   const droneCtxRef = useRef<AudioContext | null>(null);
   const droneOscRef = useRef<OscillatorNode | null>(null);
   const droneGainRef = useRef<GainNode | null>(null);
+  // stopDrone 會延遲 100ms 才真正停掉振盪器（讓音量淡出），
+  // 若在這段期間元件被卸載，必須取消這個 timer。
+  const stopDroneTimerRef = useRef<number | null>(null);
 
-  const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-
-  const noteFromPitch = (frequency: number) => {
-    const noteNum = 12 * (Math.log(frequency / 440) / Math.log(2));
-    return Math.round(noteNum) + 69;
-  };
-
-  const frequencyFromNoteNumber = (note: number) => {
-    return 440 * Math.pow(2, (note - 69) / 12);
-  };
-
-  const centsOffFromPitch = (frequency: number, note: number) => {
-    return Math.floor(1200 * Math.log(frequency / frequencyFromNoteNumber(note)) / Math.log(2));
-  };
-
-  // Simple auto-correlation pitch detection
-  const autoCorrelate = (buf: Float32Array, sampleRate: number) => {
-    let SIZE = buf.length;
-    let rms = 0;
-
-    for (let i = 0; i < SIZE; i++) {
-      const val = buf[i];
-      rms += val * val;
-    }
-    rms = Math.sqrt(rms / SIZE);
-    if (rms < 0.01) return -1;
-
-    let r1 = 0, r2 = SIZE - 1, thres = 0.2;
-    for (let i = 0; i < SIZE / 2; i++)
-      if (Math.abs(buf[i]) < thres) { r1 = i; break; }
-    for (let i = 1; i < SIZE / 2; i++)
-      if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
-
-    buf = buf.slice(r1, r2);
-    SIZE = buf.length;
-
-    const c = new Array(SIZE).fill(0);
-    for (let i = 0; i < SIZE; i++)
-      for (let j = 0; j < SIZE - i; j++)
-        c[i] = c[i] + buf[j] * buf[j + i];
-
-    let d = 0; while (c[d] > c[d + 1]) d++;
-    let maxval = -1, maxpos = -1;
-    for (let i = d; i < SIZE; i++) {
-      if (c[i] > maxval) {
-        maxval = c[i];
-        maxpos = i;
-      }
-    }
-    let T0 = maxpos;
-
-    let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
-    let a = (x1 + x3 - 2 * x2) / 2;
-    let b = (x3 - x1) / 2;
-    if (a) T0 = T0 - b / (2 * a);
-
-    return sampleRate / T0;
-  };
 
   const updatePitch = () => {
-    if (!analyserRef.current || !audioContextRef.current) return;
+    const analyser = analyserRef.current;
+    const audioCtx = audioContextRef.current;
+    if (!analyser || !audioCtx || audioCtx.state === 'closed') return;
 
-    const buffer = new Float32Array(2048);
-    analyserRef.current.getFloatTimeDomainData(buffer);
-    const ac = autoCorrelate(buffer, audioContextRef.current.sampleRate);
+    // 限制偵測頻率：自相關運算相對昂貴，不需要每一幀都做
+    const now = performance.now();
+    if (now - lastDetectTimeRef.current >= 40) {
+      lastDetectTimeRef.current = now;
 
-    if (ac !== -1) {
-      const pitchValue = ac;
-      setPitch(pitchValue);
-      const noteNum = noteFromPitch(pitchValue);
-      setNote(noteStrings[noteNum % 12]);
-      setCents(centsOffFromPitch(pitchValue, noteNum));
+      if (!pitchBufferRef.current || pitchBufferRef.current.length !== analyser.fftSize) {
+        pitchBufferRef.current = new Float32Array(analyser.fftSize);
+      }
+      const buffer = pitchBufferRef.current;
+      analyser.getFloatTimeDomainData(buffer);
+
+      const frequency = detectPitch(buffer, audioCtx.sampleRate);
+      if (frequency !== -1) {
+        const noteNum = noteNumberFromPitch(frequency);
+        setPitch(frequency);
+        setNote(noteNameFromNoteNumber(noteNum));
+        setCents(centsOffFromPitch(frequency, noteNum));
+      }
     }
 
     rafRef.current = requestAnimationFrame(updatePitch);
   };
 
+  /** 關閉調音器並確實釋放麥克風 */
+  const stopListening = async () => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    }
+    if (sourceRef.current) {
+      sourceRef.current.disconnect();
+      sourceRef.current = null;
+    }
+    // 關鍵：關閉 AudioContext 不會停止麥克風，必須自己停掉每個 track
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach(track => track.stop());
+      micStreamRef.current = null;
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      await audioContextRef.current.close();
+    }
+    audioContextRef.current = null;
+    analyserRef.current = null;
+  };
+
   const toggleTuner = async () => {
     if (isListening) {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      if (sourceRef.current) sourceRef.current.disconnect();
-      if (audioContextRef.current) await audioContextRef.current.close();
+      await stopListening();
       setIsListening(false);
       setNote('-');
       setPitch(0);
@@ -115,7 +108,8 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        micStreamRef.current = stream;
+        const audioCtx = createAudioContext();
         const analyser = audioCtx.createAnalyser();
         analyser.fftSize = 2048;
         
@@ -130,6 +124,9 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
         updatePitch();
       } catch (err) {
         console.error("Error accessing microphone:", err);
+        // 若已經取得麥克風但後續建立音訊節點失敗，這裡要把它放掉，
+        // 否則使用者看到錯誤訊息，麥克風卻還開著。
+        await stopListening();
         alert("無法存取麥克風，請檢查權限設定。");
       }
     }
@@ -138,14 +135,14 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
   // --- Drone Tone Logic ---
   const playDrone = () => {
     if (!droneCtxRef.current || droneCtxRef.current.state === 'closed') {
-      droneCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      droneCtxRef.current = createAudioContext();
     }
     
     const ctx = droneCtxRef.current;
     if (ctx.state === 'suspended') ctx.resume();
 
     if (droneOscRef.current) {
-      try { droneOscRef.current.stop(); } catch(e) {}
+      try { droneOscRef.current.stop(); } catch { /* 振盪器已停止，重複呼叫 stop() 會丟例外，可安全忽略 */ }
       droneOscRef.current.disconnect();
     }
     if (droneGainRef.current) {
@@ -156,7 +153,7 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
     const gainNode = ctx.createGain();
 
     // Calculate frequency
-    const noteIndex = noteStrings.indexOf(droneNote);
+    const noteIndex = NOTE_STRINGS.indexOf(droneNote);
     const freq = 440 * Math.pow(2, (noteIndex - 9 + (droneOctave - 4) * 12) / 12);
     
     osc.type = 'triangle'; // Richer tone for strings
@@ -179,9 +176,9 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
   const stopDrone = () => {
     if (droneGainRef.current && droneCtxRef.current) {
       droneGainRef.current.gain.linearRampToValueAtTime(0, droneCtxRef.current.currentTime + 0.1);
-      setTimeout(() => {
+      stopDroneTimerRef.current = window.setTimeout(() => {
         if (droneOscRef.current) {
-          try { droneOscRef.current.stop(); } catch(e) {}
+          try { droneOscRef.current.stop(); } catch { /* 振盪器已停止，重複呼叫 stop() 會丟例外，可安全忽略 */ }
           droneOscRef.current.disconnect();
           droneOscRef.current = null;
         }
@@ -206,11 +203,11 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
 
   useEffect(() => {
     if (isDronePlaying && droneOscRef.current && droneCtxRef.current) {
-      const noteIndex = noteStrings.indexOf(droneNote);
+      const noteIndex = NOTE_STRINGS.indexOf(droneNote);
       const freq = 440 * Math.pow(2, (noteIndex - 9 + (droneOctave - 4) * 12) / 12);
       droneOscRef.current.frequency.setTargetAtTime(freq, droneCtxRef.current.currentTime, 0.05);
     }
-  }, [droneNote, droneOctave]);
+  }, [droneNote, droneOctave, isDronePlaying]);
 
   useEffect(() => {
     if (droneGainRef.current && droneCtxRef.current) {
@@ -221,6 +218,12 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
   useEffect(() => {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (stopDroneTimerRef.current) clearTimeout(stopDroneTimerRef.current);
+      // 元件卸載時同樣要停掉麥克風 track，不能只關 AudioContext
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(track => track.stop());
+        micStreamRef.current = null;
+      }
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
       }
@@ -290,7 +293,7 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
                 onChange={(e) => setDroneNote(e.target.value)}
                 className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-2xl font-bold text-text-warm focus:outline-none focus:border-accent-warm appearance-none text-center"
               >
-                {noteStrings.map(n => <option key={n} value={n} className="bg-bg-warm">{n}</option>)}
+                {NOTE_STRINGS.map(n => <option key={n} value={n} className="bg-bg-warm">{n}</option>)}
               </select>
               <select
                 value={droneOctave}

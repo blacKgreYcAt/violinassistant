@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Play, Trash2, Edit2, Check, X, Clock, Music } from 'lucide-react';
+import { Plus, Play, Trash2, Edit2, X, Clock, Music } from 'lucide-react';
 import { PracticeRoutine, getRoutines, saveRoutines } from '../lib/storage';
 import { cn } from '../lib/utils';
+
+/**
+ * 練習步驟。舊版資料用 durationSeconds，新版用 duration ——
+ * 原本是靠 (step as any) 繞過型別檢查去同時讀兩種欄位，這裡改成明確的型別。
+ */
+type RoutineStep = { id: string; name: string; duration?: number; durationSeconds?: number };
+
+/** 取得步驟分鐘數；兩種欄位都沒有時回傳 0（代表尚未填寫） */
+const stepMinutes = (step: RoutineStep): number => step.duration ?? step.durationSeconds ?? 0;
 
 interface PracticeRoutinesProps {
   onStartRoutine: (routine: PracticeRoutine) => void;
@@ -27,11 +36,11 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
   const handleCreateNew = () => {
     setIsCreating(true);
     setNewRoutineName('');
-    setNewSteps([{ id: Math.random().toString(36).substr(2, 9), name: '', duration: 5 }]);
+    setNewSteps([{ id: crypto.randomUUID(), name: '', duration: 5 }]);
   };
 
   const handleAddStep = () => {
-    setNewSteps([...newSteps, { id: Math.random().toString(36).substr(2, 9), name: '', duration: 5 }]);
+    setNewSteps([...newSteps, { id: crypto.randomUUID(), name: '', duration: 5 }]);
   };
 
   const handleUpdateStep = (id: string, field: 'name' | 'duration', value: string | number) => {
@@ -50,12 +59,22 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
     // Validate steps
     const validSteps = newSteps.map(s => ({
       ...s,
-      duration: (s as any).duration || (s as any).durationSeconds || 0
+      duration: stepMinutes(s)
     })).filter(s => s.name.trim() && s.duration > 0);
-    if (validSteps.length === 0) return;
+
+    // 原本這裡只是 return，使用者按了「儲存計畫」會完全沒反應也沒說明原因；
+    // 步驟被靜默丟掉也不會有任何提示。
+    if (validSteps.length === 0) {
+      alert('請至少填寫一個有名稱、且時長大於 0 分鐘的步驟。');
+      return;
+    }
+    if (validSteps.length < newSteps.length) {
+      const dropped = newSteps.length - validSteps.length;
+      if (!confirm(`有 ${dropped} 個步驟沒有填寫名稱或時長為 0，將不會被儲存。要繼續嗎？`)) return;
+    }
 
     const newRoutine: PracticeRoutine = {
-      id: editingId || Math.random().toString(36).substr(2, 9),
+      id: editingId || crypto.randomUUID(),
       name: newRoutineName.trim(),
       steps: validSteps
     };
@@ -88,9 +107,8 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
     }
   };
 
-  const calculateTotalDuration = (steps: any[]) => {
-    return steps.reduce((total, step) => total + (step.duration || step.durationSeconds || 0), 0);
-  };
+  const calculateTotalDuration = (steps: RoutineStep[]) =>
+    steps.reduce((total, step) => total + stepMinutes(step), 0);
 
   if (isCreating) {
     return (
@@ -138,7 +156,7 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
                   <input
                     type="number"
                     min="1"
-                    value={(step as any).duration || (step as any).durationSeconds || 0}
+                    value={stepMinutes(step)}
                     onChange={(e) => handleUpdateStep(step.id, 'duration', parseInt(e.target.value) || 0)}
                     className="w-12 bg-transparent border-none text-sm text-center text-text-warm focus:outline-none"
                   />
@@ -209,7 +227,10 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
                     總時長: {calculateTotalDuration(routine.steps)} 分鐘 ({routine.steps.length} 個步驟)
                   </span>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* 觸控裝置沒有滑鼠 hover，若維持 opacity-0 會變成「看不到按鈕」——
+                    而使用說明寫的是「點擊播放按鈕即可開始執行計畫」，這個 App 又主打平板。
+                    因此只在支援 hover 的裝置上才隱藏，觸控裝置一律顯示。 */}
+                <div className="flex items-center gap-1 hover-reveal">
                   <button 
                     onClick={() => onStartRoutine(routine)}
                     className="p-2 bg-accent-warm/10 text-accent-warm hover:bg-accent-warm hover:text-white rounded-xl transition-all"
@@ -237,7 +258,7 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
                   <div key={step.id} className="flex items-center gap-1 text-[10px] bg-black/20 px-2 py-1 rounded-md">
                     <span className="text-text-muted">{idx + 1}.</span>
                     <span className="text-text-warm font-medium">{step.name}</span>
-                    <span className="text-accent-warm ml-1">{(step as any).duration || (step as any).durationSeconds || 0}m</span>
+                    <span className="text-accent-warm ml-1">{stepMinutes(step)}m</span>
                   </div>
                 ))}
               </div>

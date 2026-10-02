@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { PracticeHistory } from './PracticeHistory';
 import { PracticeRoutines } from './PracticeRoutines';
 import { PracticeGoals } from './PracticeGoals';
 import { PracticeRoutine } from '../lib/storage';
 import { cn } from '../lib/utils';
-import { History, ListMusic, Target } from 'lucide-react';
+import { ListMusic, Target } from 'lucide-react';
 
 interface PracticeDashboardProps {
   onStartRoutine: (routine: PracticeRoutine) => void;

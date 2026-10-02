@@ -1,20 +1,34 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, 
   Camera, Loader2, Smile, Eye, RotateCw, PenTool, Eraser, Save, 
   Columns, Moon, Sun, Star, Music, TrendingUp, Play, Pause, 
-  ChevronUp, ChevronDown, Edit2, Check, Plus, Minus, Square
+  ChevronUp, ChevronDown, Edit2, Check, Plus, Minus, Square, Video, Trash2
 } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
 import { cn } from '../lib/utils';
-import { 
-  saveScores, 
-  getScores, 
-  getRecordingsByScoreId, 
-  Recording, 
+import {
+  saveScores,
+  getScores,
+  getRecordingsByScoreId,
+  deleteRecording,
+  updateTempoHistory,
+  Recording,
   Score
 } from '../lib/storage';
+
+/**
+ * MediaPipe 的 WASM 執行檔來源。
+ *
+ * ⚠️ 這個版本號必須與 package.json 裡 @mediapipe/tasks-vision 的版本一致。
+ * 原本這裡寫死 0.10.3，但實際安裝的是 0.10.35 —— JS 端與 WASM 端版本不匹配，
+ * 行為沒有保證。升級套件時記得同步改這裡。
+ *
+ * 另外要注意：這是外部 CDN，所以「智能翻頁」在離線狀態下無法使用，
+ * 即使 App 本身是可離線的 PWA。若要支援離線，需改成把 wasm 檔一起打包進專案。
+ */
+const MEDIAPIPE_WASM_BASE_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
 
 interface ScoreViewerProps {
   score: Score;
@@ -49,6 +63,10 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
   const [showTempoHistory, setShowTempoHistory] = useState(false);
   const [showBpmPopover, setShowBpmPopover] = useState(false);
   const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [showRecordings, setShowRecordings] = useState(false);
+  // 錄影是以 Blob 形式存在 IndexedDB，要播放必須轉成 object URL。
+  // 這些 URL 會把整段影片留在記憶體裡，所以關閉清單時一定要 revoke。
+  const [recordingUrls, setRecordingUrls] = useState<Record<string, string>>({});
   const [recorderPosition, setRecorderPosition] = useState<'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'>('top-right');
   const [isRecorderMinimized, setIsRecorderMinimized] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
@@ -75,6 +93,9 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
   const sequenceStateRef = useRef<'IDLE' | 'LOOK_RIGHT' | 'LOOK_RIGHT_DOWN' | 'LOOK_LEFT' | 'LOOK_LEFT_UP'>('IDLE');
   const sequenceTimerRef = useRef<number>(0);
   const aiModeRef = useRef(aiMode);
+  // 用來記錄這一輪節拍器練習中用過的最高速度（見下方 updateTempoHistory 的 effect）
+  const maxBpmWhilePlayingRef = useRef(0);
+  const wasMetronomePlayingRef = useRef(false);
 
   // Score Name Editing
   const [isEditingName, setIsEditingName] = useState(false);
@@ -84,7 +105,13 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
     aiModeRef.current = aiMode;
   }, [aiMode]);
 
-  const pages = Array.isArray(score.data) ? score.data : [score.data];
+  // 必須 memo：單頁樂譜（score.data 是字串）時，[score.data] 每次 render 都會產生新陣列，
+  // 而 pages 被放在載入標註的 useEffect 依賴陣列裡 ——
+  // 任何無關的重繪都會觸發「清空 canvas → 非同步重載標註圖」，造成標註閃爍。
+  const pages = React.useMemo(
+    () => (Array.isArray(score.data) ? score.data : [score.data]),
+    [score.data]
+  );
   const totalPages = pages.length;
 
   // Initialize rotations and annotations arrays if they don't exist
@@ -95,7 +122,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
     if (annotations.length !== totalPages) {
       setAnnotations(Array(totalPages).fill('').map((_, i) => score.annotations?.[i] || ''));
     }
-  }, [totalPages, score.rotations, score.annotations]);
+  }, [totalPages, score.rotations, score.annotations, rotations.length, annotations.length]);
 
   // Load annotation for current page
   useEffect(() => {
@@ -120,13 +147,31 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
     img.src = pages[currentPage];
   }, [currentPage, annotations, displayMode, zoom, rotations, pages]);
 
-  useEffect(() => {
-    const loadRecordings = async () => {
-      const scoreRecordings = await getRecordingsByScoreId(score.id);
-      setRecordings(scoreRecordings);
-    };
-    loadRecordings();
+  const loadRecordings = useCallback(async () => {
+    const scoreRecordings = await getRecordingsByScoreId(score.id);
+    setRecordings(scoreRecordings);
   }, [score.id]);
+
+  useEffect(() => {
+    loadRecordings();
+  }, [loadRecordings]);
+
+  const handleDeleteRecording = async (id: string) => {
+    if (!confirm('確定要刪除這段錄影嗎？此動作無法復原。')) return;
+    await deleteRecording(id);
+    await loadRecordings();
+  };
+
+  useEffect(() => {
+    if (!showRecordings) return;
+    const urls: Record<string, string> = {};
+    recordings.forEach(r => { urls[r.id] = URL.createObjectURL(r.blob); });
+    setRecordingUrls(urls);
+    return () => {
+      Object.values(urls).forEach(u => URL.revokeObjectURL(u));
+      setRecordingUrls({});
+    };
+  }, [showRecordings, recordings]);
 
   const handleRotate = () => {
     const newRotations = [...rotations];
@@ -138,7 +183,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
   const saveAnnotationsAndRotations = async () => {
     try {
       const canvas = canvasRef.current;
-      let newAnnotations = [...annotations];
+      const newAnnotations = [...annotations];
       if (canvas) {
         newAnnotations[currentPage] = canvas.toDataURL();
       }
@@ -168,17 +213,48 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
     setHasUnsavedChanges(true);
   };
 
+  /**
+   * 把畫面上的點擊座標換算成 canvas 內部座標。
+   *
+   * 樂譜容器上有 transform: rotate()，而 getBoundingClientRect() 回傳的是
+   * 「旋轉後的軸對齊外框」。原本直接用 rect 做等比例換算，在旋轉 90/270 度時
+   * x 與 y 其實要互換，導致旋轉過的樂譜一畫筆下去位置就完全對不上。
+   * 這裡先平移到元素中心、反向旋轉回去，再換算成 canvas 像素座標。
+   */
+  const getCanvasPoint = (canvas: HTMLCanvasElement, clientX: number, clientY: number) => {
+    const rect = canvas.getBoundingClientRect();
+    const rotation = (((rotations[currentPage] || 0) % 360) + 360) % 360;
+
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const dx = clientX - centerX;
+    const dy = clientY - centerY;
+
+    const rad = (-rotation * Math.PI) / 180;
+    const localX = dx * Math.cos(rad) - dy * Math.sin(rad);
+    const localY = dx * Math.sin(rad) + dy * Math.cos(rad);
+
+    // 旋轉 90/270 度時，元素「未旋轉前」的寬高正好是外框的高與寬
+    const isQuarterTurn = rotation === 90 || rotation === 270;
+    const unrotatedWidth = isQuarterTurn ? rect.height : rect.width;
+    const unrotatedHeight = isQuarterTurn ? rect.width : rect.height;
+    if (!unrotatedWidth || !unrotatedHeight) return { x: 0, y: 0 };
+
+    return {
+      x: (localX + unrotatedWidth / 2) * (canvas.width / unrotatedWidth),
+      y: (localY + unrotatedHeight / 2) * (canvas.height / unrotatedHeight)
+    };
+  };
+
   // Drawing Handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDrawingMode) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const x = (clientX - rect.left) * (canvas.width / rect.width);
-    const y = (clientY - rect.top) * (canvas.height / rect.height);
+    const { x, y } = getCanvasPoint(canvas, clientX, clientY);
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -193,11 +269,9 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const x = (clientX - rect.left) * (canvas.width / rect.width);
-    const y = (clientY - rect.top) * (canvas.height / rect.height);
+    const { x, y } = getCanvasPoint(canvas, clientX, clientY);
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -238,9 +312,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
       setIsModelLoading(true);
 
       try {
-        const vision = await FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-        );
+        const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_BASE_PATH);
         
         faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(vision, {
           baseOptions: {
@@ -403,12 +475,18 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
       setIsModelLoading(false);
     }
 
+    // 在 effect 執行當下就抓住 video 元素。
+    // 清理函式若直接讀 videoRef.current，拿到的是「清理那一刻」的值 ——
+    // 元素若已被替換或卸載，就會關不到正在運作的那條相機串流（相機燈一直亮著）。
+    const videoEl = videoRef.current;
+
     return () => {
       active = false;
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
+      if (videoEl?.srcObject) {
+        const stream = videoEl.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
+        videoEl.srcObject = null;
       }
       if (faceLandmarkerRef.current) {
         faceLandmarkerRef.current.close();
@@ -416,20 +494,73 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
     };
   }, [isAutoTurnEnabled, totalPages]);
 
+  // 使用者可以用 ESC 離開全螢幕，那不會經過我們的按鈕。
+  // 若只在按鈕裡 setIsFullscreen，狀態就會和實際情況脫節（圖示顯示錯誤、再按一次沒反應）。
+  useEffect(() => {
+    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    handleFullscreenChange();
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // 從相簿開啟的影片 object URL 必須回收，否則整個影片檔會一直留在記憶體裡
+  useEffect(() => {
+    if (!videoFileUrl) return;
+    return () => { URL.revokeObjectURL(videoFileUrl); };
+  }, [videoFileUrl]);
+
+  // 記錄這首曲子練到的速度。
+  // storage.ts 有 updateTempoHistory()，但全專案從來沒有任何地方呼叫它，
+  // 所以「速度紀錄」面板永遠顯示「尚無速度紀錄」。這裡把它接起來：
+  // 在節拍器停止時寫入這段期間用過的最高 BPM（寫入會整個重存樂譜清單，
+  // 所以不適合在每次 BPM 變動時就寫）。
+  useEffect(() => {
+    if (isMetronomePlaying) {
+      maxBpmWhilePlayingRef.current = Math.max(maxBpmWhilePlayingRef.current, currentBpm);
+      wasMetronomePlayingRef.current = true;
+      return;
+    }
+
+    if (!wasMetronomePlayingRef.current) return;
+    wasMetronomePlayingRef.current = false;
+
+    const bpmToRecord = maxBpmWhilePlayingRef.current;
+    maxBpmWhilePlayingRef.current = 0;
+    if (bpmToRecord <= 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        await updateTempoHistory(score.id, bpmToRecord);
+        const allScores = await getScores();
+        const updated = allScores.find(s => s.id === score.id);
+        if (!cancelled && updated) {
+          setScore(prev => ({ ...prev, tempoHistory: updated.tempoHistory }));
+        }
+      } catch (err) {
+        console.error('Failed to record tempo history:', err);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [isMetronomePlaying, currentBpm, score.id]);
+
   const handleZoom = (delta: number) => {
     setZoom(prev => Math.min(Math.max(prev + delta, 0.5), 3));
   };
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-        setIsFullscreen(false);
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else if (document.exitFullscreen) {
+        await document.exitFullscreen();
       }
+    } catch (err) {
+      // iPhone 的 Safari 不支援元素全螢幕，requestFullscreen 會直接 reject
+      console.error('Fullscreen toggle failed:', err);
     }
+    // 狀態一律以瀏覽器的實際情況為準（見下方 fullscreenchange 監聽）
   };
 
   const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1));
@@ -476,7 +607,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                 </h2>
                 <button 
                   onClick={() => { setTempName(score.name); setIsEditingName(true); }}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 text-text-muted hover:text-accent-warm transition-all rounded-lg"
+                  /* 同上。這個鉛筆按鈕在觸控裝置上看不到（雖然點標題本身也能改名，但沒有提示） */
+                  className="p-1.5 text-text-muted hover:text-accent-warm rounded-lg hover-reveal"
                 >
                   <Edit2 size={14} />
                 </button>
@@ -776,8 +908,10 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
           <div className="w-[300px] md:w-[360px] lg:w-[480px] xl:w-[560px] shrink-0 bg-surface-warm border-l border-white/10 relative">
             <div className="w-full h-full bg-black relative">
               {showRecorder && (
-                <VideoRecorder 
-                  activeScoreName={score.name} 
+                <VideoRecorder
+                  activeScoreName={score.name}
+                  scoreId={score.id}
+                  onSaved={loadRecordings}
                   isMinimized={false}
                   onToggleMinimize={() => {}}
                 />
@@ -828,7 +962,22 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
           >
             <TrendingUp size={24} />
           </button>
-          <button 
+          <button
+            onClick={() => setShowRecordings(!showRecordings)}
+            className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all relative",
+              showRecordings ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30" : "bg-white/5 text-text-muted hover:text-text-warm"
+            )}
+            title="本曲錄影紀錄"
+          >
+            <Video size={24} />
+            {recordings.length > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-accent-warm text-bg-warm text-[10px] font-bold rounded-full flex items-center justify-center">
+                {recordings.length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => {
               const nextState = !isSplitScreen;
               setIsSplitScreen(nextState);
@@ -951,8 +1100,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex flex-col gap-1">
-                  <button onClick={() => setCurrentBpm(currentBpm + 1)} className="p-2 hover:bg-white/10 rounded-lg"><ChevronUp size={20} /></button>
-                  <button onClick={() => setCurrentBpm(currentBpm - 1)} className="p-2 hover:bg-white/10 rounded-lg"><ChevronDown size={20} /></button>
+                  <button onClick={() => setCurrentBpm(Math.min(300, currentBpm + 1))} className="p-2 hover:bg-white/10 rounded-lg"><ChevronUp size={20} /></button>
+                  <button onClick={() => setCurrentBpm(Math.max(30, currentBpm - 1))} className="p-2 hover:bg-white/10 rounded-lg"><ChevronDown size={20} /></button>
                 </div>
                 <button 
                   onClick={() => setIsMetronomePlaying(!isMetronomePlaying)}
@@ -978,6 +1127,48 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
         </div>
       )}
 
+      {showRecordings && (
+        <div className="fixed top-20 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-80 z-[100] animate-in fade-in slide-in-from-right-4">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm font-bold text-text-warm uppercase tracking-widest">本曲錄影紀錄</span>
+            <button onClick={() => setShowRecordings(false)} className="text-text-muted hover:text-text-warm"><X size={20} /></button>
+          </div>
+
+          <div className="space-y-3 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
+            {recordings.length === 0 ? (
+              <p className="text-xs text-text-muted text-center py-8 leading-relaxed">
+                尚無錄影紀錄。<br />
+                開啟「錄影模式」錄製後，按「儲存」即可留存在這裡。
+              </p>
+            ) : (
+              recordings.map((r) => (
+                <div key={r.id} className="bg-white/5 p-3 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-text-muted font-bold">
+                      {new Date(r.timestamp).toLocaleString()}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteRecording(r.id)}
+                      className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                      title="刪除這段錄影"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  {recordingUrls[r.id] && (
+                    r.type === 'audio' ? (
+                      <audio src={recordingUrls[r.id]} controls className="w-full" />
+                    ) : (
+                      <video src={recordingUrls[r.id]} controls playsInline className="w-full rounded-lg bg-black" />
+                    )
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Recorder Overlay (Floating) */}
       {(showRecorder || showVideoPlayer) && !isSplitScreen && (
         <div className={cn(
@@ -992,8 +1183,10 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
         )}>
           <div className="w-full h-full relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black">
             {showRecorder && (
-              <VideoRecorder 
-                activeScoreName={score.name} 
+              <VideoRecorder
+                activeScoreName={score.name}
+                scoreId={score.id}
+                onSaved={loadRecordings}
                 isMinimized={isRecorderMinimized}
                 onToggleMinimize={() => setIsRecorderMinimized(!isRecorderMinimized)}
                 recorderPosition={recorderPosition}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Plus, CheckCircle2, Circle, TrendingUp, Calendar, Clock, Music } from 'lucide-react';
+import { Target, Plus, CheckCircle2, Circle, TrendingUp } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { getGoals, saveGoals, getPracticeHistory, PracticeGoal } from '../lib/storage';
+import { getGoals, saveGoals, getPracticeHistory, PracticeGoal, PracticeSession } from '../lib/storage';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 
 interface PracticeGoalsProps {
@@ -10,7 +10,7 @@ interface PracticeGoalsProps {
 
 export const PracticeGoals: React.FC<PracticeGoalsProps> = ({ className }) => {
   const [goals, setGoals] = useState<PracticeGoal[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<PracticeSession[]>([]);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [newGoal, setNewGoal] = useState<Partial<PracticeGoal>>({
     type: 'time',
@@ -87,18 +87,34 @@ export const PracticeGoals: React.FC<PracticeGoalsProps> = ({ className }) => {
     { name: 'Sun', time: 0 },
   ];
 
-  history.forEach(h => {
-    const day = new Date(h.timestamp).getDay();
-    const index = (day + 6) % 7; // Adjust to Mon-Sun
-    weeklyData[index].time += Math.round(h.durationSeconds / 60);
-  });
+  // 只統計「本週」（週一 00:00 起算）。
+  // 原本沒有任何日期過濾，等於把所有歷史紀錄依星期幾加總 ——
+  // 標題寫「本週練習時數」但顯示的其實是歷年累計，數字會越用越誇張。
+  const startOfWeek = (() => {
+    const d = new Date();
+    const dayOffset = (d.getDay() + 6) % 7; // 週一為一週之始
+    d.setDate(d.getDate() - dayOffset);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  })();
+
+  history
+    .filter(h => h.timestamp >= startOfWeek)
+    .forEach(h => {
+      const day = new Date(h.timestamp).getDay();
+      const index = (day + 6) % 7; // Adjust to Mon-Sun
+      weeklyData[index].time += Math.round(h.durationSeconds / 60);
+    });
 
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
 
   return (
     <div className={cn("flex flex-col gap-6", className)}>
       {/* Insights Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* 固定單欄：這個元件現在放在「練習紀錄」旁的 1/3 寬欄位裡，
+          原本的 md:grid-cols-2 會把兩張圖表擠成約 150px 寬而看不清楚。
+          （md: 判斷的是視窗寬度而非容器寬度，所以在窄欄位裡仍會生效。） */}
+      <div className="grid grid-cols-1 gap-4">
         <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp size={18} className="text-accent-warm" />
@@ -187,7 +203,8 @@ export const PracticeGoals: React.FC<PracticeGoalsProps> = ({ className }) => {
                 </div>
                 <button 
                   onClick={() => deleteGoal(goal.id)}
-                  className="text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                  /* 同 PracticeRoutines：觸控裝置沒有 hover，否則永遠刪不掉目標 */
+                  className="text-text-muted hover:text-red-400 hover-reveal"
                 >
                   刪除
                 </button>
@@ -247,7 +264,7 @@ export const PracticeGoals: React.FC<PracticeGoalsProps> = ({ className }) => {
                   <label className="block text-xs font-bold text-text-muted uppercase mb-2">類型</label>
                   <select 
                     value={newGoal.type}
-                    onChange={e => setNewGoal({ ...newGoal, type: e.target.value as any })}
+                    onChange={e => setNewGoal({ ...newGoal, type: e.target.value as PracticeGoal['type'] })}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-text-warm focus:outline-none focus:border-accent-warm transition-all"
                   >
                     <option value="time">練習時數</option>

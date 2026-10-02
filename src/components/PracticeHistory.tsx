@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Calendar, Plus, Share2, Pen } from 'lucide-react';
+import { Calendar, Share2, Pen } from 'lucide-react';
 import { getPracticeHistory, addPracticeSession, PracticeSession } from '../lib/storage';
-import { cn } from '../lib/utils';
+import { cn, isAbortError } from '../lib/utils';
 
 interface PracticeHistoryProps {
   className?: string;
@@ -68,7 +68,7 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
       }
     } catch (error) {
       console.error("Share failed:", error);
-      if ((error as any).name !== 'AbortError') {
+      if (!isAbortError(error)) {
         window.location.href = `mailto:?subject=${encodeURIComponent('我的練琴練習紀錄')}&body=${encodeURIComponent(text)}`;
       }
     }
@@ -125,6 +125,37 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
             </button>
           </div>
         </div>
+
+        {/* 手動補登表單。
+            原本只有上面那顆鉛筆按鈕會切換 isAdding，但整個 JSX 從來沒有讀取 isAdding，
+            handleManualAdd 也從未被呼叫 —— 等於按鈕按下去完全沒有反應。 */}
+        {isAdding && (
+          <div className="flex items-center gap-2 bg-white/5 border border-white/10 p-2 rounded-2xl shrink-0 animate-in fade-in slide-in-from-top-2 duration-200">
+            <span className="text-xs font-bold text-text-muted px-2 shrink-0">補登練習</span>
+            <input
+              type="number"
+              min="1"
+              max="600"
+              value={manualMinutes}
+              onChange={(e) => setManualMinutes(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-20 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-text-warm text-center focus:outline-none focus:border-accent-warm"
+            />
+            <span className="text-xs text-text-muted shrink-0">分鐘</span>
+            <div className="flex-1" />
+            <button
+              onClick={() => setIsAdding(false)}
+              className="px-3 py-2 rounded-xl text-xs font-bold text-text-muted hover:bg-white/5 transition-colors"
+            >
+              取消
+            </button>
+            <button
+              onClick={handleManualAdd}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-accent-warm text-bg-warm hover:opacity-90 transition-opacity"
+            >
+              新增
+            </button>
+          </div>
+        )}
 
         <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 min-h-0">
           {/* Stats & Add Manual */}

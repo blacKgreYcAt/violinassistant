@@ -1,13 +1,23 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { 
-  Video, VideoOff, Download, Camera, StopCircle, Share2, Mic, MicOff, Save, Activity, 
+  Video, Download, Camera, StopCircle, Share2, Mic, Save, Activity, 
   Minimize2, Maximize2, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight 
 } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, isAbortError } from '../lib/utils';
+import { createAudioContext } from '../lib/audio';
 import { saveRecording } from '../lib/storage';
+import { detectPitch, noteNumberFromPitch, centsOffFromPitch } from '../lib/pitch';
 
 interface VideoRecorderProps {
   activeScoreName?: string;
+  /**
+   * 這份錄影要歸屬的樂譜 ID。
+   * 注意：一定要傳「ID」而不是曲名 —— 讀取端是用 getRecordingsByScoreId(score.id) 查詢的，
+   * 之前這裡誤存曲名，導致存進去的錄影永遠查不回來。
+   */
+  scoreId?: string;
+  /** 存檔成功後通知父層重新載入清單 */
+  onSaved?: () => void;
   className?: string;
   isMinimized?: boolean;
   isFloating?: boolean;
@@ -16,9 +26,11 @@ interface VideoRecorderProps {
   onPositionChange?: (pos: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left') => void;
 }
 
-export const VideoRecorder: React.FC<VideoRecorderProps> = ({ 
-  activeScoreName, 
-  className, 
+export const VideoRecorder: React.FC<VideoRecorderProps> = ({
+  activeScoreName,
+  scoreId,
+  onSaved,
+  className,
   isMinimized, 
   isFloating,
   onToggleMinimize,
@@ -31,9 +43,17 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [isAudioOnly, setIsAudioOnly] = useState(false);
-  const [intonationData, setIntonationData] = useState<{ time: number; pitch: number; cents: number }[]>([]);
-  const [currentPitch, setCurrentPitch] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // 音準資料放在 ref 而不是 state：
+  // 原本每一幀（60fps）都做 setIntonationData(prev => [...prev, x])，
+  // 等於每秒複製整個陣列 60 次，錄 5 分鐘就累積到上萬筆，App 會越錄越卡。
+  // 而且畫圖用的是 useCallback 閉包裡的舊 state，資料永遠停在開始錄影那一刻，
+  // 導致「音準分析中」的圖表其實一直是空白的。
+  const intonationDataRef = useRef<{ time: number; pitch: number; cents: number }[]>([]);
+  const isRecordingRef = useRef(false);
+  const intonationBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
+  const lastIntonationSampleRef = useRef(0);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -64,6 +84,24 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
     };
   }, [stream]);
 
+  // 預覽用的 object URL 會把整段影片釘在記憶體裡。
+  // 這裡在它被新的 URL 取代或元件卸載時回收，否則每錄一次就洩漏一段影片。
+  React.useEffect(() => {
+    if (!previewUrl) return;
+    return () => { URL.revokeObjectURL(previewUrl); };
+  }, [previewUrl]);
+
+  // AudioContext 也要在卸載時關閉（瀏覽器對同時存在的 AudioContext 數量有上限）
+  React.useEffect(() => {
+    return () => {
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close();
+      }
+      audioContextRef.current = null;
+      analyserRef.current = null;
+    };
+  }, []);
+
   const startCamera = async (audioOnly: boolean = false) => {
     try {
       const constraints = audioOnly ? {
@@ -84,7 +122,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
 
       // Setup Audio Analysis
       if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = createAudioContext();
       } else if (audioContextRef.current.state === 'suspended') {
         audioContextRef.current.resume();
       }
@@ -100,51 +138,43 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
     }
   };
 
-  // Pitch Detection Logic (Auto-correlation)
-  const autoCorrelate = (buf: Float32Array, sampleRate: number) => {
-    let SIZE = buf.length;
-    let rms = 0;
-    for (let i = 0; i < SIZE; i++) {
-      let val = buf[i];
-      rms += val * val;
-    }
-    rms = Math.sqrt(rms / SIZE);
-    if (rms < 0.01) return -1;
+  // 一次錄影最多保留的音準取樣數（約 25 筆/秒 → 足夠記錄 40 分鐘）
+  const MAX_INTONATION_POINTS = 60000;
 
-    let r1 = 0, r2 = SIZE - 1, thres = 0.2;
-    for (let i = 0; i < SIZE / 2; i++) if (Math.abs(buf[i]) < thres) { r1 = i; break; }
-    for (let i = 1; i < SIZE / 2; i++) if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
-
-    buf = buf.slice(r1, r2);
-    SIZE = buf.length;
-
-    let c = new Array(SIZE).fill(0);
-    for (let i = 0; i < SIZE; i++)
-      for (let j = 0; j < SIZE - i; j++)
-        c[i] = c[i] + buf[j] * buf[j + i];
-
-    let d = 0; while (c[d] > c[d + 1]) d++;
-    let maxval = -1, maxpos = -1;
-    for (let i = d; i < SIZE; i++) {
-      if (c[i] > maxval) {
-        maxval = c[i];
-        maxpos = i;
-      }
-    }
-    let T0 = maxpos;
-    return sampleRate / T0;
-  };
-
+  // 依賴陣列刻意留空，讓這個函式在整個元件生命週期中保持同一個參考。
+  // rAF 是靠自己遞迴排程的，若函式每次重建，正在跑的那條鏈會一直使用舊版本，
+  // 畫面資料就永遠停在開始錄影的那一刻。所有會變動的值都改用 ref 讀取。
   const updateIntonation = useCallback(() => {
-    if (!analyserRef.current || !isRecording) return;
-    
-    const buffer = new Float32Array(analyserRef.current.fftSize);
-    analyserRef.current.getFloatTimeDomainData(buffer);
-    const pitch = autoCorrelate(buffer, audioContextRef.current!.sampleRate);
-    
-    if (pitch !== -1 && pitch > 50 && pitch < 2000) {
-      setCurrentPitch(pitch);
-      setIntonationData(prev => [...prev, { time: Date.now(), pitch, cents: 0 }]);
+    if (!isRecordingRef.current) return;
+
+    const analyser = analyserRef.current;
+    const audioCtx = audioContextRef.current;
+
+    if (analyser && audioCtx && audioCtx.state !== 'closed') {
+      // 限制取樣頻率，自相關運算不需要跟著螢幕更新率跑
+      const now = performance.now();
+      if (now - lastIntonationSampleRef.current >= 40) {
+        lastIntonationSampleRef.current = now;
+
+        if (!intonationBufferRef.current || intonationBufferRef.current.length !== analyser.fftSize) {
+          intonationBufferRef.current = new Float32Array(analyser.fftSize);
+        }
+        const buffer = intonationBufferRef.current;
+        analyser.getFloatTimeDomainData(buffer);
+
+        const frequency = detectPitch(buffer, audioCtx.sampleRate);
+        if (frequency !== -1) {
+          const noteNum = noteNumberFromPitch(frequency);
+          const samples = intonationDataRef.current;
+          samples.push({
+            time: Date.now(),
+            pitch: frequency,
+            // 原本這裡永遠寫死 0，存下來的音準資料等於只有一半可用
+            cents: centsOffFromPitch(frequency, noteNum)
+          });
+          if (samples.length > MAX_INTONATION_POINTS) samples.shift();
+        }
+      }
     }
 
     // Draw on mini canvas
@@ -156,7 +186,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
         ctx.strokeStyle = '#10b981';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        const dataToDraw = intonationData.slice(-50);
+        const dataToDraw = intonationDataRef.current.slice(-50);
         dataToDraw.forEach((d, i) => {
           const x = (i / 50) * canvas.width;
           const y = canvas.height - ((d.pitch - 50) / 1000) * canvas.height;
@@ -168,16 +198,25 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
     }
 
     animationFrameRef.current = requestAnimationFrame(updateIntonation);
-  }, [isRecording, intonationData]);
+  }, []);
 
   useEffect(() => {
+    isRecordingRef.current = isRecording;
     if (isRecording) {
-      setIntonationData([]);
+      intonationDataRef.current = [];
+      lastIntonationSampleRef.current = 0;
       updateIntonation();
-    } else {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    } else if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = undefined;
     }
-  }, [isRecording]);
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = undefined;
+      }
+    };
+  }, [isRecording, updateIntonation]);
 
   const stopCamera = () => {
     if (stream) {
@@ -246,7 +285,10 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
       console.error("MediaRecorder start error:", e);
       alert("錄影啟動失敗，請重新開啟相機再試一次。");
     }
-  }, [stream]);
+    // isAudioOnly 必須列入依賴：它決定要挑哪一組 mimeType，
+    // 而且會被 onstop 的閉包捕捉。目前 isAudioOnly 與 stream 總是一起更新所以沒出事，
+    // 但依賴少列就是前面那幾個「閉包抓到舊值」bug 的同一個成因。
+  }, [stream, isAudioOnly]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
@@ -326,7 +368,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
       }
     } catch (error) {
       console.error("Share video failed:", error);
-      if ((error as any).name !== 'AbortError') {
+      if (!isAbortError(error)) {
         downloadVideo();
       }
     }
@@ -338,12 +380,13 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
     try {
       await saveRecording({
         id: crypto.randomUUID(),
-        scoreId: activeScoreName || 'unknown',
+        scoreId: scoreId || 'unknown',
         timestamp: Date.now(),
         type: isAudioOnly ? 'audio' : 'video',
         blob: finalVideoBlob,
-        intonationData
+        intonationData: intonationDataRef.current
       });
+      onSaved?.();
       alert('已成功儲存至 App 練習紀錄！');
     } catch (error) {
       console.error('Save recording failed:', error);
