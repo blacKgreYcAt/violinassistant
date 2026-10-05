@@ -6,7 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
-package-lock.json
+# package-lock.json 要進版控：沒有鎖檔的話，不同機器 npm install 會裝到不同版本，
+# 建置結果與測試／lint 的輸出都無法保證一致（跨機器開發時尤其明顯）。
+# 另外兩個 lockfile 仍然排除，避免不小心混用不同套件管理工具。
 yarn.lock
 pnpm-lock.yaml
 .vercel/
