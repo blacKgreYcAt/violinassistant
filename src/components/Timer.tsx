@@ -244,7 +244,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
     : 0;
 
   return (
-    <div className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5", className)}>
+    <div data-testid="timer" className={cn("bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5", className)}>
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between shrink-0 h-10 mb-6">
           <div className="flex items-center gap-2">
@@ -264,7 +264,9 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
         </div>
 
         <div className="flex flex-col items-center justify-center h-40 shrink-0 mb-6 relative">
-          <div className={cn(
+          <div
+            data-testid="timer-remaining"
+            className={cn(
             "text-7xl font-bold font-mono tracking-tighter transition-colors duration-300 leading-none",
             remainingSeconds === 0 ? "text-emerald-400" : "text-text-warm"
           )}>

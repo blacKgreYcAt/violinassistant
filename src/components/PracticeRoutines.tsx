@@ -217,6 +217,7 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
           routines.map(routine => (
             <div 
               key={routine.id}
+              data-testid="routine-card"
               className="group flex flex-col gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-accent-warm/30 transition-all"
             >
               <div className="flex items-center justify-between">

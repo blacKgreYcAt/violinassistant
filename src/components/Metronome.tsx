@@ -213,7 +213,9 @@ export const Metronome: React.FC<MetronomeProps> = ({
   };
 
   return (
-    <div className={cn(
+    <div
+      data-testid="metronome"
+      className={cn(
       "bg-surface-warm backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5 transition-all duration-75",
       isPlaying && currentBeat === 0 ? "ring-2 ring-accent-warm/50 scale-[1.01]" : "",
       className
@@ -341,6 +343,8 @@ export const Metronome: React.FC<MetronomeProps> = ({
               {[...Array(beatsPerMeasure)].map((_, i) => (
                 <div 
                   key={i}
+                  data-testid="beat-dot"
+                  data-active={isPlaying && currentBeat === i}
                   className={cn(
                     "w-3 h-3 rounded-full transition-all duration-100",
                     isPlaying && currentBeat === i ? "bg-accent-warm scale-125" : "bg-white/10"

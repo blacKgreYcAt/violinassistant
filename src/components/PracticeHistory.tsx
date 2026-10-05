@@ -101,7 +101,7 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
   const totalMinutes = chartData.reduce((acc, curr) => acc + curr.minutes, 0);
 
   return (
-    <div className={cn("bg-surface-warm backdrop-blur-md p-3 md:p-4 rounded-3xl shadow-xl border border-white/5", className)}>
+    <div data-testid="practice-history" className={cn("bg-surface-warm backdrop-blur-md p-3 md:p-4 rounded-3xl shadow-xl border border-white/5", className)}>
       <div className="flex flex-col gap-3 md:gap-4 h-full">
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
@@ -163,7 +163,7 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
             <div className="bg-white/5 px-4 py-6 rounded-2xl border border-white/5 flex flex-col justify-center flex-1">
               <div className="text-xs font-bold text-text-muted uppercase tracking-[0.2em] mb-2">今日練習</div>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold font-mono text-text-warm">{todayMinutes}</span>
+                <span data-testid="today-minutes" className="text-4xl font-bold font-mono text-text-warm">{todayMinutes}</span>
                 <span className="text-base text-text-muted font-bold">分鐘</span>
               </div>
             </div>

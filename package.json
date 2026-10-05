@@ -12,7 +12,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run typecheck && npm run lint && npm run test",
-    "clean": "rm -rf node_modules dist"
+    "clean": "rm -rf node_modules dist",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "check:all": "npm run check && npm run test:e2e"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.32",
@@ -31,6 +34,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^25.5.0",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",

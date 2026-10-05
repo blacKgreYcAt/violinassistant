@@ -14,7 +14,7 @@ export const PracticeDashboard: React.FC<PracticeDashboardProps> = ({ onStartRou
   const [activeTab, setActiveTab] = useState<'routines' | 'goals'>('routines');
 
   return (
-    <div className={cn("bg-surface-warm backdrop-blur-md p-4 md:p-6 rounded-3xl shadow-xl border border-white/5 flex flex-col gap-4 md:gap-6", className)}>
+    <div data-testid="practice-dashboard" className={cn("bg-surface-warm backdrop-blur-md p-4 md:p-6 rounded-3xl shadow-xl border border-white/5 flex flex-col gap-4 md:gap-6", className)}>
       <div className="flex items-center gap-2 bg-white/5 p-1 rounded-2xl shrink-0">
         <button
           onClick={() => setActiveTab('routines')}
