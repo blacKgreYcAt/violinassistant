@@ -8,6 +8,17 @@
     <!-- Cache Bust: 2026-03-13-0606 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>練琴練習小幫手</title>
+
+    <!-- 瀏覽器分頁圖示（原本完全沒有，分頁上是一片空白） -->
+    <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png" />
+    <!-- iOS 不讀 manifest 裡的 icons，「加入主畫面」要靠這一行 -->
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+
+    <!-- 網址列／狀態列配色，與 App 的深色介面一致 -->
+    <meta name="theme-color" content="#080808" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="練琴小幫手" />
     <script>
       console.log("App Version: 2.3.0");
       // Force clear old service workers if version mismatch
