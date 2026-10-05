@@ -10,7 +10,8 @@ import { RewardCard } from './components/RewardCard';
 import { PracticeHistory } from './components/PracticeHistory';
 import { PracticeDashboard } from './components/PracticeDashboard';
 import { PracticeRoutine, Score } from './lib/storage';
-import { Music, LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail, Star, Smartphone } from 'lucide-react';
+import { LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail, Star, Smartphone } from 'lucide-react';
+import { ViolinIcon } from './components/ViolinIcon';
 import { cn } from './lib/utils';
 
 export default function App() {
@@ -106,8 +107,10 @@ export default function App() {
       {/* Top Header */}
       <header className="h-16 shrink-0 border-b border-white/5 flex items-center justify-between px-4 md:px-6 bg-surface-warm/80 backdrop-blur-md z-10">
         <div className="flex items-center gap-3">
+          {/* 與 PWA 主畫面圖示使用同一組輪廓（見 ViolinIcon / generate-icons.py），
+              讓 App 內的識別和安裝後看到的圖示一致 */}
           <div className="w-10 h-10 bg-accent-warm rounded-xl flex items-center justify-center text-bg-warm shrink-0 shadow-lg shadow-accent-warm/20">
-            <Music size={20} />
+            <ViolinIcon size={22} />
           </div>
           <div className="group relative">
             {isEditingTitle ? (

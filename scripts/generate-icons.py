@@ -212,6 +212,92 @@ def make_icon(size: int, maskable: bool = False) -> Image.Image:
     return img.resize((size, size), Image.LANCZOS)
 
 
+# ---------------------------------------------------------------------------
+# SVG 匯出：供 App 介面上的 <ViolinIcon /> 使用
+#
+# 刻意與 PNG 圖示共用同一組控制點（BODY_HALF）。若各畫各的，
+# 兩邊的比例遲早會走樣 —— 介面上的識別和主畫面圖示長得不一樣會很突兀。
+# ---------------------------------------------------------------------------
+
+def catmull_rom_to_bezier(points):
+    """把 Catmull-Rom 控制點轉成等價的三次貝茲線段，輸出遠比逐點取樣精簡。"""
+    pts = [points[0]] + list(points) + [points[-1]]
+    segments = []
+    for i in range(len(pts) - 3):
+        p0, p1, p2, p3 = pts[i], pts[i + 1], pts[i + 2], pts[i + 3]
+        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
+        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
+        segments.append((c1, c2, p2))
+    return points[0], segments
+
+
+def body_path_for_viewbox(size: float = 24.0, body_height: float = 13.6) -> str:
+    """產生 0..size 座標系下的琴身輪廓路徑（lucide 慣用 24x24）。"""
+    total = body_height * 1.56
+    cx = size / 2
+    top = (size - total) / 2 + body_height * 0.56
+
+    def to_vb(x, y):
+        return (cx + x * body_height, top + y * body_height)
+
+    right = [to_vb(x, y) for x, y in BODY_HALF]
+    left = [(2 * cx - x, y) for x, y in reversed(right)]
+    outline = right + left
+
+    start, segments = catmull_rom_to_bezier(outline)
+    f = lambda v: f"{v:.2f}".rstrip("0").rstrip(".")
+    d = [f"M{f(start[0])} {f(start[1])}"]
+    for c1, c2, end in segments:
+        d.append(f"C{f(c1[0])} {f(c1[1])} {f(c2[0])} {f(c2[1])} {f(end[0])} {f(end[1])}")
+    d.append("Z")
+    return "".join(d)
+
+
+def geometry_for_viewbox(size: float = 24.0, body_height: float = 13.6) -> dict:
+    """琴頸、琴頭等其餘部位的座標，同樣以琴身高度為基準換算。"""
+    total = body_height * 1.56
+    cx = size / 2
+    top = (size - total) / 2 + body_height * 0.56
+    r = lambda v: round(v, 2)
+    return {
+        "neckHalfWidth": r(0.055 * body_height),
+        "neckTop": r(top + (-0.34) * body_height),
+        "neckBottom": r(top + 0.06 * body_height),
+        "pegHalfWidth": r(0.085 * body_height),
+        "pegTop": r(top + (-0.46) * body_height),
+        "scrollCx": r(cx),
+        "scrollCy": r(top + (-0.505) * body_height),
+        "scrollR": r(0.10 * body_height),
+        "fHoleX": r(0.112 * body_height),
+        "fHoleTop": r(top + 0.405 * body_height),
+        "fHoleBottom": r(top + 0.620 * body_height),
+        "centerX": r(cx),
+    }
+
+
+def write_svg_source() -> None:
+    """把路徑寫進 src/lib/violinPath.ts，讓 React 元件直接引用。"""
+    out = OUT_DIR.parent.parent / "src" / "lib" / "violinPath.ts"
+    geo = geometry_for_viewbox()
+    lines = [
+        "// 這個檔案由 scripts/generate-icons.py 產生，請不要手動修改。",
+        "// 目的是讓介面上的 <ViolinIcon /> 與 PWA 圖示共用同一組輪廓控制點，",
+        "// 避免兩邊各畫各的而比例走樣。要調整形狀請改 Python 腳本裡的 BODY_HALF。",
+        "",
+        "/** 琴身輪廓（24x24 viewBox，與 lucide 的慣例一致） */",
+        f"export const VIOLIN_BODY_PATH = '{body_path_for_viewbox()}';",
+        "",
+        "/** 琴頸、琴頭、f 孔的座標 */",
+        "export const VIOLIN_GEOMETRY = {",
+    ]
+    for k, v in geo.items():
+        lines.append(f"  {k}: {v},")
+    lines.append("} as const;")
+    lines.append("")
+    out.write_text(chr(10).join(lines), encoding="utf-8")
+    print(f"src/lib/violinPath.ts  (SVG 路徑)")
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -229,6 +315,8 @@ def main() -> None:
         path = OUT_DIR / name
         icon.save(path, "PNG")
         print(f"{path.relative_to(OUT_DIR.parent.parent)}  ({size}x{size}{', maskable' if maskable else ''})")
+
+    write_svg_source()
 
 
 if __name__ == "__main__":
