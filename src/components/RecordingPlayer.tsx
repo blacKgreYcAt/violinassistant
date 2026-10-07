@@ -2,7 +2,8 @@ import React, { useRef, useState, useCallback } from 'react';
 import { Trash2, Activity, ChevronDown, ChevronUp } from 'lucide-react';
 import { Recording } from '../lib/storage';
 import { IntonationChart } from './IntonationChart';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/utils';
+import { PlaybackSpeedControl, applyPlaybackSpeed } from './PlaybackSpeedControl';
 
 interface RecordingPlayerProps {
   recording: Recording;
@@ -21,6 +22,7 @@ export const RecordingPlayer: React.FC<RecordingPlayerProps> = ({ recording, url
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [showChart, setShowChart] = useState(true);
+  const [speed, setSpeed] = useState(1);
 
   const hasIntonation = (recording.intonationData?.length ?? 0) > 0;
 
@@ -28,6 +30,16 @@ export const RecordingPlayer: React.FC<RecordingPlayerProps> = ({ recording, url
   // timeupdate 的觸發頻率約 4Hz，不需要額外節流。
   const handleTimeUpdate = useCallback(() => {
     if (mediaRef.current) setCurrentTime(mediaRef.current.currentTime);
+  }, []);
+
+  // 每次載入新的來源時，瀏覽器會把 playbackRate 重設回 1，要重新套用
+  const handleLoadedMetadata = useCallback(() => {
+    applyPlaybackSpeed(mediaRef.current, speed);
+  }, [speed]);
+
+  const changeSpeed = useCallback((next: number) => {
+    setSpeed(next);
+    applyPlaybackSpeed(mediaRef.current, next);
   }, []);
 
   const handleSeek = useCallback((seconds: number) => {
@@ -79,6 +91,7 @@ export const RecordingPlayer: React.FC<RecordingPlayerProps> = ({ recording, url
             controls
             className="w-full"
             onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={handleLoadedMetadata}
           />
         ) : (
           <video
@@ -88,8 +101,14 @@ export const RecordingPlayer: React.FC<RecordingPlayerProps> = ({ recording, url
             playsInline
             className="w-full rounded-lg bg-black"
             onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={handleLoadedMetadata}
           />
         ))}
+
+      {url && (
+        /* 慢速回放自己的錄影，可以聽清楚換弦、換把的細節 */
+        <PlaybackSpeedControl value={speed} onChange={changeSpeed} className="mt-2 w-fit" />
+      )}
 
       {hasIntonation && showChart && (
         <div className="mt-3 pt-3 border-t border-white/5">

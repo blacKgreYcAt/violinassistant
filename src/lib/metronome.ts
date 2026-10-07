@@ -94,3 +94,37 @@ export function advanceTick(
   const nextBeat = (position.beatIndex + 1) % beats;
   return { beatIndex: nextBeat, subIndex: 0, crossedBarline: nextBeat === 0 };
 }
+
+/**
+ * 判斷某一小節是否該靜音。
+ *
+ * 「靜音小節」是常見的節奏訓練方式：節拍器響幾小節後刻意停幾小節，
+ * 讓演奏者自己維持速度，再用重新響起的拍子檢驗有沒有跑掉。
+ * 老師很常要求用這個方式練。
+ *
+ * @param barIndex 從開始播放算起的小節序號（0 起算）
+ * @param playBars 連續發聲幾小節
+ * @param silentBars 接著靜音幾小節；0 代表不啟用
+ */
+export function isSilentBar(barIndex: number, playBars: number, silentBars: number): boolean {
+  if (!Number.isFinite(barIndex) || barIndex < 0) return false;
+  const play = Math.floor(playBars);
+  const silent = Math.floor(silentBars);
+  // 任一邊不合法就視為停用，不要讓節拍器整個靜掉
+  if (!Number.isFinite(play) || !Number.isFinite(silent) || play < 1 || silent < 1) return false;
+
+  return barIndex % (play + silent) >= play;
+}
+
+/** 靜音期間還剩幾小節（供畫面顯示倒數）；非靜音期間回傳 0 */
+export function remainingSilentBars(
+  barIndex: number,
+  playBars: number,
+  silentBars: number
+): number {
+  if (!isSilentBar(barIndex, playBars, silentBars)) return 0;
+  const play = Math.floor(playBars);
+  const silent = Math.floor(silentBars);
+  const positionInCycle = barIndex % (play + silent);
+  return play + silent - positionInCycle;
+}

@@ -7,6 +7,8 @@ import {
   advanceTick,
   MIN_BPM,
   MAX_BPM,
+  isSilentBar,
+  remainingSilentBars,
 } from './metronome';
 
 describe('clickSpecFor', () => {
@@ -154,5 +156,50 @@ describe('advanceTick', () => {
   it('異常的拍數不會造成除以零或無限迴圈', () => {
     expect(advanceTick({ beatIndex: 0, subIndex: 0 }, 0, 1)).toMatchObject({ beatIndex: 0 });
     expect(advanceTick({ beatIndex: 0, subIndex: 0 }, NaN, 1)).toMatchObject({ beatIndex: 0 });
+  });
+});
+
+describe('isSilentBar', () => {
+  it('前幾小節發聲、接著幾小節靜音，週期循環', () => {
+    // 響 2 小節、靜 2 小節
+    const pattern = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => isSilentBar(i, 2, 2));
+    expect(pattern).toEqual([false, false, true, true, false, false, true, true]);
+  });
+
+  it('可以設定不對稱的長度（響 4 靜 1）', () => {
+    const pattern = [0, 1, 2, 3, 4, 5].map((i) => isSilentBar(i, 4, 1));
+    expect(pattern).toEqual([false, false, false, false, true, false]);
+  });
+
+  it('靜音小節設為 0 代表停用，永遠不靜音', () => {
+    expect([0, 1, 2, 5, 10].every((i) => !isSilentBar(i, 2, 0))).toBe(true);
+  });
+
+  it('不合法的設定一律視為停用，不會讓節拍器整個靜掉', () => {
+    for (const [play, silent] of [[0, 2], [-1, 2], [2, -1], [NaN, 2], [2, NaN]]) {
+      expect(isSilentBar(1, play, silent)).toBe(false);
+    }
+  });
+
+  it('異常的小節序號不會爆掉', () => {
+    expect(isSilentBar(-1, 2, 2)).toBe(false);
+    expect(isSilentBar(NaN, 2, 2)).toBe(false);
+  });
+});
+
+describe('remainingSilentBars', () => {
+  it('靜音期間回傳剩餘小節數並逐步遞減', () => {
+    // 響 2 靜 2：第 2、3 小節靜音
+    expect(remainingSilentBars(2, 2, 2)).toBe(2);
+    expect(remainingSilentBars(3, 2, 2)).toBe(1);
+  });
+
+  it('非靜音期間回傳 0', () => {
+    expect(remainingSilentBars(0, 2, 2)).toBe(0);
+    expect(remainingSilentBars(1, 2, 2)).toBe(0);
+  });
+
+  it('停用時永遠回傳 0', () => {
+    expect(remainingSilentBars(5, 2, 0)).toBe(0);
   });
 });

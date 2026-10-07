@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Square, Plus, Minus, Volume2, VolumeX, Activity, TrendingUp, Target, RefreshCw } from 'lucide-react';
+import { EyeOff, Play, Square, Plus, Minus, Volume2, VolumeX, Activity, TrendingUp, Target, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { createAudioContext } from '../lib/audio';
 
@@ -13,6 +13,8 @@ import {
   secondsPerTick,
   advanceTick,
   clampBpm,
+  isSilentBar,
+  remainingSilentBars,
 } from '../lib/metronome';
 
 // 為了相容舊的引用方式
@@ -36,6 +38,12 @@ export const Metronome: React.FC<MetronomeProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [beatsPerMeasure, setBeatsPerMeasure] = useState(4);
   const [subdivision, setSubdivision] = useState<Subdivision>(1);
+
+  // 靜音小節：響幾小節後刻意停幾小節，讓演奏者自己維持速度
+  const [silentBarsEnabled, setSilentBarsEnabled] = useState(false);
+  const [playBars, setPlayBars] = useState(2);
+  const [silentBars, setSilentBars] = useState(2);
+  const [silentCountdown, setSilentCountdown] = useState(0);
   const [currentBeat, setCurrentBeat] = useState(0);
 
   // Progressive Mode States
@@ -67,6 +75,11 @@ export const Metronome: React.FC<MetronomeProps> = ({
   const bpmRef = useRef(bpm);
   const beatsPerMeasureRef = useRef(beatsPerMeasure);
   const subdivisionRef = useRef<Subdivision>(subdivision);
+  // 從開始播放算起的小節序號，用來判斷目前這一小節該不該發聲
+  const barIndexRef = useRef(0);
+  const silentBarsEnabledRef = useRef(silentBarsEnabled);
+  const playBarsRef = useRef(playBars);
+  const silentBarsRef = useRef(silentBars);
   // 目前位在一拍之中的第幾個細分點（0 = 正拍）
   const subIndexRef = useRef(0);
   const currentBeatRef = useRef(currentBeat);
@@ -79,6 +92,9 @@ export const Metronome: React.FC<MetronomeProps> = ({
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   useEffect(() => { beatsPerMeasureRef.current = beatsPerMeasure; }, [beatsPerMeasure]);
   useEffect(() => { subdivisionRef.current = subdivision; }, [subdivision]);
+  useEffect(() => { silentBarsEnabledRef.current = silentBarsEnabled; }, [silentBarsEnabled]);
+  useEffect(() => { playBarsRef.current = playBars; }, [playBars]);
+  useEffect(() => { silentBarsRef.current = silentBars; }, [silentBars]);
   useEffect(() => { currentBeatRef.current = currentBeat; }, [currentBeat]);
   useEffect(() => { isProgressiveModeRef.current = isProgressiveMode; }, [isProgressiveMode]);
   useEffect(() => { targetBpmRef.current = targetBpm; }, [targetBpm]);
@@ -114,7 +130,15 @@ export const Metronome: React.FC<MetronomeProps> = ({
     while (nextNoteTime.current < audioContext.current.currentTime + scheduleAheadTime) {
       const beatToPlay = currentBeatRef.current;
       const subToPlay = subIndexRef.current;
-      playClick(nextNoteTime.current, beatToPlay, subToPlay);
+
+      // 靜音小節只是「不發聲」—— 時間仍要照常推進，
+      // 否則重新響起時的拍子就對不上了，整個練習的意義也沒了。
+      const muteThisBar =
+        silentBarsEnabledRef.current &&
+        isSilentBar(barIndexRef.current, playBarsRef.current, silentBarsRef.current);
+      if (!muteThisBar) {
+        playClick(nextNoteTime.current, beatToPlay, subToPlay);
+      }
       // 記下這一拍「實際會發聲的時間」，交給 drawLoop 在那個時間點才更新畫面。
       // 需要設上限：分頁切到背景時 requestAnimationFrame 會完全停止（沒人消耗佇列），
       // 但 setTimeout 仍會以較低頻率繼續排程並推入，佇列會無限成長。
@@ -139,6 +163,13 @@ export const Metronome: React.FC<MetronomeProps> = ({
       subIndexRef.current = next.subIndex;
 
       if (next.crossedBarline) {
+        barIndexRef.current += 1;
+        setSilentCountdown(
+          silentBarsEnabledRef.current
+            ? remainingSilentBars(barIndexRef.current, playBarsRef.current, silentBarsRef.current)
+            : 0
+        );
+
         // End of measure
         const nextMeasureCount = measuresCountRef.current + 1;
         measuresCountRef.current = nextMeasureCount;
@@ -173,6 +204,8 @@ export const Metronome: React.FC<MetronomeProps> = ({
       if (!timerID.current) {
         currentBeatRef.current = 0;
         subIndexRef.current = 0;
+        barIndexRef.current = 0;
+        setSilentCountdown(0);
         setCurrentBeat(0);
         measuresCountRef.current = 0;
         setMeasuresCount(0);
@@ -263,6 +296,21 @@ export const Metronome: React.FC<MetronomeProps> = ({
             >
               <TrendingUp size={20} />
               <span className="text-sm font-bold uppercase tracking-wider">漸進模式</span>
+            </button>
+            <button
+              onClick={() => setSilentBarsEnabled(!silentBarsEnabled)}
+              aria-label="靜音小節"
+              aria-pressed={silentBarsEnabled}
+              className={cn(
+                "px-3 py-2.5 rounded-xl transition-all flex items-center gap-1.5 border",
+                silentBarsEnabled
+                  ? "bg-indigo-500 text-white border-indigo-500 shadow-lg shadow-indigo-500/20"
+                  : "hover:bg-white/5 text-text-muted border-white/5"
+              )}
+              title="靜音小節：響幾小節後刻意停幾小節，訓練內在節奏感"
+            >
+              <EyeOff size={18} />
+              <span className="text-xs font-bold tracking-wider hidden sm:inline">靜音小節</span>
             </button>
             <button 
               onClick={() => setIsMuted(!isMuted)}
@@ -362,16 +410,60 @@ export const Metronome: React.FC<MetronomeProps> = ({
             </button>
           </div>
 
+          {silentBarsEnabled && (
+            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-3 mb-3 flex items-center gap-3 flex-wrap">
+              <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider shrink-0">
+                響
+              </span>
+              <input
+                type="number"
+                min="1"
+                max="16"
+                value={playBars}
+                onChange={(e) => setPlayBars(Math.max(1, Math.min(16, parseInt(e.target.value) || 1)))}
+                aria-label="發聲小節數"
+                className="w-12 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-center text-text-warm focus:outline-none focus:border-indigo-400"
+              />
+              <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider shrink-0">
+                靜
+              </span>
+              <input
+                type="number"
+                min="1"
+                max="16"
+                value={silentBars}
+                onChange={(e) => setSilentBars(Math.max(1, Math.min(16, parseInt(e.target.value) || 1)))}
+                aria-label="靜音小節數"
+                className="w-12 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-center text-text-warm focus:outline-none focus:border-indigo-400"
+              />
+              <span className="text-[10px] text-text-muted">小節</span>
+              <div className="flex-1" />
+              {isPlaying && silentCountdown > 0 && (
+                <span
+                  data-testid="silent-indicator"
+                  className="text-xs font-bold text-indigo-300 animate-pulse shrink-0"
+                >
+                  靜音中 · 還剩 {silentCountdown} 小節
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center justify-center gap-4 h-12">
             <div className="flex gap-2">
               {[...Array(beatsPerMeasure)].map((_, i) => (
                 <div 
                   key={i}
                   data-testid="beat-dot"
-                  data-active={isPlaying && currentBeat === i}
+                  /* 必須與下面 className 的判斷完全一致。
+                     測試掛勾若和畫面不同步，E2E 就會給出錯誤的保證
+                     —— 靜音小節時這個屬性原本仍是 true，但燈號其實是暗的。 */
+                  data-active={isPlaying && silentCountdown === 0 && currentBeat === i}
                   className={cn(
                     "w-3 h-3 rounded-full transition-all duration-100",
-                    isPlaying && currentBeat === i ? "bg-accent-warm scale-125" : "bg-white/10"
+                    isPlaying && silentCountdown === 0 && currentBeat === i
+                      ? "bg-accent-warm scale-125"
+                      : "bg-white/10"
                   )}
                 />
               ))}

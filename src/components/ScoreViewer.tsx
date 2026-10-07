@@ -8,7 +8,8 @@ import {
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
 import { RecordingPlayer } from './RecordingPlayer';
-import { TempoProgressChart } from './TempoProgressChart';
+import { TempoProgressChart } from './TempoProgressChart';
+import { PlaybackSpeedControl, applyPlaybackSpeed } from './PlaybackSpeedControl';
 import { cn } from '../lib/utils';
 import {
   saveScores,
@@ -57,6 +58,9 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
   const [showRecorder, setShowRecorder] = useState(false);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [videoFileUrl, setVideoFileUrl] = useState<string | null>(null);
+  // 示範影片的播放速度。0.5 倍看老師的運弓與換把是學習上的剛需。
+  const [videoSpeed, setVideoSpeed] = useState(1);
+  const demoVideoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSplitScreen, setIsSplitScreen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -936,11 +940,22 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                     </button>
                   </div>
                   <video 
+                    ref={demoVideoRef}
                     src={videoFileUrl} 
                     controls 
                     playsInline 
                     className="w-full h-full object-contain"
+                    onLoadedMetadata={() => applyPlaybackSpeed(demoVideoRef.current, videoSpeed)}
                   />
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+                    <PlaybackSpeedControl
+                      value={videoSpeed}
+                      onChange={(s) => {
+                        setVideoSpeed(s);
+                        applyPlaybackSpeed(demoVideoRef.current, s);
+                      }}
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -1208,12 +1223,25 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                   </button>
                 </div>
                 {!isRecorderMinimized && (
-                  <video 
-                    src={videoFileUrl} 
-                    controls 
-                    playsInline 
-                    className="w-full h-full object-contain"
-                  />
+                  <>
+                    <video 
+                      ref={demoVideoRef}
+                      src={videoFileUrl} 
+                      controls 
+                      playsInline 
+                      className="w-full h-full object-contain"
+                      onLoadedMetadata={() => applyPlaybackSpeed(demoVideoRef.current, videoSpeed)}
+                    />
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
+                      <PlaybackSpeedControl
+                        value={videoSpeed}
+                        onChange={(s) => {
+                          setVideoSpeed(s);
+                          applyPlaybackSpeed(demoVideoRef.current, s);
+                        }}
+                      />
+                    </div>
+                  </>
                 )}
                 {isRecorderMinimized && (
                   <div 

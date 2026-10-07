@@ -146,3 +146,25 @@ test('樂譜檢視器的側欄按鈕都有可及名稱', async ({ page }) => {
   );
   expect(unlabelled, '側欄仍有按鈕缺少可及名稱').toBe(0);
 });
+
+test('靜音小節：啟用後節拍器會週期性停止，且不顯示拍點位置', async ({ page }) => {
+  await openApp(page);
+
+  const metronome = page.getByTestId('metronome');
+  await page.getByRole('button', { name: '靜音小節' }).click();
+
+  // 設定區塊出現，預設響 2 靜 2
+  await expect(page.getByLabel('發聲小節數')).toHaveValue('2');
+  await expect(page.getByLabel('靜音小節數')).toHaveValue('2');
+
+  await metronome.getByRole('button', { name: '開始' }).click();
+
+  // 4/4、100 BPM 下每小節 2.4 秒，兩小節後進入靜音
+  const indicator = page.getByTestId('silent-indicator');
+  await expect(indicator).toBeVisible({ timeout: 15_000 });
+  await expect(indicator).toContainText('靜音中');
+
+  // 關鍵：靜音期間不能顯示拍點位置，否則就等於把拍子告訴使用者，
+  // 失去「自己維持速度」的訓練意義
+  await expect(metronome.locator('[data-testid="beat-dot"][data-active="true"]')).toHaveCount(0);
+});
