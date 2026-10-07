@@ -17,6 +17,7 @@ import {
   Eye,
   Star,
   Moon,
+  Activity,
   TrendingUp
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -255,6 +256,12 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
       className: "md:col-span-2"
     },
     {
+      icon: <Activity className="text-accent-warm" />,
+      title: "音準回放分析",
+      content: "在樂譜檢視器右側點「本曲錄影紀錄」，可以看到每段錄影的音準曲線：綠色代表準、黃色是輕微偏離、紅色是明顯偏離，中間的綠色帶是 ±10 音分的容許範圍。\n\n下方的「最需要注意的片段」會列出偏離最久、最嚴重的幾個地方，點下去就會直接跳到影片的那一秒，可以馬上聽自己當時拉成什麼樣子。",
+      className: "md:col-span-2"
+    },
+    {
       icon: <Share2 className="text-accent-warm" />,
       title: "存入相簿 (iOS/Android)",
       content: "錄影結束後點擊「分享/存入相簿」，在系統選單選擇「儲存影片」，即可直接存入手機相簿。"
@@ -262,6 +269,16 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
   ];
 
   const changelog = [
+    {
+      version: "v2.4.0",
+      date: "2026-10-07",
+      changes: [
+        "🎯 新增「音準回放分析」：錄影時偵測到的音準資料現在會畫成曲線，可以看到整段練習哪裡準、哪裡偏高或偏低。",
+        "🔎 分析結果會列出「最需要注意的片段」，點擊即可直接跳到影片的該時間點重聽。",
+        "📊 同時顯示準確率、平均偏差，以及整體偏高／偏低的傾向（例如把位整體偏了）。",
+        "♿ 修正「本曲錄影紀錄」按鈕在螢幕閱讀器下只會被念成數字的問題。"
+      ]
+    },
     {
       version: "v2.3.0",
       date: "2026-10-01",
@@ -405,7 +422,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
               </div>
               <div>
                 <h2 className="text-xl font-bold">使用說明指南</h2>
-                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.3.0</p>
+                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.4.0</p>
               </div>
             </div>
             <button 

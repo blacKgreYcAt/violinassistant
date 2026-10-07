@@ -3,10 +3,11 @@ import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, 
   Camera, Loader2, Smile, Eye, RotateCw, PenTool, Eraser, Save, 
   Columns, Moon, Sun, Star, Music, TrendingUp, Play, Pause, 
-  ChevronUp, ChevronDown, Edit2, Check, Plus, Minus, Square, Video, Trash2
+  ChevronUp, ChevronDown, Edit2, Check, Plus, Minus, Square, Video
 } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
+import { RecordingPlayer } from './RecordingPlayer';
 import { cn } from '../lib/utils';
 import {
   saveScores,
@@ -969,10 +970,16 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
               showRecordings ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30" : "bg-white/5 text-text-muted hover:text-text-warm"
             )}
             title="本曲錄影紀錄"
+            /* 需要 aria-label：有錄影時按鈕內會出現數字徽章，
+               可及名稱會被徽章的數字蓋過（螢幕閱讀器只會念出「1」），title 不會生效 */
+            aria-label="本曲錄影紀錄"
           >
             <Video size={24} />
             {recordings.length > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-accent-warm text-bg-warm text-[10px] font-bold rounded-full flex items-center justify-center">
+              <span
+                aria-hidden="true"
+                className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-accent-warm text-bg-warm text-[10px] font-bold rounded-full flex items-center justify-center"
+              >
                 {recordings.length}
               </span>
             )}
@@ -1128,13 +1135,13 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
       )}
 
       {showRecordings && (
-        <div className="fixed top-20 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-80 z-[100] animate-in fade-in slide-in-from-right-4">
+        <div className="fixed top-20 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-96 z-[100] animate-in fade-in slide-in-from-right-4">
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-bold text-text-warm uppercase tracking-widest">本曲錄影紀錄</span>
             <button onClick={() => setShowRecordings(false)} className="text-text-muted hover:text-text-warm"><X size={20} /></button>
           </div>
 
-          <div className="space-y-3 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
+          <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">
             {recordings.length === 0 ? (
               <p className="text-xs text-text-muted text-center py-8 leading-relaxed">
                 尚無錄影紀錄。<br />
@@ -1142,27 +1149,12 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
               </p>
             ) : (
               recordings.map((r) => (
-                <div key={r.id} className="bg-white/5 p-3 rounded-xl">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-text-muted font-bold">
-                      {new Date(r.timestamp).toLocaleString()}
-                    </span>
-                    <button
-                      onClick={() => handleDeleteRecording(r.id)}
-                      className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                      title="刪除這段錄影"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                  {recordingUrls[r.id] && (
-                    r.type === 'audio' ? (
-                      <audio src={recordingUrls[r.id]} controls className="w-full" />
-                    ) : (
-                      <video src={recordingUrls[r.id]} controls playsInline className="w-full rounded-lg bg-black" />
-                    )
-                  )}
-                </div>
+                <RecordingPlayer
+                  key={r.id}
+                  recording={r}
+                  url={recordingUrls[r.id]}
+                  onDelete={handleDeleteRecording}
+                />
               ))
             )}
           </div>

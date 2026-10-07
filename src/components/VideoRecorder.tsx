@@ -53,6 +53,8 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
   const intonationDataRef = useRef<{ time: number; pitch: number; cents: number }[]>([]);
   const isRecordingRef = useRef(false);
   const intonationBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
+  // 錄影開始的時刻，用來把音準取樣換算成影片上的相對秒數
+  const recordingStartedAtRef = useRef<number | null>(null);
   const lastIntonationSampleRef = useRef(0);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -205,6 +207,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
     if (isRecording) {
       intonationDataRef.current = [];
       lastIntonationSampleRef.current = 0;
+      recordingStartedAtRef.current = Date.now();
       updateIntonation();
     } else if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -384,6 +387,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
         timestamp: Date.now(),
         type: isAudioOnly ? 'audio' : 'video',
         blob: finalVideoBlob,
+        startedAt: recordingStartedAtRef.current ?? undefined,
         intonationData: intonationDataRef.current
       });
       onSaved?.();

@@ -36,6 +36,13 @@ export interface Recording {
   type: 'video' | 'audio';
   blob: Blob;
   durationSeconds?: number;
+  /**
+   * 開始錄影的時刻（Date.now()）。
+   * intonationData 的 time 存的是絕對時間戳，要把音準曲線對齊到影片的播放
+   * 位置就需要這個基準點。舊的錄影沒有這個欄位，讀取時會退而用第一筆取樣的
+   * 時間，此時若開頭有靜音，時間軸會整段偏移。
+   */
+  startedAt?: number;
   intonationData?: { time: number; pitch: number; cents: number }[];
 }
 
