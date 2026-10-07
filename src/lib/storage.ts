@@ -199,10 +199,23 @@ export async function addPracticeSession(durationSeconds: number, note?: string)
 
 // --- Recordings ---
 
+/**
+ * 尚未指定曲目的錄影所使用的 scoreId。
+ *
+ * 從「樂譜與紀錄」分頁直接錄影時並沒有對應的樂譜（例如只是想拉音階看音準），
+ * 這類錄影會標成這個值。之後可以用 assignRecordingToScore() 補指定。
+ */
+export const UNASSIGNED_SCORE_ID = 'unknown';
+
+export function isUnassigned(recording: Recording): boolean {
+  return !recording.scoreId || recording.scoreId === UNASSIGNED_SCORE_ID;
+}
+
+/** 依時間新到舊排序的全部錄影 */
 export async function getAllRecordings(): Promise<Recording[]> {
   try {
     const recordings = await get<Recording[]>(RECORDINGS_KEY);
-    return recordings || [];
+    return (recordings || []).slice().sort((a, b) => b.timestamp - a.timestamp);
   } catch (error) {
     console.error('Failed to get all recordings:', error);
     return [];
@@ -235,6 +248,27 @@ export async function saveRecordings(recordings: Recording[]): Promise<void> {
     await set(RECORDINGS_KEY, recordings);
   } catch (error) {
     console.error('Failed to save recordings:', error);
+  }
+}
+
+/**
+ * 把錄影指定給某一份樂譜（或改回未指定）。
+ *
+ * 讓使用者可以先自由錄，事後再歸類 —— 練音階時通常不會先去開一份譜。
+ */
+export async function assignRecordingToScore(
+  recordingId: string,
+  scoreId: string | null
+): Promise<void> {
+  try {
+    const recordings = (await get<Recording[]>(RECORDINGS_KEY)) || [];
+    const updated = recordings.map((r) =>
+      r.id === recordingId ? { ...r, scoreId: scoreId ?? UNASSIGNED_SCORE_ID } : r
+    );
+    await set(RECORDINGS_KEY, updated);
+  } catch (error) {
+    console.error('Failed to assign recording:', error);
+    throw new Error('指定曲目失敗，請重試。', { cause: error });
   }
 }
 

@@ -9,6 +9,11 @@ import {
   addPracticeSession,
   getPracticeHistory,
   updateTempoHistory,
+  getAllRecordings,
+  saveRecording,
+  assignRecordingToScore,
+  isUnassigned,
+  UNASSIGNED_SCORE_ID,
   getScores,
   saveScores,
   Score,
@@ -205,5 +210,63 @@ describe('updateTempoHistory — 速度紀錄', () => {
     const scores = await getScores();
     const s2 = scores.find(s => s.id === 's2')!;
     expect(s2.tempoHistory).toBeUndefined();
+  });
+});
+
+
+describe('錄影的歸屬曲目', () => {
+  const makeRecording = (id: string, scoreId: string, timestamp: number) => ({
+    id,
+    scoreId,
+    timestamp,
+    type: 'audio' as const,
+    blob: new Blob(['x']),
+  });
+
+  it('未指定曲目的錄影會被判定為 unassigned', () => {
+    expect(isUnassigned(makeRecording('a', UNASSIGNED_SCORE_ID, 1))).toBe(true);
+    expect(isUnassigned(makeRecording('b', 's1', 1))).toBe(false);
+  });
+
+  it('getAllRecordings 會依時間新到舊排序', async () => {
+    await saveRecording(makeRecording('old', 's1', 1000));
+    await saveRecording(makeRecording('new', 's1', 3000));
+    await saveRecording(makeRecording('mid', 's1', 2000));
+
+    const all = await getAllRecordings();
+    expect(all.map((r) => r.id)).toEqual(['new', 'mid', 'old']);
+  });
+
+  it('可以把未指定的錄影事後指定給某份樂譜', async () => {
+    await saveRecording(makeRecording('r1', UNASSIGNED_SCORE_ID, 1000));
+    await assignRecordingToScore('r1', 'score-123');
+
+    const [r] = await getAllRecordings();
+    expect(r.scoreId).toBe('score-123');
+    expect(isUnassigned(r)).toBe(false);
+  });
+
+  it('可以把已指定的錄影改回未指定', async () => {
+    await saveRecording(makeRecording('r1', 'score-123', 1000));
+    await assignRecordingToScore('r1', null);
+
+    const [r] = await getAllRecordings();
+    expect(isUnassigned(r)).toBe(true);
+  });
+
+  it('指定歸屬時不會動到其他錄影', async () => {
+    await saveRecording(makeRecording('r1', UNASSIGNED_SCORE_ID, 1000));
+    await saveRecording(makeRecording('r2', 'other', 2000));
+
+    await assignRecordingToScore('r1', 'score-123');
+
+    const all = await getAllRecordings();
+    expect(all.find((r) => r.id === 'r2')!.scoreId).toBe('other');
+  });
+
+  it('指定一個不存在的錄影 id 不會爆掉也不會新增資料', async () => {
+    await saveRecording(makeRecording('r1', 's1', 1000));
+    await expect(assignRecordingToScore('不存在', 's2')).resolves.not.toThrow();
+    expect(await getAllRecordings()).toHaveLength(1);
   });
 });

@@ -119,3 +119,63 @@ test('點擊問題片段會把播放位置跳到該時間點', async ({ page }) 
   );
   expect(Math.abs(currentTime - 8)).toBeLessThan(1.5);
 });
+
+
+test('未指定曲目的錄影可以在「練習錄影」總覽中查看與分析', async ({ page }) => {
+  await page.goto('/');
+
+  // 寫入一段沒有歸屬曲目的錄影 —— 從「樂譜與紀錄」分頁直接錄的就是這種。
+  // 迴歸測試：這類錄影先前存進 IndexedDB 後沒有任何畫面會列出它，
+  // 等於永遠看不到也刪不掉，空間卻一直被佔用。
+  await page.evaluate(async () => {
+    function idbSet(key: string, value: unknown) {
+      return new Promise((resolve, reject) => {
+        const open = indexedDB.open('keyval-store');
+        open.onupgradeneeded = () => open.result.createObjectStore('keyval');
+        open.onsuccess = () => {
+          const tx = open.result.transaction('keyval', 'readwrite');
+          tx.objectStore('keyval').put(value, key);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error);
+        };
+        open.onerror = () => reject(open.error);
+      });
+    }
+    const startedAt = Date.now() - 20_000;
+    const data = Array.from({ length: 500 }, (_, i) => ({
+      time: startedAt + i * 40,
+      pitch: 440,
+      cents: i < 250 ? 2 : -25,
+    }));
+    await idbSet('viola-recordings-idb', [
+      {
+        id: 'e2e-unassigned',
+        scoreId: 'unknown',
+        timestamp: Date.now(),
+        type: 'audio',
+        blob: new Blob([new Uint8Array([0, 0, 0, 0])], { type: 'audio/mp4' }),
+        startedAt,
+        intonationData: data,
+      },
+    ]);
+  });
+
+  await openApp(page);
+
+  // 入口放在全域標題列，不開任何樂譜也能進去
+  await page.getByRole('button', { name: '練習錄影' }).click();
+
+  const entry = page.getByTestId('recording-entry');
+  await expect(entry).toHaveCount(1);
+  await expect(entry).toContainText('未指定曲目');
+
+  // 展開才會建立 object URL 與繪製圖表（避免一次把所有影片釘在記憶體裡）
+  await entry.getByRole('button').first().click();
+  await expect(page.locator('svg[aria-label^="音準曲線"]')).toBeVisible();
+
+  // 一半準一半偏離 25 音分 → 準確率應該在 50% 附近
+  const accuracy = await page.getByText(/準確率\s*\d+%/).textContent();
+  const percent = Number(accuracy!.match(/(\d+)%/)![1]);
+  expect(percent).toBeGreaterThan(40);
+  expect(percent).toBeLessThan(60);
+});

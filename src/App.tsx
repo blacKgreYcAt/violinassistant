@@ -10,8 +10,9 @@ import { RewardCard } from './components/RewardCard';
 import { PracticeHistory } from './components/PracticeHistory';
 import { PracticeDashboard } from './components/PracticeDashboard';
 import { PracticeRoutine, Score } from './lib/storage';
-import { LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail, Star, Smartphone } from 'lucide-react';
-import { ViolinIcon } from './components/ViolinIcon';
+import { Video, LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail, Star, Smartphone } from 'lucide-react';
+import { ViolinIcon } from './components/ViolinIcon';
+import { RecordingLibrary } from './components/RecordingLibrary';
 import { cn } from './lib/utils';
 
 export default function App() {
@@ -22,7 +23,8 @@ export default function App() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState('');
   const [guideOpen, setGuideOpen] = useState(false);
-  const [rewardCardOpen, setRewardCardOpen] = useState(false);
+  const [rewardCardOpen, setRewardCardOpen] = useState(false);
+  const [recordingLibraryOpen, setRecordingLibraryOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
 
@@ -147,6 +149,16 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          {/* 放在全域標題列而不是某個分頁裡：錄影可以在樂譜檢視器內錄，
+              也可以不開任何樂譜直接錄，不屬於特定分頁 */}
+          <button
+            onClick={() => setRecordingLibraryOpen(true)}
+            aria-label="練習錄影"
+            className="p-2 text-text-muted hover:text-text-warm transition-colors rounded-lg hover:bg-white/5 flex items-center gap-2"
+          >
+            <Video size={20} />
+            <span className="hidden sm:inline text-xs font-bold uppercase tracking-widest">練習錄影</span>
+          </button>
           <button 
             onClick={() => setRewardCardOpen(true)} 
             className="p-2 text-yellow-500 hover:text-yellow-400 transition-colors rounded-lg hover:bg-yellow-500/10 flex items-center gap-2"
@@ -291,6 +303,11 @@ export default function App() {
       <UserGuide 
         isOpen={guideOpen} 
         onClose={() => setGuideOpen(false)} 
+      />
+
+      <RecordingLibrary
+        isOpen={recordingLibraryOpen}
+        onClose={() => setRecordingLibraryOpen(false)}
       />
 
       {/* Reward Card Modal */}

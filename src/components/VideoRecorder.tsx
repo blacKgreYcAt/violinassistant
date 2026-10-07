@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { cn, isAbortError } from '../lib/utils';
 import { createAudioContext } from '../lib/audio';
-import { saveRecording } from '../lib/storage';
+import { saveRecording, UNASSIGNED_SCORE_ID } from '../lib/storage';
 import { detectPitch, noteNumberFromPitch, centsOffFromPitch } from '../lib/pitch';
 
 interface VideoRecorderProps {
@@ -383,7 +383,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
     try {
       await saveRecording({
         id: crypto.randomUUID(),
-        scoreId: scoreId || 'unknown',
+        scoreId: scoreId || UNASSIGNED_SCORE_ID,
         timestamp: Date.now(),
         type: isAudioOnly ? 'audio' : 'video',
         blob: finalVideoBlob,
