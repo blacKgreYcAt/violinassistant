@@ -3,10 +3,20 @@ import { Play, Square, Plus, Minus, Volume2, VolumeX, Activity, TrendingUp, Targ
 import { cn } from '../lib/utils';
 import { createAudioContext } from '../lib/audio';
 
-// BPM 的合法範圍。排程器也會用這兩個值做防護，
-// 確保就算外部傳進超出範圍的值也不會算出 0、負數或 Infinity 的拍長。
-export const MIN_BPM = 30;
-export const MAX_BPM = 300;
+import {
+  MIN_BPM,
+  MAX_BPM,
+  SUBDIVISIONS,
+  SUBDIVISION_LABELS,
+  Subdivision,
+  clickSpecFor,
+  secondsPerTick,
+  advanceTick,
+  clampBpm,
+} from '../lib/metronome';
+
+// 為了相容舊的引用方式
+export { MIN_BPM, MAX_BPM };
 
 interface MetronomeProps {
   className?: string;
@@ -25,6 +35,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
 }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [beatsPerMeasure, setBeatsPerMeasure] = useState(4);
+  const [subdivision, setSubdivision] = useState<Subdivision>(1);
   const [currentBeat, setCurrentBeat] = useState(0);
 
   // Progressive Mode States
@@ -55,6 +66,9 @@ export const Metronome: React.FC<MetronomeProps> = ({
   // Use refs for values needed in scheduler to avoid stale closures
   const bpmRef = useRef(bpm);
   const beatsPerMeasureRef = useRef(beatsPerMeasure);
+  const subdivisionRef = useRef<Subdivision>(subdivision);
+  // 目前位在一拍之中的第幾個細分點（0 = 正拍）
+  const subIndexRef = useRef(0);
   const currentBeatRef = useRef(currentBeat);
   const isProgressiveModeRef = useRef(isProgressiveMode);
   const targetBpmRef = useRef(targetBpm);
@@ -64,6 +78,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
 
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   useEffect(() => { beatsPerMeasureRef.current = beatsPerMeasure; }, [beatsPerMeasure]);
+  useEffect(() => { subdivisionRef.current = subdivision; }, [subdivision]);
   useEffect(() => { currentBeatRef.current = currentBeat; }, [currentBeat]);
   useEffect(() => { isProgressiveModeRef.current = isProgressiveMode; }, [isProgressiveMode]);
   useEffect(() => { targetBpmRef.current = targetBpm; }, [targetBpm]);
@@ -71,17 +86,19 @@ export const Metronome: React.FC<MetronomeProps> = ({
   useEffect(() => { incrementIntervalRef.current = incrementInterval; }, [incrementInterval]);
   useEffect(() => { measuresCountRef.current = measuresCount; }, [measuresCount]);
 
-  const playClick = useCallback((time: number, beat: number) => {
+  const playClick = useCallback((time: number, beat: number, subIndex: number) => {
     if (!audioContext.current || isMutedRef.current) return;
+
+    const spec = clickSpecFor(beat, subIndex);
 
     const osc = audioContext.current.createOscillator();
     const envelope = audioContext.current.createGain();
     
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(beat === 0 ? 1200 : 1000, time);
+    osc.frequency.setValueAtTime(spec.frequency, time);
     
     envelope.gain.setValueAtTime(0, time);
-    envelope.gain.linearRampToValueAtTime(1, time + 0.001);
+    envelope.gain.linearRampToValueAtTime(spec.gain, time + 0.001);
     envelope.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
 
     osc.connect(envelope);
@@ -96,26 +113,32 @@ export const Metronome: React.FC<MetronomeProps> = ({
 
     while (nextNoteTime.current < audioContext.current.currentTime + scheduleAheadTime) {
       const beatToPlay = currentBeatRef.current;
-      playClick(nextNoteTime.current, beatToPlay);
+      const subToPlay = subIndexRef.current;
+      playClick(nextNoteTime.current, beatToPlay, subToPlay);
       // 記下這一拍「實際會發聲的時間」，交給 drawLoop 在那個時間點才更新畫面。
       // 需要設上限：分頁切到背景時 requestAnimationFrame 會完全停止（沒人消耗佇列），
       // 但 setTimeout 仍會以較低頻率繼續排程並推入，佇列會無限成長。
       // 超過上限就丟掉最舊的，回到前景時 drawLoop 本來就只會顯示最後一拍。
-      notesInQueue.current.push({ beat: beatToPlay, time: nextNoteTime.current });
+      // 只有正拍需要更新畫面上的拍點燈號，細分出來的點不算
+      if (subToPlay === 0) {
+        notesInQueue.current.push({ beat: beatToPlay, time: nextNoteTime.current });
+      }
       if (notesInQueue.current.length > 256) notesInQueue.current.shift();
 
-      // 必須保證 secondsPerBeat 永遠是正的有限值：
-      // 若 bpm 變成 0 會得到 Infinity（節拍器無聲死掉），
-      // 變成負數則 nextNoteTime 會不斷倒退，這個 while 迴圈永遠跑不完，直接凍結整個分頁。
-      const safeBpm = Math.min(MAX_BPM, Math.max(MIN_BPM, bpmRef.current || MIN_BPM));
-      const secondsPerBeat = 60.0 / safeBpm;
-      nextNoteTime.current += secondsPerBeat;
+      // secondsPerTick 內部已夾住 bpm 與細分數，保證是正的有限值。
+      // 若為 0 或負數，nextNoteTime 會不斷倒退，這個 while 迴圈永遠跑不完而凍結分頁。
+      nextNoteTime.current += secondsPerTick(bpmRef.current, subdivisionRef.current);
       
       // 這裡只推進內部計數，不再直接 setCurrentBeat（畫面由 drawLoop 負責）
-      const nextBeat = (currentBeatRef.current + 1) % beatsPerMeasureRef.current;
-      currentBeatRef.current = nextBeat;
+      const next = advanceTick(
+        { beatIndex: currentBeatRef.current, subIndex: subIndexRef.current },
+        beatsPerMeasureRef.current,
+        subdivisionRef.current
+      );
+      currentBeatRef.current = next.beatIndex;
+      subIndexRef.current = next.subIndex;
 
-      if (nextBeat === 0) {
+      if (next.crossedBarline) {
         // End of measure
         const nextMeasureCount = measuresCountRef.current + 1;
         measuresCountRef.current = nextMeasureCount;
@@ -149,6 +172,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
       // Only start scheduler if it's not already running
       if (!timerID.current) {
         currentBeatRef.current = 0;
+        subIndexRef.current = 0;
         setCurrentBeat(0);
         measuresCountRef.current = 0;
         setMeasuresCount(0);
@@ -209,7 +233,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
 
   const handleBpmChange = (newBpm: number) => {
     if (Number.isNaN(newBpm)) return;
-    setBpm(Math.min(Math.max(newBpm, MIN_BPM), MAX_BPM));
+    setBpm(clampBpm(newBpm));
   };
 
   return (
@@ -361,6 +385,21 @@ export const Metronome: React.FC<MetronomeProps> = ({
               <option value="3">3/4</option>
               <option value="4">4/4</option>
               <option value="6">6/8</option>
+            </select>
+            {/* 細分拍：慢練時用來把每一拍再切細，是練習最常用到的功能之一。
+                細分出來的點刻意做得較輕且音高較高，才聽得出正拍在哪裡。 */}
+            <select
+              value={subdivision}
+              onChange={(e) => setSubdivision(Number(e.target.value) as Subdivision)}
+              aria-label="細分拍"
+              title="細分拍"
+              className="text-sm font-bold bg-white/5 text-text-warm px-3 py-2 rounded-xl outline-none border border-white/5 hover:border-white/10 transition-all cursor-pointer"
+            >
+              {SUBDIVISIONS.map((s) => (
+                <option key={s} value={s}>
+                  {SUBDIVISION_LABELS[s]}
+                </option>
+              ))}
             </select>
           </div>
         </div>

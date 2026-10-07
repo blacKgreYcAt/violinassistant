@@ -167,6 +167,11 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
       content: "在樂譜檢視器中，點擊星星圖示可設定該曲目的「熟練度」。從 0%（剛開始）到 100%（已精通），圖書館清單會同步顯示進度，幫助您掌握練習成效。"
     },
     {
+      icon: <Activity className="text-accent-warm" />,
+      title: "節拍器細分拍",
+      content: "節拍器拍號旁邊的選單可以切換「不細分／八分／三連音／十六分」。\n\n細分出來的點會用比較輕、比較高的音色，和正拍明顯區分，慢練時才聽得出拍子的骨架在哪裡。"
+    },
+    {
       icon: <TrendingUp className="text-accent-warm" />,
       title: "進階節拍器 (速度漸進模式)",
       content: "點擊節拍器右上角的「漸進」按鈕，可設定「目標速度」、「每次增加量」及「間隔小節」。節拍器會隨練習自動提速，是練習快速樂段的最佳工具。"
@@ -274,6 +279,13 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
   ];
 
   const changelog = [
+    {
+      version: "v2.5.0",
+      date: "2026-10-07",
+      changes: [
+        "🥁 節拍器新增「細分拍」：可切換八分音符、三連音、十六分音符。細分出來的點音量較輕、音高較高，與正拍明顯區分，是慢練時最常用到的功能之一。"
+      ]
+    },
     {
       version: "v2.4.0",
       date: "2026-10-07",
@@ -428,7 +440,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
               </div>
               <div>
                 <h2 className="text-xl font-bold">使用說明指南</h2>
-                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.4.0</p>
+                <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.5.0</p>
               </div>
             </div>
             <button 
