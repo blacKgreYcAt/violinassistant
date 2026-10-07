@@ -8,6 +8,7 @@ import {
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
 import { RecordingPlayer } from './RecordingPlayer';
+import { TempoProgressChart } from './TempoProgressChart';
 import { cn } from '../lib/utils';
 import {
   saveScores,
@@ -702,12 +703,14 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
           <div className="flex flex-col gap-4">
             <button 
               onClick={() => handleZoom(0.1)}
+            aria-label="放大" title="放大"
               className="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/5 text-text-muted hover:text-text-warm transition-all"
             >
               <ZoomIn size={24} />
             </button>
             <button 
               onClick={() => handleZoom(-0.1)}
+            aria-label="縮小" title="縮小"
               className="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/5 text-text-muted hover:text-text-warm transition-all"
             >
               <ZoomOut size={24} />
@@ -718,6 +721,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
 
           <button 
             onClick={() => setIsDarkMode(!isDarkMode)}
+            aria-label="樂譜深色模式" title="樂譜深色模式"
             className={cn(
               "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
               isDarkMode ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30" : "bg-white/5 text-text-muted hover:text-text-warm"
@@ -947,6 +951,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
         <aside className="w-20 shrink-0 bg-surface-warm/50 border-l border-white/5 flex flex-col items-center py-6 gap-6 z-10">
           <button 
             onClick={() => setShowMasteryPopover(!showMasteryPopover)}
+            aria-label="曲目熟練度" title="曲目熟練度"
             className={cn(
               "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
               mastery > 0 ? "bg-amber-500/20 text-amber-500" : "bg-white/5 text-text-muted hover:text-text-warm"
@@ -956,6 +961,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
           </button>
           <button 
             onClick={() => setShowTempoHistory(!showTempoHistory)}
+            aria-label="速度與節拍器" title="速度與節拍器"
             className={cn(
               "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
               showTempoHistory ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30" : "bg-white/5 text-text-muted hover:text-text-warm"
@@ -996,6 +1002,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
               "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
               isSplitScreen ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30" : "bg-white/5 text-text-muted hover:text-text-warm"
             )}
+          
+            aria-label="分割畫面" title="分割畫面"
           >
             <Columns size={24} />
           </button>
@@ -1124,12 +1132,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
           </div>
 
           <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-            {score.tempoHistory?.slice().reverse().map((h, i) => (
-              <div key={i} className="flex items-center justify-between bg-white/5 p-3 rounded-xl">
-                <span className="text-xs text-text-muted font-bold">{new Date(h.date).toLocaleDateString()}</span>
-                <span className="font-mono font-bold text-emerald-500">{h.bpm} BPM</span>
-              </div>
-            )) || <p className="text-xs text-text-muted text-center py-8">尚無速度紀錄</p>}
+            <TempoProgressChart history={score.tempoHistory} />
           </div>
         </div>
       )}

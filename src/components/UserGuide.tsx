@@ -173,6 +173,12 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
     },
     {
       icon: <TrendingUp className="text-accent-warm" />,
+      title: "曲目速度進展",
+      content: "在樂譜檢視器右側點「速度與節拍器」，可以看到這首曲子的練習速度曲線。開啟節拍器練習時，停止後會自動記錄當天練到的最高速度（每天只留最高的一筆）。",
+      className: "md:col-span-2"
+    },
+    {
+      icon: <TrendingUp className="text-accent-warm" />,
       title: "進階節拍器 (速度漸進模式)",
       content: "點擊節拍器右上角的「漸進」按鈕，可設定「目標速度」、「每次增加量」及「間隔小節」。節拍器會隨練習自動提速，是練習快速樂段的最佳工具。"
     },
@@ -283,7 +289,9 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
       version: "v2.5.0",
       date: "2026-10-07",
       changes: [
-        "🥁 節拍器新增「細分拍」：可切換八分音符、三連音、十六分音符。細分出來的點音量較輕、音高較高，與正拍明顯區分，是慢練時最常用到的功能之一。"
+        "🥁 節拍器新增「細分拍」：可切換八分音符、三連音、十六分音符。細分出來的點音量較輕、音高較高，與正拍明顯區分，是慢練時最常用到的功能之一。",
+        "📈 「速度紀錄」改為進展圖：直接看出「幾天內從多少練到多少」與進步幅度，不再只是一張數字清單。",
+        "♿ 樂譜檢視器側欄的按鈕補上名稱，螢幕閱讀器現在能正確辨識（原本有 6 顆只有圖示）。"
       ]
     },
     {
