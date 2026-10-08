@@ -1,0 +1,22 @@
+# 換行符統一由 git 處理，不再由各人的編輯器決定。
+#
+# 這個 repo 原本沒有 .gitattributes，版控裡 CRLF 與 LF 混雜，
+# 每次改到舊檔就可能整檔變成 diff，看不出真正改了什麼。
+#
+# text=auto：git 自動判斷是不是文字檔；是的話一律以 LF 存進版控，
+# 簽出時再依各人的 core.autocrlf / core.eol 轉成該平台習慣的換行。
+# 工作目錄裡是什麼換行不影響版控內容。
+* text=auto
+
+# 二進位檔明確標示，避免被誤判成文字而破壞內容
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.webm binary
+*.mp4 binary
+*.woff binary
+*.woff2 binary
+
+# shell 腳本必須是 LF，否則 macOS/Linux 會報 bad interpreter: /bin/bash^M
+*.sh text eol=lf

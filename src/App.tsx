@@ -11,7 +11,7 @@ import { PracticeHistory } from './components/PracticeHistory';
 import { PracticeDashboard } from './components/PracticeDashboard';
 import { PracticeRoutine, Score } from './lib/storage';
 import { Video, LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail, Star, Smartphone } from 'lucide-react';
-import { ViolinIcon } from './components/ViolinIcon';
+import { ViolinIcon } from './components/ViolinIcon';
 import { RecordingLibrary } from './components/RecordingLibrary';
 import { cn } from './lib/utils';
 
@@ -27,7 +27,7 @@ export default function App() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState('');
   const [guideOpen, setGuideOpen] = useState(false);
-  const [rewardCardOpen, setRewardCardOpen] = useState(false);
+  const [rewardCardOpen, setRewardCardOpen] = useState(false);
   const [recordingLibraryOpen, setRecordingLibraryOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [isExiting, setIsExiting] = useState(false);

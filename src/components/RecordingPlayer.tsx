@@ -2,7 +2,7 @@ import React, { useRef, useState, useCallback } from 'react';
 import { Trash2, Activity, ChevronDown, ChevronUp } from 'lucide-react';
 import { Recording } from '../lib/storage';
 import { IntonationChart } from './IntonationChart';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/utils';
 import { PlaybackSpeedControl, applyPlaybackSpeed } from './PlaybackSpeedControl';
 
 interface RecordingPlayerProps {
