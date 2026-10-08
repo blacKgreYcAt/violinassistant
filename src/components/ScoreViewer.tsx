@@ -50,6 +50,18 @@ import {
  */
 const MEDIAPIPE_WASM_BASE_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
 
+/**
+ * 右側浮動面板的共用定位與外觀。
+ *
+ * 原本每個面板各自寫死 `right-24` 加固定寬度，在手機寬度下整片被推到畫面外
+ * ——375px 螢幕上 w-96 的錄影面板左緣是 -105px，使用者完全看不到也點不到。
+ * 窄螢幕改成左右撐開（右邊仍留 24 讓開側欄），寬螢幕才回到固定寬度。
+ *
+ * 寬度由各面板自己用 `sm:w-*` 指定；共用的部分放這裡，之後新增面板就不會再漏掉。
+ */
+const PANEL_BASE =
+  "fixed left-2 right-24 w-auto sm:left-auto bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 z-[100] animate-in fade-in slide-in-from-right-4 max-h-[75vh] overflow-y-auto custom-scrollbar";
+
 interface ScoreViewerProps {
   score: Score;
   onClose: () => void;
@@ -1266,7 +1278,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
 
       {/* Popovers */}
       {showBpmPopover && (
-        <div className="fixed top-20 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-72 z-[100] animate-in fade-in slide-in-from-right-4">
+        <div className={cn(PANEL_BASE, "top-20 sm:w-72")}>
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <Music size={20} className="text-accent-warm" />
@@ -1323,7 +1335,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
       )}
 
       {showMasteryPopover && (
-        <div className="fixed top-20 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-72 z-[100] animate-in fade-in slide-in-from-right-4">
+        <div className={cn(PANEL_BASE, "top-20 sm:w-72")}>
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-bold text-text-warm uppercase tracking-widest">曲目熟練度</span>
             <span className="text-2xl font-mono font-bold text-amber-500">{mastery}%</span>
@@ -1356,7 +1368,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
       )}
 
       {showTempoHistory && (
-        <div className="fixed top-36 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-80 z-[100] animate-in fade-in slide-in-from-right-4">
+        <div className={cn(PANEL_BASE, "top-36 sm:w-80")}>
           <div className="flex items-center justify-between mb-6">
             <span className="text-sm font-bold text-text-warm uppercase tracking-widest">速度與節拍器</span>
             <button onClick={() => setShowTempoHistory(false)} aria-label="關閉速度面板" title="關閉速度面板" className="text-text-muted hover:text-text-warm"><X size={20} /></button>
@@ -1401,7 +1413,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
       )}
 
       {showSections && (
-        <div className="fixed top-20 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-80 z-[100] animate-in fade-in slide-in-from-right-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+        <div className={cn(PANEL_BASE, "top-20 sm:w-80")}>
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-bold text-text-warm uppercase tracking-widest">段落循環練習</span>
             <button
@@ -1579,7 +1591,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
       )}
 
       {showRecordings && (
-        <div className="fixed top-20 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-96 z-[100] animate-in fade-in slide-in-from-right-4">
+        <div className={cn(PANEL_BASE, "top-20 sm:w-96")}>
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-bold text-text-warm uppercase tracking-widest">本曲錄影紀錄</span>
             <button onClick={() => setShowRecordings(false)} aria-label="關閉錄影清單" title="關閉錄影清單" className="text-text-muted hover:text-text-warm"><X size={20} /></button>

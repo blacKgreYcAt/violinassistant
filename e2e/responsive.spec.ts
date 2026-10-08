@@ -60,3 +60,63 @@ test.describe('平板尺寸下的版面', () => {
     }
   });
 });
+
+test.describe('窄螢幕下的樂譜檢視器面板', () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  const PNG =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+  test('每個浮動面板都必須完整落在畫面內', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(
+      (png) =>
+        new Promise((resolve, reject) => {
+          const open = indexedDB.open('keyval-store');
+          open.onupgradeneeded = () => open.result.createObjectStore('keyval');
+          open.onsuccess = () => {
+            const tx = open.result.transaction('keyval', 'readwrite');
+            tx.objectStore('keyval').put(
+              [{ id: 'panel-score', name: '面板測試曲', type: 'file', data: png, date: Date.now() }],
+              'viola-scores-idb'
+            );
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => reject(tx.error);
+          };
+          open.onerror = () => reject(open.error);
+        }),
+      PNG
+    );
+
+    await openApp(page);
+    await openLibraryTab(page);
+    await page.getByText('面板測試曲').first().click();
+
+    // 迴歸測試：這些面板原本各自寫死 right-24 加固定寬度，
+    // 在 375px 寬的手機上整片被推到畫面外（w-96 的錄影面板左緣是 -105px），
+    // 使用者完全看不到也點不到。
+    const panels = ['段落循環練習', '速度與節拍器', '本曲錄影紀錄', '曲目熟練度', '節拍速度'];
+
+    for (const name of panels) {
+      const toggle = page.getByRole('button', { name, exact: true });
+      await toggle.click();
+
+      // 面板沒有共用的 testid，改用算出來的 z-index 找它（PANEL_BASE 固定是 z-[100]）
+      const box = await page.evaluate(() => {
+        const panel = [...document.querySelectorAll('div.fixed')].find(
+          (d) => getComputedStyle(d).zIndex === '100'
+        );
+        if (!panel) return null;
+        const r = panel.getBoundingClientRect();
+        return { left: r.left, right: r.right, bottom: r.bottom };
+      });
+
+      expect(box, `${name} 面板沒有出現`).not.toBeNull();
+      expect(box!.left, `${name} 面板左緣被切掉`).toBeGreaterThanOrEqual(0);
+      expect(box!.right, `${name} 面板右緣超出畫面`).toBeLessThanOrEqual(375);
+      expect(box!.bottom, `${name} 面板下緣超出畫面`).toBeLessThanOrEqual(812);
+
+      await toggle.click();
+    }
+  });
+});
