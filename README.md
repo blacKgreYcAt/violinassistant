@@ -1,20 +1,82 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 練琴練習小幫手
 
-# Run and deploy your AI Studio app
+給弦樂學習者的平板練習工具。節拍器、調音器、計時器、樂譜檢視與練習紀錄整合在一個可離線使用的網頁 App 裡，**不需要帳號、不需要伺服器，所有資料都留在自己的裝置上**。
 
-This contains everything you need to run your app locally.
+線上版本：<https://violinassistant.vercel.app>
 
-View your app in AI Studio: https://ai.studio/apps/bc32216b-c6d8-420e-83a7-ce949a609cd4
+> 建議以平板直式使用 —— 版面是以譜架上的平板為前提設計的。
 
-## Run Locally
+## 功能
 
-**Prerequisites:**  Node.js
+**練習工具**
 
+- **節拍器** — 可設拍號、細分拍（八分／三連音／十六分）、速度漸進模式，以及「靜音小節」（響 N 小節後刻意停 M 小節，訓練自己維持速度）
+- **調音器** — 即時音高偵測，顯示與標準音的音分偏差
+- **計時器** — 倒數練習時間，結束後記錄練習時數與筆記，可指定這次練的是哪一首
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+**樂譜**
+
+- 上傳樂譜照片，支援多頁、資料夾分類與標籤搜尋
+- 畫筆標註、旋轉、裁切（逐頁設定）
+- **智能翻頁** — 用鏡頭偵測臉部動作翻頁，手不用離開琴
+- **段落循環練習** — 框出難的那幾小節，練習時只亮出那一塊，並記錄練了幾遍、最快練到多少 BPM
+- 速度進展圖 — 看得出「幾天內從多少練到多少」
+
+**錄影與音準分析**
+
+- 錄下自己的練習，可分割畫面與示範影片對照
+- 影片慢速播放（0.25x–1.5x，保留原音高）
+- **音準回放分析** — 把錄影期間偵測到的音高畫成曲線，列出最需要注意的片段，點擊直接跳到影片該秒
+
+**紀錄與習慣**
+
+- 練習歷程圖表、每日／每週目標
+- 集點卡與徽章（每 30 分鐘練習 = 1 個音符）
+- 備份匯出／匯入
+
+## 技術
+
+純前端 PWA，沒有後端也沒有資料庫。
+
+- React 18 + TypeScript + Vite + Tailwind CSS 4
+- 資料存在瀏覽器的 IndexedDB（透過 `idb-keyval`）
+- 音高偵測用自相關法（`src/lib/pitch.ts`）
+- 智能翻頁用 MediaPipe FaceLandmarker
+- `vite-plugin-pwa` 提供離線能力與安裝到主畫面
+
+**沒有使用任何 AI 服務或外部 API**。這個專案最初是從 Google AI Studio 的模板建立的，但程式碼裡從來沒有呼叫過 Gemini 或其他任何服務 —— 如果你在舊版 README 看到 `GEMINI_API_KEY` 的設定說明，那是模板殘留，可以忽略。
+
+## 開發
+
+需要 Node.js 20 以上。
+
+```bash
+npm install
+npm run dev
+```
+
+常用指令：
+
+| 指令 | 用途 |
+| --- | --- |
+| `npm run dev` | 開發伺服器 |
+| `npm run build` | 正式建置 |
+| `npm run check` | 型別檢查 + ESLint + 單元測試（數秒） |
+| `npm run check:all` | 再加上 Playwright E2E（約 2 分鐘，會自己 build + preview） |
+| `npm run test:e2e:ui` | 以 UI 模式跑 E2E |
+
+**送出修改前請先跑 `npm run check`。**
+
+### 專案慣例
+
+- **純計算邏輯放在 `src/lib/*.ts` 並附單元測試**，元件只負責畫面與事件。這個專案吃過的虧就是邏輯埋在 `useEffect` 裡沒有任何方式驗證。
+- **版面與互動問題要把 App 跑起來實際量測**，不要只看 JSX 推論。最嚴重的幾個歷史缺陷（平板版面被切掉、觸控裝置看不到按鈕）都是靜態分析抓不到的。
+- 版本號有三處要同步：`package.json`、`src/App.tsx` 的頁尾、`src/components/UserGuide.tsx` 的更新日誌。
+
+更完整的背景、資料模型與開發歷程見 [開發歷程與交接紀錄.md](開發歷程與交接紀錄.md)。
+
+## 隱私
+
+所有樂譜、錄影與練習紀錄都只存在你自己的瀏覽器裡，不會上傳到任何地方。錄影與調音功能需要攝影機／麥克風權限，影像與聲音只在裝置本機處理。
+
+唯一的對外連線是智能翻頁功能所需的 MediaPipe 模型檔（從 CDN 載入），其他功能離線皆可使用。
