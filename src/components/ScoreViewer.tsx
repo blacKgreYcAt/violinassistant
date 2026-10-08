@@ -5,7 +5,10 @@ import {
   Columns, Moon, Sun, Star, Music, TrendingUp, Play, Pause, 
   ChevronUp, ChevronDown, Edit2, Check, Plus, Minus, Square, Video, Repeat, Trash2, Crop
 } from 'lucide-react';
-import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+// 只引型別，不引實作：MediaPipe 的 JS bundle 有 137KB，而「智能翻頁」是
+// 選用功能，大多數人開 App 不會用到。實作改成在真的要用時才動態載入，
+// 讓它從主 chunk 拆出去。
+import type { FaceLandmarker } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
 import { RecordingPlayer } from './RecordingPlayer';
 import { TempoProgressChart } from './TempoProgressChart';
@@ -136,6 +139,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
   const [isAutoTurnEnabled, setIsAutoTurnEnabled] = useState(false);
   const [aiMode, setAiMode] = useState<'head' | 'blink'>('head');
   const [isModelLoading, setIsModelLoading] = useState(false);
+  // 智能翻頁啟動失敗的原因（離線 / 相機權限）。原本失敗只是默默關掉開關。
+  const [autoTurnError, setAutoTurnError] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -519,8 +524,9 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
       setIsModelLoading(true);
 
       try {
+        const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
         const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_BASE_PATH);
-        
+
         faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
@@ -541,6 +547,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
           const onLoadedData = () => {
             if (active) {
               setIsModelLoading(false);
+              setAutoTurnError(null);
               detectFace();
             }
           };
@@ -556,6 +563,14 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
         if (active) {
           setIsAutoTurnEnabled(false);
           setIsModelLoading(false);
+          // 原本只是把開關默默關掉：使用者按了智能翻頁，轉一下就自己關了，
+          // 完全不知道發生什麼事。離線是最常見的原因——臉部偵測的模型與
+          // WASM 都放在 CDN，App 其他功能離線可用，只有這一項不行。
+          setAutoTurnError(
+            !navigator.onLine
+              ? '智能翻頁需要連線下載臉部偵測模型，目前裝置離線。其他功能不受影響。'
+              : '智能翻頁啟動失敗。可能是網路不穩，或是瀏覽器不允許使用相機。'
+          );
         }
       }
     };
@@ -1090,7 +1105,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
               </span>
             </div>
 
-            <div className="flex items-center gap-4">
+            {/* relative：智能翻頁失敗時的提示是以這一列為基準往上彈出 */}
+            <div className="relative flex items-center gap-4">
               {isAutoTurnEnabled && (
                 <div className="flex items-center bg-white/5 rounded-xl p-1 animate-in fade-in slide-in-from-right-2">
                   <button
@@ -1115,8 +1131,11 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                   </button>
                 </div>
               )}
-              <button 
-                onClick={() => setIsAutoTurnEnabled(!isAutoTurnEnabled)}
+              <button
+                onClick={() => {
+                  setAutoTurnError(null);
+                  setIsAutoTurnEnabled(!isAutoTurnEnabled);
+                }}
                 className={cn(
                   "px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
                   isAutoTurnEnabled ? "bg-emerald-500 text-bg-warm shadow-lg shadow-emerald-500/20" : "bg-white/5 text-text-muted hover:text-text-warm"
@@ -1125,6 +1144,15 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                 {isModelLoading ? <Loader2 size={18} className="animate-spin" /> : (aiMode === 'head' ? <Smile size={18} /> : <Eye size={18} />)}
                 智能翻頁
               </button>
+              {autoTurnError && (
+                <div
+                  role="alert"
+                  data-testid="auto-turn-error"
+                  className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-72 max-w-[80vw] bg-surface-warm border border-amber-500/40 text-xs text-text-warm rounded-xl px-3 py-2 shadow-2xl"
+                >
+                  {autoTurnError}
+                </div>
+              )}
               <button 
                 onClick={() => {
                   const nextRecorderState = !showRecorder;

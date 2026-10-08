@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Metronome } from './components/Metronome';
 import { Tuner } from './components/Tuner';
 import { Timer } from './components/Timer';
-import { VideoRecorder } from './components/VideoRecorder';
-import { ScoreLibrary } from './components/ScoreLibrary';
-import { ScoreViewer } from './components/ScoreViewer';
+// 樂譜檢視器是整個 App 最大的一塊（連帶拉進錄影、音準圖表、速度圖表），
+// 但只有開啟樂譜時才會用到。延後載入讓它不佔第一次開啟的下載量。
+const ScoreViewer = lazy(() =>
+  import('./components/ScoreViewer').then((m) => ({ default: m.ScoreViewer }))
+);
 import { UserGuide } from './components/UserGuide';
 import { RewardCard } from './components/RewardCard';
-import { PracticeHistory } from './components/PracticeHistory';
-import { PracticeDashboard } from './components/PracticeDashboard';
+const LibraryTab = lazy(() =>
+  import('./components/LibraryTab').then((m) => ({ default: m.LibraryTab }))
+);
 import { PracticeRoutine, Score } from './lib/storage';
 import { Video, LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail, Star, Smartphone } from 'lucide-react';
 import { ViolinIcon } from './components/ViolinIcon';
@@ -23,6 +26,8 @@ export default function App() {
   const [lastOpenedScoreId, setLastOpenedScoreId] = useState<string | null>(null);
   const [activeRoutine, setActiveRoutine] = useState<PracticeRoutine | null>(null);
   const [activeTab, setActiveTab] = useState<'tools' | 'library'>('tools');
+  // 「樂譜與紀錄」分頁是否曾被打開過。第一次打開才載入它那一包程式碼。
+  const [libraryVisited, setLibraryVisited] = useState(false);
   const [appTitle, setAppTitle] = useState<string>('我的練習小幫手');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState('');
@@ -206,7 +211,10 @@ export default function App() {
               練習工具
             </button>
             <button
-              onClick={() => setActiveTab('library')}
+              onClick={() => {
+                setActiveTab('library');
+                setLibraryVisited(true);
+              }}
               className={cn(
                 "px-8 py-3.5 rounded-xl font-bold text-sm sm:text-base transition-all flex items-center gap-2",
                 activeTab === 'library' 
@@ -249,32 +257,24 @@ export default function App() {
               className="h-full flex flex-col gap-4 overflow-y-auto custom-scrollbar p-1"
               style={{ display: activeTab === 'library' ? '' : 'none' }}
             >
-              {!activeScore && (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0 min-h-[500px]">
-                    <ScoreLibrary onSelectScore={openScore} />
-                    {/* 這個區塊只在沒有選取樂譜時才會渲染，所以不會有可關聯的樂譜；
-                        原本傳的 activeScoreName={activeScore?.name} 必定是 undefined。
-                        要把錄影歸到某一份樂譜底下，請從樂譜檢視器裡的錄影模式錄製。 */}
-                    <VideoRecorder className="h-full" />
-                  </div>
-                  {/* 「練習計畫 / 練習目標」放在「練習紀錄」旁邊 ——
-                      這正是使用說明所描述的位置（「在『練習紀錄』旁的『練習計畫』分頁」）。
-                      PracticeDashboard 這個容器元件先前完全沒有被掛載，
-                      導致 activeRoutine 永遠是 null、Timer 裡整套計畫執行邏輯變成死碼。 */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 shrink-0 min-h-[400px]">
-                    <PracticeHistory className="lg:col-span-2 h-full" />
-                    <PracticeDashboard
-                      onStartRoutine={(routine) => {
-                        setActiveRoutine(routine);
-                        // 計畫是由「練習工具」分頁的計時器執行，所以直接切過去，
-                        // 否則使用者按了播放卻看不到任何反應。
-                        setActiveTab('tools');
-                      }}
-                      className="h-full"
-                    />
-                  </div>
-                </>
+              {/* 第一次切到這一頁才載入並掛載；之後就一直掛著（上面用 display 隱藏），
+                  所以捲動位置與展開狀態不會因為切分頁而重置。 */}
+              {libraryVisited && !activeScore && (
+                <Suspense
+                  fallback={
+                    <div className="py-12 text-center text-sm text-text-muted">載入中…</div>
+                  }
+                >
+                  <LibraryTab
+                    onSelectScore={openScore}
+                    onStartRoutine={(routine) => {
+                      setActiveRoutine(routine);
+                      // 計畫是由「練習工具」分頁的計時器執行，所以直接切過去，
+                      // 否則使用者按了播放卻看不到任何反應。
+                      setActiveTab('tools');
+                    }}
+                  />
+                </Suspense>
               )}
             </div>
           </div>
@@ -305,14 +305,22 @@ export default function App() {
 
       {/* Score Viewer Modal */}
       {activeScore && (
-        <ScoreViewer 
-          score={activeScore} 
-          onClose={() => setActiveScore(null)} 
-          bpm={bpm}
-          setBpm={setBpm}
-          isMetronomePlaying={isMetronomePlaying}
-          setIsMetronomePlaying={setIsMetronomePlaying}
-        />
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 bg-bg-warm flex items-center justify-center text-text-muted text-sm">
+              載入樂譜中…
+            </div>
+          }
+        >
+          <ScoreViewer
+            score={activeScore}
+            onClose={() => setActiveScore(null)}
+            bpm={bpm}
+            setBpm={setBpm}
+            isMetronomePlaying={isMetronomePlaying}
+            setIsMetronomePlaying={setIsMetronomePlaying}
+          />
+        </Suspense>
       )}
 
       {/* User Guide Modal */}
