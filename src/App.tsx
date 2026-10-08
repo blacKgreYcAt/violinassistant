@@ -136,7 +136,7 @@ export default function App() {
                   onBlur={saveTitle}
                   onKeyDown={(e) => e.key === 'Enter' && saveTitle()}
                 />
-                <button onClick={saveTitle} className="text-accent-warm p-2 hover:bg-white/5 rounded-lg transition-colors">
+                <button onClick={saveTitle} aria-label="儲存標題" title="儲存標題" className="text-accent-warm p-2 hover:bg-white/5 rounded-lg transition-colors">
                   <Check size={20} />
                 </button>
               </div>
@@ -150,6 +150,7 @@ export default function App() {
                 </h1>
                 <button 
                   onClick={startEditing}
+                  aria-label="修改標題" title="修改標題"
                   className="p-2 text-text-muted hover:text-accent-warm transition-all rounded-lg hover:bg-white/5"
                 >
                   <Edit2 size={16} />

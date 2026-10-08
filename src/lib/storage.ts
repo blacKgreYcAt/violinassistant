@@ -1,4 +1,7 @@
 import { get, set } from 'idb-keyval';
+import type { ScoreSection } from './scoreSections';
+
+export type { ScoreSection };
 
 export interface Score {
   id: string;
@@ -13,6 +16,8 @@ export interface Score {
   mastery?: number; // 0-100 percentage
   tempoHistory?: { bpm: number; date: number }[];
   cropData?: { x: number; y: number; width: number; height: number }[]; // Per page crop
+  /** 框起來做循環練習的段落（例如「第 45-52 小節的換弦」） */
+  sections?: ScoreSection[];
 }
 
 export interface Folder {
@@ -458,4 +463,19 @@ export async function updateTempoHistory(scoreId: string, bpm: number): Promise<
   
   const newScores = scores.map(s => s.id === scoreId ? { ...s, tempoHistory: updatedHistory } : s);
   await saveScores(newScores);
+}
+
+/**
+ * 覆寫某份樂譜的段落清單。
+ *
+ * 讀回最新的樂譜再寫，不要拿畫面上那份舊的整包蓋回去 ——
+ * 否則同時在別處改到的標註或旋轉會被無聲地還原。
+ */
+export async function updateScoreSections(
+  scoreId: string,
+  sections: ScoreSection[]
+): Promise<void> {
+  const scores = await getScores();
+  if (!scores.some(s => s.id === scoreId)) return;
+  await saveScores(scores.map(s => (s.id === scoreId ? { ...s, sections } : s)));
 }

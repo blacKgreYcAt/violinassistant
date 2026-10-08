@@ -62,7 +62,10 @@ export const Metronome: React.FC<MetronomeProps> = ({
   // 已排程但還沒真正發聲的拍子。音訊是提前最多 scheduleAheadTime 秒排進去的，
   // 所以畫面不能在「排程當下」就更新，否則燈號會比聲音早最多 100ms
   // （300 BPM 時等於差半拍）。改由 drawLoop 依照 audioContext.currentTime 來追。
-  const notesInQueue = useRef<{ beat: number; time: number }[]>([]);
+  // 一併記下這一拍屬於第幾小節：段落循環練習要靠它在「真的聽到」的時間點算遍數
+  const notesInQueue = useRef<{ beat: number; time: number; bar: number }[]>([]);
+  // drawLoop 上一次處理到第幾小節，用來算出又跨過了幾個小節線
+  const lastDrawnBarRef = useRef(0);
   const drawFrameID = useRef<number | null>(null);
 
   // 靜音狀態用 ref 保存：playClick 若把 isMuted 放進依賴陣列，
@@ -145,7 +148,11 @@ export const Metronome: React.FC<MetronomeProps> = ({
       // 超過上限就丟掉最舊的，回到前景時 drawLoop 本來就只會顯示最後一拍。
       // 只有正拍需要更新畫面上的拍點燈號，細分出來的點不算
       if (subToPlay === 0) {
-        notesInQueue.current.push({ beat: beatToPlay, time: nextNoteTime.current });
+        notesInQueue.current.push({
+          beat: beatToPlay,
+          time: nextNoteTime.current,
+          bar: barIndexRef.current,
+        });
       }
       if (notesInQueue.current.length > 256) notesInQueue.current.shift();
 
@@ -210,6 +217,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
         measuresCountRef.current = 0;
         setMeasuresCount(0);
         notesInQueue.current = [];
+        lastDrawnBarRef.current = 0;
         nextNoteTime.current = audioContext.current.currentTime + 0.05;
         scheduler();
       }
@@ -231,13 +239,24 @@ export const Metronome: React.FC<MetronomeProps> = ({
       const ctx = audioContext.current;
       if (ctx) {
         let beatToShow: number | null = null;
+        let barReached: number | null = null;
         // 把所有「已經該發聲」的拍子取出，只顯示最後一拍（避免分頁卡頓後補播一堆）
         while (notesInQueue.current.length && notesInQueue.current[0].time <= ctx.currentTime) {
           beatToShow = notesInQueue.current[0].beat;
+          barReached = notesInQueue.current[0].bar;
           notesInQueue.current.shift();
         }
         if (beatToShow !== null) {
           setCurrentBeat(beatToShow);
+        }
+        // 在「真的聽到」的時間點才廣播跨過了幾個小節線，而不是在提前排程的那一刻。
+        // 樂譜的段落循環練習靠這個事件自動算遍數。
+        if (barReached !== null && barReached > lastDrawnBarRef.current) {
+          const completedBars = barReached - lastDrawnBarRef.current;
+          lastDrawnBarRef.current = barReached;
+          window.dispatchEvent(
+            new CustomEvent('metronome-bar', { detail: { completedBars } })
+          );
         }
       }
       drawFrameID.current = requestAnimationFrame(drawLoop);

@@ -3,7 +3,7 @@ import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, 
   Camera, Loader2, Smile, Eye, RotateCw, PenTool, Eraser, Save, 
   Columns, Moon, Sun, Star, Music, TrendingUp, Play, Pause, 
-  ChevronUp, ChevronDown, Edit2, Check, Plus, Minus, Square, Video
+  ChevronUp, ChevronDown, Edit2, Check, Plus, Minus, Square, Video, Repeat, Trash2
 } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
@@ -13,12 +13,27 @@ import { PlaybackSpeedControl, applyPlaybackSpeed } from './PlaybackSpeedControl
 import { cn } from '../lib/utils';
 import { formatPracticeTotal } from '../lib/practiceTimer';
 import {
+  toLocalRatio,
+  rectFromPoints,
+  isRectUsable,
+  rectToPercentStyle,
+  clampBarsPerRep,
+  accumulateReps,
+  withBestBpm,
+  DEFAULT_BARS_PER_REP,
+  MAX_BARS_PER_REP,
+  MIN_BARS_PER_REP,
+  ScoreSection,
+  SectionRect
+} from '../lib/scoreSections';
+import {
   saveScores,
   getScores,
   getRecordingsByScoreId,
   deleteRecording,
   updateTempoHistory,
   getPracticeTotalForScore,
+  updateScoreSections,
   Recording,
   Score
 } from '../lib/storage';
@@ -70,6 +85,19 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
   const [showMasteryPopover, setShowMasteryPopover] = useState(false);
   const [showTempoHistory, setShowTempoHistory] = useState(false);
   const [practiceTotalSeconds, setPracticeTotalSeconds] = useState(0);
+  // --- 段落循環練習 ---
+  const [sections, setSections] = useState<ScoreSection[]>(score.sections || []);
+  const [showSections, setShowSections] = useState(false);
+  const [isSelectingSection, setIsSelectingSection] = useState(false);
+  const [draftRect, setDraftRect] = useState<SectionRect | null>(null);
+  const [draftName, setDraftName] = useState('');
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [barsPerRep, setBarsPerRep] = useState(DEFAULT_BARS_PER_REP);
+  const [autoCountReps, setAutoCountReps] = useState(true);
+  // 這一遍已經跑掉幾小節。放 ref 不放 state：它每小節都會動，
+  // 但畫面只在「湊滿一遍」時才需要更新。
+  const barAccumulatorRef = useRef(0);
+  const sectionDragStartRef = useRef<{ x: number; y: number } | null>(null);
   const [showBpmPopover, setShowBpmPopover] = useState(false);
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [showRecordings, setShowRecordings] = useState(false);
@@ -140,6 +168,156 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
       window.removeEventListener('practice-history-updated', load);
     };
   }, [showTempoHistory, score.id]);
+
+  const activeSection = sections.find((s) => s.id === activeSectionId) || null;
+
+  // 節拍器事件的處理函式不能依賴 render 當下的 sections（會抓到舊值），
+  // 但也不能把計算塞進 setSections 的 updater 裡 —— updater 必須是純函式，
+  // 一旦在裡面改 ref 或寫資料庫，StrictMode 重複呼叫就會多算一遍。
+  const sectionsRef = useRef(sections);
+  useEffect(() => {
+    sectionsRef.current = sections;
+  }, [sections]);
+
+  /** 寫回樂譜（只動 sections 欄位），並同步畫面上的狀態 */
+  const persistSections = useCallback(
+    (next: ScoreSection[]) => {
+      sectionsRef.current = next;
+      setSections(next);
+      updateScoreSections(score.id, next).catch((err) => {
+        console.error('段落儲存失敗', err);
+      });
+    },
+    [score.id]
+  );
+
+  // 節拍器每跨過一個小節線就會廣播一次，用來自動累計練了幾遍。
+  // 事件是在「真的聽到那一拍」的時間點發出的（見 Metronome 的 drawLoop）。
+  useEffect(() => {
+    if (!activeSectionId || !autoCountReps) return;
+
+    const onBar = (event: Event) => {
+      const completedBars =
+        (event as CustomEvent<{ completedBars: number }>).detail?.completedBars ?? 0;
+
+      const current = sectionsRef.current.find((s) => s.id === activeSectionId);
+      if (!current) return;
+
+      const next = accumulateReps(
+        { bars: barAccumulatorRef.current, reps: current.reps },
+        completedBars,
+        barsPerRep
+      );
+      barAccumulatorRef.current = next.bars;
+      if (next.reps === current.reps) return;
+
+      persistSections(
+        sectionsRef.current.map((s) =>
+          s.id === activeSectionId ? withBestBpm({ ...s, reps: next.reps }, currentBpm) : s
+        )
+      );
+    };
+
+    window.addEventListener('metronome-bar', onBar);
+    return () => window.removeEventListener('metronome-bar', onBar);
+  }, [activeSectionId, autoCountReps, barsPerRep, currentBpm, persistSections]);
+
+  /** 啟用段落：跳到它所在的頁，並重新開始算這一遍 */
+  const activateSection = (section: ScoreSection) => {
+    setActiveSectionId(section.id);
+    setCurrentPage(section.page);
+    barAccumulatorRef.current = 0;
+    // 框選模式與段落練習是互斥的操作
+    setIsSelectingSection(false);
+    setDraftRect(null);
+  };
+
+  const addRepManually = () => {
+    if (!activeSection) return;
+    barAccumulatorRef.current = 0;
+    persistSections(
+      sectionsRef.current.map((s) =>
+        s.id === activeSection.id ? withBestBpm({ ...s, reps: s.reps + 1 }, currentBpm) : s
+      )
+    );
+  };
+
+  const resetReps = () => {
+    if (!activeSection) return;
+    barAccumulatorRef.current = 0;
+    persistSections(
+      sectionsRef.current.map((s) => (s.id === activeSection.id ? { ...s, reps: 0 } : s))
+    );
+  };
+
+  const deleteSection = (id: string) => {
+    if (activeSectionId === id) setActiveSectionId(null);
+    persistSections(sectionsRef.current.filter((s) => s.id !== id));
+  };
+
+  const saveDraftSection = () => {
+    if (!draftRect) return;
+    const section: ScoreSection = {
+      id: crypto.randomUUID(),
+      name: draftName.trim() || `段落 ${sections.length + 1}`,
+      page: currentPage,
+      rect: draftRect,
+      createdAt: Date.now(),
+      reps: 0,
+    };
+    const next = [...sectionsRef.current, section];
+    persistSections(next);
+    setDraftRect(null);
+    setDraftName('');
+    setIsSelectingSection(false);
+    setActiveSectionId(section.id);
+    barAccumulatorRef.current = 0;
+  };
+
+  const cancelDraft = () => {
+    setDraftRect(null);
+    setDraftName('');
+    setIsSelectingSection(false);
+    sectionDragStartRef.current = null;
+  };
+
+  /** 把畫面座標換算成「相對於樂譜頁面框」的比例，並夾在 0~1 之內 */
+  const getSectionPoint = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    return toLocalRatio(
+      canvas.getBoundingClientRect(),
+      rotations[currentPage] || 0,
+      clientX,
+      clientY
+    );
+  };
+
+  const startSectionDrag = (e: React.MouseEvent | React.TouchEvent) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const point = getSectionPoint(clientX, clientY);
+    sectionDragStartRef.current = point;
+    setDraftRect(rectFromPoints(point, point));
+  };
+
+  const moveSectionDrag = (e: React.MouseEvent | React.TouchEvent) => {
+    const start = sectionDragStartRef.current;
+    if (!start) return;
+    // 觸控拖曳時要擋掉頁面捲動，否則框一半畫面就跑掉了
+    if ('touches' in e) e.preventDefault();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    setDraftRect(rectFromPoints(start, getSectionPoint(clientX, clientY)));
+  };
+
+  const endSectionDrag = () => {
+    const start = sectionDragStartRef.current;
+    sectionDragStartRef.current = null;
+    if (!start) return;
+    // 太小的框當成手滑，直接丟掉而不是留下一個看不見的段落
+    setDraftRect((rect) => (rect && isRectUsable(rect) ? rect : null));
+  };
 
   // Initialize rotations and annotations arrays if they don't exist
   useEffect(() => {
@@ -243,34 +421,17 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
   /**
    * 把畫面上的點擊座標換算成 canvas 內部座標。
    *
-   * 樂譜容器上有 transform: rotate()，而 getBoundingClientRect() 回傳的是
-   * 「旋轉後的軸對齊外框」。原本直接用 rect 做等比例換算，在旋轉 90/270 度時
-   * x 與 y 其實要互換，導致旋轉過的樂譜一畫筆下去位置就完全對不上。
-   * 這裡先平移到元素中心、反向旋轉回去，再換算成 canvas 像素座標。
+   * 旋轉換算本身抽到 lib/scoreSections 的 toLocalRatio（框選段落也用同一套），
+   * 那裡有單元測試；這裡只負責乘上 canvas 的像素尺寸。
    */
   const getCanvasPoint = (canvas: HTMLCanvasElement, clientX: number, clientY: number) => {
-    const rect = canvas.getBoundingClientRect();
-    const rotation = (((rotations[currentPage] || 0) % 360) + 360) % 360;
-
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const dx = clientX - centerX;
-    const dy = clientY - centerY;
-
-    const rad = (-rotation * Math.PI) / 180;
-    const localX = dx * Math.cos(rad) - dy * Math.sin(rad);
-    const localY = dx * Math.sin(rad) + dy * Math.cos(rad);
-
-    // 旋轉 90/270 度時，元素「未旋轉前」的寬高正好是外框的高與寬
-    const isQuarterTurn = rotation === 90 || rotation === 270;
-    const unrotatedWidth = isQuarterTurn ? rect.height : rect.width;
-    const unrotatedHeight = isQuarterTurn ? rect.width : rect.height;
-    if (!unrotatedWidth || !unrotatedHeight) return { x: 0, y: 0 };
-
-    return {
-      x: (localX + unrotatedWidth / 2) * (canvas.width / unrotatedWidth),
-      y: (localY + unrotatedHeight / 2) * (canvas.height / unrotatedHeight)
-    };
+    const ratio = toLocalRatio(
+      canvas.getBoundingClientRect(),
+      rotations[currentPage] || 0,
+      clientX,
+      clientY
+    );
+    return { x: ratio.x * canvas.width, y: ratio.y * canvas.height };
   };
 
   // Drawing Handlers
@@ -635,6 +796,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                 </h2>
                 <button 
                   onClick={() => { setTempName(score.name); setIsEditingName(true); }}
+                  aria-label="修改曲名" title="修改曲名"
                   /* 同上。這個鉛筆按鈕在觸控裝置上看不到（雖然點標題本身也能改名，但沒有提示） */
                   className="p-1.5 text-text-muted hover:text-accent-warm rounded-lg hover-reveal"
                 >
@@ -648,6 +810,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setShowBpmPopover(!showBpmPopover)}
+            aria-label="節拍速度" title="節拍速度"
             className={cn(
               "px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
               isMetronomePlaying ? "bg-accent-warm text-bg-warm shadow-lg shadow-accent-warm/20" : "bg-white/5 text-text-muted hover:text-text-warm"
@@ -658,6 +821,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
           </button>
           <button 
             onClick={() => setIsMetronomePlaying(!isMetronomePlaying)}
+            aria-label={isMetronomePlaying ? "停止節拍器" : "啟動節拍器"}
+            title={isMetronomePlaying ? "停止節拍器" : "啟動節拍器"}
             className={cn(
               "w-10 h-10 flex items-center justify-center rounded-xl transition-all",
               isMetronomePlaying ? "bg-red-500 text-white" : "bg-white/5 text-text-muted hover:text-text-warm"
@@ -676,6 +841,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
           )}
           <button 
             onClick={toggleFullscreen}
+            aria-label={isFullscreen ? "離開全螢幕" : "全螢幕"}
+            title={isFullscreen ? "離開全螢幕" : "全螢幕"}
             className="w-10 h-10 flex items-center justify-center text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
           >
             {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
@@ -794,6 +961,41 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                 onTouchMove={draw}
                 onTouchEnd={stopDrawing}
               />
+
+              {/* 啟用中的段落：把其他地方壓暗，只留這一塊亮著。
+                  用一個超大的 box-shadow 當遮罩，比疊四個方塊省事也不會有縫。 */}
+              {activeSection && activeSection.page === currentPage && !isSelectingSection && (
+                <div
+                  data-testid="section-highlight"
+                  className="absolute z-20 pointer-events-none rounded-sm ring-2 ring-accent-warm"
+                  style={{
+                    ...rectToPercentStyle(activeSection.rect),
+                    boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.6)'
+                  }}
+                />
+              )}
+
+              {/* 框選模式：蓋一層可拖曳的透明層（要在畫筆 canvas 之上） */}
+              {isSelectingSection && (
+                <div
+                  data-testid="section-select-layer"
+                  className="absolute inset-0 z-30 cursor-crosshair touch-none"
+                  onMouseDown={startSectionDrag}
+                  onMouseMove={moveSectionDrag}
+                  onMouseUp={endSectionDrag}
+                  onMouseLeave={endSectionDrag}
+                  onTouchStart={startSectionDrag}
+                  onTouchMove={moveSectionDrag}
+                  onTouchEnd={endSectionDrag}
+                >
+                  {draftRect && (
+                    <div
+                      className="absolute border-2 border-dashed border-accent-warm bg-accent-warm/20"
+                      style={rectToPercentStyle(draftRect)}
+                    />
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Navigation Arrows */}
@@ -1007,6 +1209,21 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
             <TrendingUp size={24} />
           </button>
           <button
+            onClick={() => {
+              const next = !showSections;
+              setShowSections(next);
+              // 關掉面板就不該還停在框選狀態，否則樂譜會一直點不動
+              if (!next) cancelDraft();
+            }}
+            aria-label="段落循環練習" title="段落循環練習"
+            className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+              showSections ? "bg-amber-500 text-white shadow-lg shadow-amber-500/30" : "bg-white/5 text-text-muted hover:text-text-warm"
+            )}
+          >
+            <Repeat size={24} />
+          </button>
+          <button
             onClick={() => setShowRecordings(!showRecordings)}
             className={cn(
               "w-12 h-12 rounded-2xl flex items-center justify-center transition-all relative",
@@ -1057,6 +1274,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
             </div>
             <button 
               onClick={() => setShowBpmPopover(false)}
+              aria-label="關閉速度設定" title="關閉速度設定"
               className="text-text-muted hover:text-text-warm"
             >
               <X size={20} />
@@ -1179,6 +1397,184 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
           <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
             <TempoProgressChart history={score.tempoHistory} />
           </div>
+        </div>
+      )}
+
+      {showSections && (
+        <div className="fixed top-20 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-80 z-[100] animate-in fade-in slide-in-from-right-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm font-bold text-text-warm uppercase tracking-widest">段落循環練習</span>
+            <button
+              onClick={() => { setShowSections(false); cancelDraft(); }}
+              aria-label="關閉段落面板" title="關閉段落面板"
+              className="text-text-muted hover:text-text-warm"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* 框選 / 命名 */}
+          {draftRect ? (
+            <div className="mb-4 rounded-xl bg-white/5 p-3">
+              <label className="block text-xs font-bold text-text-muted mb-1.5" htmlFor="section-name">
+                段落名稱
+              </label>
+              <input
+                id="section-name"
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') saveDraftSection(); }}
+                placeholder="例如：第 45-52 小節"
+                autoFocus
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-text-warm focus:outline-none focus:border-accent-warm mb-2"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={cancelDraft}
+                  className="flex-1 py-2 rounded-xl bg-white/5 text-text-muted text-sm font-bold hover:bg-white/10 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={saveDraftSection}
+                  className="flex-1 py-2 rounded-xl bg-accent-warm text-bg-warm text-sm font-bold hover:opacity-90 transition-opacity"
+                >
+                  儲存段落
+                </button>
+              </div>
+            </div>
+          ) : isSelectingSection ? (
+            <div className="mb-4 rounded-xl bg-accent-warm/10 border border-accent-warm/30 p-3">
+              <p className="text-xs text-text-warm mb-2">
+                在樂譜上拖曳，框出要反覆練的那幾小節。
+              </p>
+              <button
+                onClick={cancelDraft}
+                className="w-full py-2 rounded-xl bg-white/5 text-text-muted text-sm font-bold hover:bg-white/10 transition-colors"
+              >
+                取消框選
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                setIsSelectingSection(true);
+                setActiveSectionId(null);
+                // 框選時不該同時在畫線
+                setIsDrawingMode(false);
+              }}
+              className="w-full mb-4 py-2.5 rounded-xl bg-accent-warm text-bg-warm text-sm font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+            >
+              <Plus size={16} /> 框選新段落
+            </button>
+          )}
+
+          {/* 循環計數器 */}
+          {activeSection && (
+            <div className="mb-4 rounded-2xl bg-white/5 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-accent-warm truncate">{activeSection.name}</span>
+                <button
+                  onClick={() => setActiveSectionId(null)}
+                  className="text-[10px] font-bold text-text-muted hover:text-text-warm uppercase tracking-widest shrink-0"
+                >
+                  結束練習
+                </button>
+              </div>
+
+              <div className="text-center mb-3">
+                <div className="text-5xl font-black text-text-warm leading-none" data-testid="section-reps">
+                  {activeSection.reps}
+                </div>
+                <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mt-1">遍</div>
+                {activeSection.bestBpm !== undefined && (
+                  <div className="text-xs text-text-muted mt-2">
+                    最快練到 <span className="font-bold text-text-warm">{activeSection.bestBpm}</span> BPM
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={resetReps}
+                  className="flex-1 py-2 rounded-xl bg-white/5 text-text-muted text-sm font-bold hover:bg-white/10 transition-colors"
+                >
+                  重設
+                </button>
+                <button
+                  onClick={addRepManually}
+                  className="flex-1 py-2 rounded-xl bg-emerald-500 text-bg-warm text-sm font-bold hover:opacity-90 transition-opacity"
+                >
+                  +1 遍
+                </button>
+              </div>
+
+              <label className="flex items-center gap-2 text-xs text-text-muted mb-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoCountReps}
+                  onChange={(e) => setAutoCountReps(e.target.checked)}
+                  className="accent-accent-warm"
+                />
+                跟著節拍器自動計遍數
+              </label>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-text-muted shrink-0" htmlFor="bars-per-rep">
+                  每遍小節數
+                </label>
+                <input
+                  id="bars-per-rep"
+                  type="number"
+                  min={MIN_BARS_PER_REP}
+                  max={MAX_BARS_PER_REP}
+                  value={barsPerRep}
+                  disabled={!autoCountReps}
+                  onChange={(e) => setBarsPerRep(clampBarsPerRep(parseInt(e.target.value, 10)))}
+                  className="w-20 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-text-warm focus:outline-none focus:border-accent-warm disabled:opacity-40"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* 段落清單 */}
+          {sections.length === 0 ? (
+            <p className="text-xs text-text-muted leading-relaxed">
+              尚未建立段落。把難的那幾小節框起來，練習時畫面會只亮出那一塊，
+              並幫你數練了幾遍、最快練到多少 BPM。
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {sections.map((section) => (
+                <div
+                  key={section.id}
+                  data-testid="section-row"
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl p-2 transition-colors",
+                    section.id === activeSectionId ? "bg-accent-warm/15" : "bg-white/5 hover:bg-white/10"
+                  )}
+                >
+                  <button
+                    onClick={() => activateSection(section)}
+                    className="flex-1 min-w-0 text-left"
+                  >
+                    <div className="text-sm font-bold text-text-warm truncate">{section.name}</div>
+                    <div className="text-[10px] text-text-muted">
+                      第 {section.page + 1} 頁 · {section.reps} 遍
+                      {section.bestBpm !== undefined && ` · 最快 ${section.bestBpm} BPM`}
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => deleteSection(section.id)}
+                    aria-label={`刪除段落 ${section.name}`}
+                    title="刪除段落"
+                    className="text-text-muted hover:text-rose-400 p-1 shrink-0"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
