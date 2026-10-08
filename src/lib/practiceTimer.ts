@@ -52,6 +52,23 @@ export function computeTimerTick({
 }
 
 /**
+ * 把累計練習秒數變成人看得懂的字串。
+ *
+ * 不用小數時數（「1.3 小時」對練琴沒意義），也不顯示秒
+ * —— 練習時間的尺度是分鐘。
+ */
+export function formatPracticeTotal(totalSeconds: number): string {
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return '尚未記錄';
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  if (totalMinutes < 1) return '不到 1 分鐘';
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes} 分鐘`;
+  if (minutes === 0) return `${hours} 小時`;
+  return `${hours} 小時 ${minutes} 分`;
+}
+
+/**
  * 取得練習步驟的時長（分鐘）。
  *
  * 舊版資料用的是 durationSeconds 欄位，新版是 duration。

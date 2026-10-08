@@ -17,6 +17,10 @@ import { cn } from './lib/utils';
 
 export default function App() {
   const [activeScore, setActiveScore] = useState<Score | null>(null);
+  // 最近開啟過的樂譜（本次開啟 app 期間）。計時器用它預選練習曲目，
+  // 使用者仍可以改選或清掉——不要在這裡持久化，隔天打開 app 不該
+  // 還預選著昨天那首。
+  const [lastOpenedScoreId, setLastOpenedScoreId] = useState<string | null>(null);
   const [activeRoutine, setActiveRoutine] = useState<PracticeRoutine | null>(null);
   const [activeTab, setActiveTab] = useState<'tools' | 'library'>('tools');
   const [appTitle, setAppTitle] = useState<string>('我的練習小幫手');
@@ -103,6 +107,12 @@ export default function App() {
       </div>
     );
   }
+
+  /** 開啟樂譜，同時記住它，讓計時器可以預選這首當練習曲目 */
+  const openScore = (score: Score) => {
+    setActiveScore(score);
+    setLastOpenedScoreId(score.id);
+  };
 
   return (
     <div className="h-screen bg-bg-warm text-text-warm font-sans selection:bg-accent-warm selection:text-bg-warm flex flex-col overflow-hidden animate-in fade-in duration-1000">
@@ -224,7 +234,12 @@ export default function App() {
                 className="min-h-[540px] md:h-full" 
               />
               <Tuner className="min-h-[540px] md:h-full" />
-              <Timer activeRoutine={activeRoutine} onClearRoutine={() => setActiveRoutine(null)} className="min-h-[540px] md:h-full" />
+              <Timer
+                activeRoutine={activeRoutine}
+                onClearRoutine={() => setActiveRoutine(null)}
+                defaultScoreId={lastOpenedScoreId}
+                className="min-h-[540px] md:h-full"
+              />
             </div>
             
             <div 
@@ -236,7 +251,7 @@ export default function App() {
               {!activeScore && (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0 min-h-[500px]">
-                    <ScoreLibrary onSelectScore={setActiveScore} />
+                    <ScoreLibrary onSelectScore={openScore} />
                     {/* 這個區塊只在沒有選取樂譜時才會渲染，所以不會有可關聯的樂譜；
                         原本傳的 activeScoreName={activeScore?.name} 必定是 undefined。
                         要把錄影歸到某一份樂譜底下，請從樂譜檢視器裡的錄影模式錄製。 */}

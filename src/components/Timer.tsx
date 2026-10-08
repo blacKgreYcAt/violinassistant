@@ -1,18 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Timer as TimerIcon, Play, Pause, RotateCcw, Bell, Edit3, Check, X, ListMusic, SkipForward, Minus, Plus } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Timer as TimerIcon, Play, Pause, RotateCcw, Bell, Edit3, Check, X, ListMusic, SkipForward, Minus, Plus, Music } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { createAudioContext } from '../lib/audio';
-import { addPracticeSession, PracticeRoutine, processPracticeReward, RewardResult } from '../lib/storage';
+import { addPracticeSession, getScores, PracticeRoutine, processPracticeReward, RewardResult, Score } from '../lib/storage';
 // 計時的純計算邏輯抽到 lib 以便測試（見 practiceTimer.test.ts）
 import { computeTimerTick, getStepDuration } from '../lib/practiceTimer';
 
 interface TimerProps {
   activeRoutine?: PracticeRoutine | null;
   onClearRoutine?: () => void;
+  /** 最近開啟過的樂譜 id，用來預選這次練的是哪一首 */
+  defaultScoreId?: string | null;
   className?: string;
 }
 
-export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, className }) => {
+export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, defaultScoreId, className }) => {
   const [inputMinutes, setInputMinutes] = useState(30);
   const [remainingSeconds, setRemainingSeconds] = useState(30 * 60);
   const [isActive, setIsActive] = useState(false);
@@ -20,6 +23,15 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
   const [practicedSeconds, setPracticedSeconds] = useState(0);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [practiceNote, setPracticeNote] = useState('');
+  const [scores, setScores] = useState<Score[]>([]);
+  /**
+   * 使用者手動挑的練習曲目。
+   * undefined = 還沒動過，沿用 defaultScoreId（預選最近開啟的那首）；
+   * null = 使用者刻意清成「未指定」。
+   * 用這個三態就不需要 effect 去同步 props，也不會把使用者清掉的選擇又塞回去。
+   */
+  const [pickedScoreId, setPickedScoreId] = useState<string | null | undefined>(undefined);
+  const effectiveScoreId = pickedScoreId === undefined ? (defaultScoreId ?? null) : pickedScoreId;
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [rewardResult, setRewardResult] = useState<RewardResult | null>(null);
   
@@ -150,6 +162,18 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFinished]);
 
+  // 筆記視窗要列出所有樂譜供選擇；只在要用到時才讀 IndexedDB
+  useEffect(() => {
+    if (!showNoteModal) return;
+    let cancelled = false;
+    getScores().then((list) => {
+      if (!cancelled) setScores(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showNoteModal]);
+
   const completeReset = () => {
     setIsFinished(false);
     if (activeRoutine && activeRoutine.steps[currentStepIndex]) {
@@ -161,7 +185,8 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
 
   const logPracticeSession = async (note?: string) => {
     if (practicedSeconds >= 60) { // 至少練習 1 分鐘才記錄
-      await addPracticeSession(practicedSeconds, note);
+      // 即使使用者略過筆記，曲目歸屬仍要記下來 —— 預選的意義就在於不用多按一次
+      await addPracticeSession(practicedSeconds, note, effectiveScoreId ?? undefined);
       
       // Process rewards only if session is valid
       const reward = await processPracticeReward(practicedSeconds);
@@ -178,6 +203,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
 
     setPracticedSeconds(0);
     setPracticeNote('');
+    setPickedScoreId(undefined);
     setShowNoteModal(false);
   };
 
@@ -185,6 +211,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
     setRewardResult(null);
     setPracticedSeconds(0);
     setPracticeNote('');
+    setPickedScoreId(undefined);
     completeReset();
   };
 
@@ -415,8 +442,11 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
         </div>
       </div>
 
-      {/* Reward Notification Modal */}
-      {rewardResult && (
+      {/* Reward Notification Modal
+          必須用 portal 掛到 body：計時器卡片自己有 backdrop-blur，
+          會成為 position:fixed 的包含區塊，彈窗因此是對齊卡片而不是螢幕
+          —— 在手機寬度下整個跑到可視範圍之外。 */}
+      {rewardResult && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-bg-warm w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col items-center p-8 text-center animate-in zoom-in duration-300">
             <div className="text-6xl mb-4">🎵</div>
@@ -452,12 +482,13 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
               繼續加油
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Practice Note Modal */}
-      {showNoteModal && !rewardResult && (
-        <div className="fixed inset-0 z-50 bg-bg-warm/90 backdrop-blur-sm flex items-center justify-center p-4">
+      {/* Practice Note Modal（同樣要 portal，理由見上） */}
+      {showNoteModal && !rewardResult && createPortal(
+        <div className="fixed inset-0 z-50 bg-bg-warm/90 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-surface-warm border border-white/10 p-6 rounded-3xl shadow-2xl w-full max-w-sm animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2 text-accent-warm">
@@ -471,6 +502,25 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
             <p className="text-sm text-text-muted mb-4">
               您剛剛練習了 {Math.floor(practicedSeconds / 60)} 分鐘，要記錄一下心得或下次的目標嗎？
             </p>
+            <label className="block text-xs font-bold text-text-muted mb-1.5" htmlFor="practice-score">
+              練習曲目
+            </label>
+            <div className="flex items-center gap-2 mb-4">
+              <Music size={16} className="text-accent-warm shrink-0" />
+              <select
+                id="practice-score"
+                value={effectiveScoreId ?? ''}
+                onChange={(e) => setPickedScoreId(e.target.value || null)}
+                className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-text-warm focus:outline-none focus:border-accent-warm"
+              >
+                <option value="">未指定</option>
+                {scores.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <textarea
               value={practiceNote}
               onChange={(e) => setPracticeNote(e.target.value)}
@@ -493,7 +543,8 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, cla
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

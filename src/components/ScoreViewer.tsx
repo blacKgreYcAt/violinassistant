@@ -8,15 +8,17 @@ import {
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
 import { RecordingPlayer } from './RecordingPlayer';
-import { TempoProgressChart } from './TempoProgressChart';
+import { TempoProgressChart } from './TempoProgressChart';
 import { PlaybackSpeedControl, applyPlaybackSpeed } from './PlaybackSpeedControl';
 import { cn } from '../lib/utils';
+import { formatPracticeTotal } from '../lib/practiceTimer';
 import {
   saveScores,
   getScores,
   getRecordingsByScoreId,
   deleteRecording,
   updateTempoHistory,
+  getPracticeTotalForScore,
   Recording,
   Score
 } from '../lib/storage';
@@ -67,6 +69,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
   const [mastery, setMastery] = useState(score.mastery || 0);
   const [showMasteryPopover, setShowMasteryPopover] = useState(false);
   const [showTempoHistory, setShowTempoHistory] = useState(false);
+  const [practiceTotalSeconds, setPracticeTotalSeconds] = useState(0);
   const [showBpmPopover, setShowBpmPopover] = useState(false);
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [showRecordings, setShowRecordings] = useState(false);
@@ -119,6 +122,24 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
     [score.data]
   );
   const totalPages = pages.length;
+
+  // 本曲累計練習時間。計時器寫入紀錄時會發出 practice-history-updated，
+  // 所以面板開著的時候也會跟著更新。
+  useEffect(() => {
+    if (!showTempoHistory) return;
+    let cancelled = false;
+    const load = () => {
+      getPracticeTotalForScore(score.id).then((seconds) => {
+        if (!cancelled) setPracticeTotalSeconds(seconds);
+      });
+    };
+    load();
+    window.addEventListener('practice-history-updated', load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('practice-history-updated', load);
+    };
+  }, [showTempoHistory, score.id]);
 
   // Initialize rotations and annotations arrays if they don't exist
   useEffect(() => {
@@ -580,8 +601,9 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
       {/* Top Bar */}
       <header className="h-16 shrink-0 bg-surface-warm/90 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-4 md:px-6 z-20">
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={onClose}
+            aria-label="關閉樂譜" title="關閉樂譜"
             className="w-10 h-10 flex items-center justify-center text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
           >
             <X size={24} />
@@ -1119,7 +1141,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
         <div className="fixed top-36 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-80 z-[100] animate-in fade-in slide-in-from-right-4">
           <div className="flex items-center justify-between mb-6">
             <span className="text-sm font-bold text-text-warm uppercase tracking-widest">速度與節拍器</span>
-            <button onClick={() => setShowTempoHistory(false)} className="text-text-muted hover:text-text-warm"><X size={20} /></button>
+            <button onClick={() => setShowTempoHistory(false)} aria-label="關閉速度面板" title="關閉速度面板" className="text-text-muted hover:text-text-warm"><X size={20} /></button>
           </div>
           
           <div className="bg-white/5 rounded-2xl p-4 mb-6">
@@ -1146,6 +1168,14 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
             </div>
           </div>
 
+          {/* 這首曲子的累計練習時間 —— 計時器記錄練習時會帶上曲目歸屬 */}
+          <div className="mb-4 flex items-center justify-between rounded-xl bg-white/5 px-3 py-2">
+            <span className="text-xs font-bold uppercase tracking-widest text-text-muted">本曲累計練習</span>
+            <span className="text-sm font-bold text-text-warm" data-testid="score-practice-total">
+              {formatPracticeTotal(practiceTotalSeconds)}
+            </span>
+          </div>
+
           <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
             <TempoProgressChart history={score.tempoHistory} />
           </div>
@@ -1156,7 +1186,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
         <div className="fixed top-20 right-24 bg-surface-warm border border-white/10 rounded-2xl shadow-2xl p-6 w-96 z-[100] animate-in fade-in slide-in-from-right-4">
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-bold text-text-warm uppercase tracking-widest">本曲錄影紀錄</span>
-            <button onClick={() => setShowRecordings(false)} className="text-text-muted hover:text-text-warm"><X size={20} /></button>
+            <button onClick={() => setShowRecordings(false)} aria-label="關閉錄影清單" title="關閉錄影清單" className="text-text-muted hover:text-text-warm"><X size={20} /></button>
           </div>
 
           <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">

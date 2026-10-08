@@ -27,6 +27,12 @@ export interface PracticeSession {
   durationSeconds: number;
   timestamp: number;
   note?: string;
+  /**
+   * 這次練的是哪一首（可留空）。
+   * 沒有這個欄位時答不出「我這個月在這首曲子花了多少時間」——
+   * 練習紀錄與樂譜之間原本完全沒有關聯。
+   */
+  scoreId?: string;
 }
 
 export interface Recording {
@@ -165,7 +171,11 @@ export async function saveHistory(history: PracticeSession[]): Promise<void> {
   }
 }
 
-export async function addPracticeSession(durationSeconds: number, note?: string): Promise<PracticeSession[]> {
+export async function addPracticeSession(
+  durationSeconds: number,
+  note?: string,
+  scoreId?: string
+): Promise<PracticeSession[]> {
   if (durationSeconds <= 0) return getPracticeHistory();
 
   try {
@@ -181,7 +191,9 @@ export async function addPracticeSession(durationSeconds: number, note?: string)
       date: dateStr,
       durationSeconds,
       timestamp: Date.now(),
-      note
+      note,
+      // 空字串代表使用者刻意清除了歸屬，不要存成空字串
+      scoreId: scoreId || undefined
     };
     
     const updatedHistory = [...history, newSession];
@@ -195,6 +207,29 @@ export async function addPracticeSession(durationSeconds: number, note?: string)
     console.error('Failed to add practice session:', error);
     return await getPracticeHistory();
   }
+}
+
+/**
+ * 依曲目彙總練習總時數（秒）。
+ *
+ * 未指定曲目的紀錄不計入任何一首 —— 它們仍然算在總練習時間裡，
+ * 只是無法歸到特定曲目。
+ */
+export async function getPracticeTotalsByScore(): Promise<Record<string, number>> {
+  const history = await getPracticeHistory();
+  const totals: Record<string, number> = {};
+  for (const session of history) {
+    if (!session.scoreId) continue;
+    if (!Number.isFinite(session.durationSeconds) || session.durationSeconds <= 0) continue;
+    totals[session.scoreId] = (totals[session.scoreId] ?? 0) + session.durationSeconds;
+  }
+  return totals;
+}
+
+/** 單一曲目的累計練習秒數 */
+export async function getPracticeTotalForScore(scoreId: string): Promise<number> {
+  const totals = await getPracticeTotalsByScore();
+  return totals[scoreId] ?? 0;
 }
 
 // --- Recordings ---
