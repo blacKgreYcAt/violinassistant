@@ -1,8 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, Music, Trash2, Edit2, Check, X, Download, UploadCloud, Share2, Library, Folder as FolderIcon, Plus, ChevronLeft, Search, Tag, Star, Crop, Zap } from 'lucide-react';
 import { cn, isAbortError } from '../lib/utils';
 import { Score, Folder, getScores, saveScores as saveScoresToDb, getFolders, saveFolders as saveFoldersToDb } from '../lib/storage';
+import {
+  CropRect,
+  CropCorner,
+  FULL_CROP,
+  normalizeCrop,
+  resizeCrop,
+  moveCrop,
+  setCropForPage
+} from '../lib/crop';
 
 interface ScoreLibraryProps {
   onSelectScore: (score: Score) => void;
@@ -26,8 +35,11 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
   const [newFolderName, setNewFolderName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCropModal, setShowCropModal] = useState<Score | null>(null);
-  const [cropRect, setCropRect] = useState({ x: 0, y: 0, width: 100, height: 100 });
+  const [cropRect, setCropRect] = useState<CropRect>(FULL_CROP);
   const [cropPage, setCropPage] = useState(0);
+  // 正在拖曳哪一個角；'move' 代表整塊平移
+  const cropDragRef = useRef<{ mode: CropCorner | 'move'; lastX: number; lastY: number } | null>(null);
+  const cropPreviewRef = useRef<HTMLDivElement | null>(null);
   
   useEffect(() => {
     const loadData = async () => {
@@ -359,16 +371,69 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
 
   const handleApplyCrop = async () => {
     if (!showCropModal) return;
-    const newScores = scores.map(s => {
-      if (s.id === showCropModal.id) {
-        const newCropData = [...(s.cropData || Array(Array.isArray(s.data) ? s.data.length : 1).fill({ x: 0, y: 0, width: 100, height: 100 }))];
-        newCropData[cropPage] = cropRect;
-        return { ...s, cropData: newCropData };
-      }
-      return s;
-    });
+    const totalPages = Array.isArray(showCropModal.data) ? showCropModal.data.length : 1;
+    const newScores = scores.map(s =>
+      s.id === showCropModal.id
+        ? { ...s, cropData: setCropForPage(s.cropData, cropPage, cropRect, totalPages) }
+        : s
+    );
     await saveScores(newScores);
     setShowCropModal(null);
+  };
+
+  /** 切換裁切視窗的頁面，並載入那一頁已經存過的裁切範圍 */
+  const goToCropPage = (page: number) => {
+    if (!showCropModal) return;
+    const totalPages = Array.isArray(showCropModal.data) ? showCropModal.data.length : 1;
+    const next = Math.min(totalPages - 1, Math.max(0, page));
+    setCropPage(next);
+    // 每頁各有自己的裁切範圍，換頁時不能把上一頁的框帶過去
+    setCropRect(normalizeCrop(showCropModal.cropData?.[next]));
+  };
+
+  /** 把畫面座標換算成預覽框內的百分比（0~100） */
+  const cropPointFromEvent = (clientX: number, clientY: number) => {
+    const box = cropPreviewRef.current?.getBoundingClientRect();
+    if (!box || !box.width || !box.height) return { x: 0, y: 0 };
+    return {
+      x: ((clientX - box.left) / box.width) * 100,
+      y: ((clientY - box.top) / box.height) * 100
+    };
+  };
+
+  const startCropDrag = (
+    mode: CropCorner | 'move',
+    e: React.MouseEvent | React.TouchEvent
+  ) => {
+    // 拖角落時不要讓事件再冒泡到「整塊平移」那一層
+    e.stopPropagation();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const point = cropPointFromEvent(clientX, clientY);
+    cropDragRef.current = { mode, lastX: point.x, lastY: point.y };
+  };
+
+  const moveCropDrag = (e: React.MouseEvent | React.TouchEvent) => {
+    const drag = cropDragRef.current;
+    if (!drag) return;
+    // 觸控拖曳時要擋掉頁面捲動，否則調一半畫面就跑掉了
+    if ('touches' in e) e.preventDefault();
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const point = cropPointFromEvent(clientX, clientY);
+
+    if (drag.mode === 'move') {
+      setCropRect(prev => moveCrop(prev, point.x - drag.lastX, point.y - drag.lastY));
+      drag.lastX = point.x;
+      drag.lastY = point.y;
+    } else {
+      setCropRect(prev => resizeCrop(prev, drag.mode as CropCorner, point));
+    }
+  };
+
+  const endCropDrag = () => {
+    cropDragRef.current = null;
   };
 
   return (
@@ -386,47 +451,72 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
             </div>
             
             <div className="flex-1 overflow-auto p-6 flex flex-col items-center gap-4">
-              <div className="relative bg-black rounded-lg overflow-hidden group" style={{ maxWidth: '100%', aspectRatio: '1/1.414' }}>
-                <img 
-                  src={Array.isArray(showCropModal.data) ? showCropModal.data[cropPage] : showCropModal.data} 
-                  className="max-h-[60vh] object-contain opacity-50"
+              {/* 預覽框與樂譜檢視器用同一個 A4 比例容器、同樣的 object-contain，
+                  裁切百分比在兩邊才代表同一件事 */}
+              <div
+                ref={cropPreviewRef}
+                data-testid="crop-preview"
+                className="relative bg-black rounded-lg overflow-hidden touch-none select-none max-w-full"
+                /* 高度驅動：圖片改成 w-full h-full 之後，容器就沒有別的尺寸來源了，
+                   只靠 maxWidth + aspectRatio 會塌成 1px */
+                style={{ height: '55vh', aspectRatio: '1/1.414' }}
+                onMouseDown={(e) => startCropDrag('move', e)}
+                onMouseMove={moveCropDrag}
+                onMouseUp={endCropDrag}
+                onMouseLeave={endCropDrag}
+                onTouchStart={(e) => startCropDrag('move', e)}
+                onTouchMove={moveCropDrag}
+                onTouchEnd={endCropDrag}
+              >
+                <img
+                  src={Array.isArray(showCropModal.data) ? showCropModal.data[cropPage] : showCropModal.data}
+                  className="w-full h-full object-contain pointer-events-none"
                   alt="Crop preview"
                 />
-                {/* Visual Crop Box */}
-                <div 
-                  className="absolute border-2 border-accent-warm bg-accent-warm/10 cursor-move"
+                {/* 裁切框：框外用超大的 box-shadow 壓暗，一眼就看得出會留下哪一塊 */}
+                <div
+                  data-testid="crop-box"
+                  className="absolute border-2 border-accent-warm cursor-move"
                   style={{
                     left: `${cropRect.x}%`,
                     top: `${cropRect.y}%`,
                     width: `${cropRect.width}%`,
-                    height: `${cropRect.height}%`
+                    height: `${cropRect.height}%`,
+                    boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.65)'
                   }}
-                />
-                {/* Simple Controls for Crop */}
-                <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                   {/* This is a simplified UI for the agent, in a real app we'd use a proper library or more complex mouse events */}
-                   <div className="cursor-nw-resize" onClick={() => setCropRect(prev => ({ ...prev, x: Math.max(0, prev.x - 5), y: Math.max(0, prev.y - 5), width: prev.width + 5, height: prev.height + 5 }))}></div>
-                   <div></div>
-                   <div className="cursor-ne-resize" onClick={() => setCropRect(prev => ({ ...prev, y: Math.max(0, prev.y - 5), width: prev.width + 5, height: prev.height + 5 }))}></div>
-                   <div></div>
-                   <div className="cursor-move" onClick={() => setCropRect(prev => ({ ...prev, x: Math.min(100 - prev.width, prev.x + 2), y: Math.min(100 - prev.height, prev.y + 2) }))}></div>
-                   <div></div>
-                   <div className="cursor-sw-resize" onClick={() => setCropRect(prev => ({ ...prev, x: Math.max(0, prev.x - 5), width: prev.width + 5, height: prev.height + 5 }))}></div>
-                   <div></div>
-                   <div className="cursor-se-resize" onClick={() => setCropRect(prev => ({ ...prev, width: Math.min(100 - prev.x, prev.width + 5), height: Math.min(100 - prev.height, prev.height + 5) }))}></div>
+                >
+                  {([
+                    ['nw', 'nw-resize', '-top-2 -left-2', '左上'],
+                    ['ne', 'ne-resize', '-top-2 -right-2', '右上'],
+                    ['sw', 'sw-resize', '-bottom-2 -left-2', '左下'],
+                    ['se', 'se-resize', '-bottom-2 -right-2', '右下']
+                  ] as const).map(([corner, cursor, position, label]) => (
+                    <div
+                      key={corner}
+                      data-testid={`crop-handle-${corner}`}
+                      aria-label={`${label}裁切控點`}
+                      className={cn(
+                        'absolute w-5 h-5 rounded-full bg-accent-warm border-2 border-bg-warm shadow-lg',
+                        position
+                      )}
+                      style={{ cursor }}
+                      onMouseDown={(e) => startCropDrag(corner, e)}
+                      onTouchStart={(e) => startCropDrag(corner, e)}
+                    />
+                  ))}
                 </div>
               </div>
-              
+
               <div className="flex flex-col gap-2 w-full max-w-xs">
                 <div className="flex justify-between text-xs font-bold text-text-muted uppercase tracking-widest">
-                  <span>調整範圍 (點擊邊角)</span>
-                  <button onClick={() => setCropRect({ x: 0, y: 0, width: 100, height: 100 })} className="text-accent-warm">重設</button>
+                  <span>拖曳邊角調整範圍</span>
+                  <button onClick={() => setCropRect(FULL_CROP)} className="text-accent-warm">重設</button>
                 </div>
                 {Array.isArray(showCropModal.data) && showCropModal.data.length > 1 && (
                   <div className="flex items-center justify-center gap-4 mt-2">
-                    <button onClick={() => setCropPage(Math.max(0, cropPage - 1))} className="p-2 bg-white/5 rounded-lg"><ChevronLeft size={16} /></button>
+                    <button onClick={() => goToCropPage(cropPage - 1)} aria-label="上一頁" title="上一頁" className="p-2 bg-white/5 rounded-lg"><ChevronLeft size={16} /></button>
                     <span className="text-sm font-bold text-text-warm">第 {cropPage + 1} / {showCropModal.data.length} 頁</span>
-                    <button onClick={() => setCropPage(Math.min(showCropModal.data.length - 1, cropPage + 1))} className="p-2 bg-white/5 rounded-lg"><ChevronLeft size={16} className="rotate-180" /></button>
+                    <button onClick={() => goToCropPage(cropPage + 1)} aria-label="下一頁" title="下一頁" className="p-2 bg-white/5 rounded-lg"><ChevronLeft size={16} className="rotate-180" /></button>
                   </div>
                 )}
               </div>
@@ -771,7 +861,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
                         e.stopPropagation();
                         setShowCropModal(score);
                         setCropPage(0);
-                        setCropRect(score.cropData?.[0] || { x: 0, y: 0, width: 100, height: 100 });
+                        setCropRect(normalizeCrop(score.cropData?.[0]));
                       }}
                       className="p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all opacity-60 hover:opacity-100"
                       title="裁切樂譜"

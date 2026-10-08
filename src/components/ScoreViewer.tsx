@@ -3,7 +3,7 @@ import {
   ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut, 
   Camera, Loader2, Smile, Eye, RotateCw, PenTool, Eraser, Save, 
   Columns, Moon, Sun, Star, Music, TrendingUp, Play, Pause, 
-  ChevronUp, ChevronDown, Edit2, Check, Plus, Minus, Square, Video, Repeat, Trash2
+  ChevronUp, ChevronDown, Edit2, Check, Plus, Minus, Square, Video, Repeat, Trash2, Crop
 } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { VideoRecorder } from './VideoRecorder';
@@ -12,6 +12,7 @@ import { TempoProgressChart } from './TempoProgressChart';
 import { PlaybackSpeedControl, applyPlaybackSpeed } from './PlaybackSpeedControl';
 import { cn } from '../lib/utils';
 import { formatPracticeTotal } from '../lib/practiceTimer';
+import { cropForPage, cropToTransform, isCropped, FULL_CROP } from '../lib/crop';
 import {
   toLocalRatio,
   rectFromPoints,
@@ -97,6 +98,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
   const [showMasteryPopover, setShowMasteryPopover] = useState(false);
   const [showTempoHistory, setShowTempoHistory] = useState(false);
   const [practiceTotalSeconds, setPracticeTotalSeconds] = useState(0);
+  const [showFullPage, setShowFullPage] = useState(false);
   // --- 段落循環練習 ---
   const [sections, setSections] = useState<ScoreSection[]>(score.sections || []);
   const [showSections, setShowSections] = useState(false);
@@ -182,6 +184,11 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
   }, [showTempoHistory, score.id]);
 
   const activeSection = sections.find((s) => s.id === activeSectionId) || null;
+  // 這一頁的裁切範圍（沒設定過就是整頁）。
+  // 可以暫時切回完整頁面——裁壞了的話，在檢視器裡總要有辦法看到被切掉的部分。
+  const savedCrop = cropForPage(score.cropData, currentPage);
+  const pageIsCropped = isCropped(savedCrop);
+  const pageCrop = showFullPage ? FULL_CROP : savedCrop;
 
   // 節拍器事件的處理函式不能依賴 render 當下的 sections（會抓到舊值），
   // 但也不能把計算塞進 setSections 的 updater 裡 —— updater 必須是純函式，
@@ -894,13 +901,27 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
             >
               <Eraser size={24} />
             </button>
-            <button 
+            <button
               onClick={handleRotate}
               className="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/5 text-text-muted hover:text-text-warm transition-all"
               title="旋轉"
             >
               <RotateCw size={24} />
             </button>
+            {/* 只有這一頁真的有裁切時才出現：裁壞了總要有辦法看到被切掉的部分 */}
+            {pageIsCropped && (
+              <button
+                onClick={() => setShowFullPage(!showFullPage)}
+                aria-label={showFullPage ? '回到裁切範圍' : '顯示完整頁面'}
+                title={showFullPage ? '回到裁切範圍' : '顯示完整頁面'}
+                className={cn(
+                  "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+                  showFullPage ? "bg-accent-warm text-bg-warm shadow-lg shadow-accent-warm/30" : "bg-white/5 text-text-muted hover:text-text-warm"
+                )}
+              >
+                <Crop size={24} />
+              </button>
+            )}
           </div>
 
           <div className="w-8 h-px bg-white/10" />
@@ -953,8 +974,20 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                 filter: isDarkMode ? 'invert(1) hue-rotate(180deg)' : 'none'
               }}
             >
-              <img 
-                src={pages[currentPage]} 
+              {/* 裁切：樂譜圖片與標註 canvas 要「一起」縮放，
+                  只縮圖片的話既有的畫筆標註會整個跑掉。
+                  transform 掛在包住兩者的這一層，外層負責切掉溢出的部分。 */}
+              <div
+                className="absolute inset-0 overflow-hidden rounded-lg bg-white"
+                data-testid="score-crop-window"
+              >
+              <div
+                className="absolute inset-0"
+                data-testid="score-crop-content"
+                style={cropToTransform(pageCrop)}
+              >
+              <img
+                src={pages[currentPage]}
                 alt="Score"
                 className="w-full h-full object-contain bg-white rounded-lg"
                 referrerPolicy="no-referrer"
@@ -1008,6 +1041,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                   )}
                 </div>
               )}
+              </div>
+              </div>
             </div>
 
             {/* Navigation Arrows */}
