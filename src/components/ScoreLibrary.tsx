@@ -57,8 +57,8 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
       await saveScoresToDb(newScores);
       setScores(newScores);
     } catch (error) {
+      // 訊息由 storage 層廣播、StorageErrorToast 統一顯示，這裡不再另外 alert
       console.error("Failed to save scores:", error);
-      alert("儲存失敗：設備空間可能不足。");
     }
   };
 

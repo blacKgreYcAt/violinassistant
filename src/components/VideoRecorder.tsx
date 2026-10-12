@@ -394,8 +394,8 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
       onSaved?.();
       alert('已成功儲存至 App 練習紀錄！');
     } catch (error) {
+      // 訊息由 storage 層廣播、StorageErrorToast 統一顯示，這裡不再另外 alert
       console.error('Save recording failed:', error);
-      alert('儲存失敗，請重試。');
     } finally {
       setIsSaving(false);
     }

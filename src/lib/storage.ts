@@ -98,6 +98,71 @@ const ROUTINES_KEY = 'viola-routines-idb';
 const REWARDS_KEY = 'viola-rewards-idb';
 const GOALS_KEY = 'viola-goals-idb';
 
+// --- 儲存失敗的處理 ---
+//
+// 原本所有讀寫失敗都只有 console.error。對一個「累積練習紀錄」的 App 來說，
+// 這是會掉資料的：寫入失敗時使用者以為存好了，其實沒有；而配額用盡
+// （平板裝滿樂譜照片與錄影時很實際）正是最可能發生的情況。
+
+/** 讓 UI 顯示儲存問題用的事件名稱 */
+export const STORAGE_ERROR_EVENT = 'storage-error';
+
+export interface StorageErrorDetail {
+  message: string;
+  /** 'write' 代表資料沒存進去；'read' 代表畫面上看到的可能不完整 */
+  kind: 'read' | 'write';
+}
+
+/**
+ * 判斷是不是配額用盡。
+ *
+ * 瀏覽器之間不一致：有的丟 DOMException 名稱 QuotaExceededError，
+ * Firefox 舊版用 NS_ERROR_DOM_QUOTA_REACHED，所以兩種都認。
+ */
+function isQuotaExceeded(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const name = (error as { name?: string }).name ?? '';
+  return name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED';
+}
+
+function emitStorageError(detail: StorageErrorDetail) {
+  // 測試環境（node）沒有 window，不要因此整個失敗
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
+  window.dispatchEvent(new CustomEvent(STORAGE_ERROR_EVENT, { detail }));
+}
+
+/** 寫入失敗：一定要讓使用者知道這次的變更沒有保留下來 */
+function reportWriteFailure(what: string, error: unknown) {
+  console.error(`Failed to save ${what}:`, error);
+  emitStorageError({
+    kind: 'write',
+    message: isQuotaExceeded(error)
+      ? `裝置儲存空間不足，${what}沒有存起來。請刪掉一些樂譜或錄影後再試一次。`
+      : `${what}儲存失敗，這次的變更沒有保留下來。`,
+  });
+}
+
+/** 讀取失敗：畫面會顯示成空的，必須說清楚那不代表資料不見了 */
+function reportReadFailure(what: string, error: unknown) {
+  console.error(`Failed to read ${what}:`, error);
+  emitStorageError({
+    kind: 'read',
+    message: `讀取${what}失敗，畫面上看到的可能不完整。請重新整理頁面，先不要覆蓋或刪除資料。`,
+  });
+}
+
+/**
+ * 讀取；失敗時往外丟，不回傳預設值。
+ *
+ * 給「讀出來改一改再寫回去」的路徑用。這類路徑若把讀取失敗當成「資料是空的」，
+ * 接著寫回去就會把既有資料整個覆蓋掉——這正是先前
+ * `addPracticeSession`（會清空整部練習史）與 `processPracticeReward`
+ * （會把集點卡歸零）的真實行為。
+ */
+async function readOrThrow<T>(key: string): Promise<T | undefined> {
+  return await get<T>(key);
+}
+
 // --- Folders ---
 
 export async function getFolders(): Promise<Folder[]> {
@@ -105,7 +170,7 @@ export async function getFolders(): Promise<Folder[]> {
     const folders = await get<Folder[]>(FOLDERS_KEY);
     return folders || [];
   } catch (error) {
-    console.error('Failed to get folders:', error);
+    reportReadFailure('資料夾', error);
     return [];
   }
 }
@@ -114,7 +179,7 @@ export async function saveFolders(folders: Folder[]): Promise<void> {
   try {
     await set(FOLDERS_KEY, folders);
   } catch (error) {
-    console.error('Failed to save folders:', error);
+    reportWriteFailure('資料夾', error);
   }
 }
 
@@ -141,7 +206,7 @@ export async function getScores(): Promise<Score[]> {
     
     return scores || [];
   } catch (error) {
-    console.error('Failed to get scores from storage:', error);
+    reportReadFailure('樂譜', error);
     return [];
   }
 }
@@ -151,7 +216,8 @@ export async function saveScores(scores: Score[]): Promise<void> {
     await set(SCORES_KEY, scores);
     window.dispatchEvent(new CustomEvent('scores-updated'));
   } catch (error) {
-    console.error('Failed to save scores to storage:', error);
+    reportWriteFailure('樂譜', error);
+    // 仍然往外丟：呼叫端可能需要回復畫面狀態。廣播只保證使用者一定看得到。
     throw new Error('儲存失敗：設備空間可能不足。', { cause: error });
   }
 }
@@ -163,7 +229,7 @@ export async function getPracticeHistory(): Promise<PracticeSession[]> {
     const history = await get<PracticeSession[]>(HISTORY_KEY);
     return history || [];
   } catch (error) {
-    console.error('Failed to get practice history:', error);
+    reportReadFailure('練習紀錄', error);
     return [];
   }
 }
@@ -172,7 +238,7 @@ export async function saveHistory(history: PracticeSession[]): Promise<void> {
   try {
     await set(HISTORY_KEY, history);
   } catch (error) {
-    console.error('Failed to save practice history:', error);
+    reportWriteFailure('練習紀錄', error);
   }
 }
 
@@ -184,7 +250,9 @@ export async function addPracticeSession(
   if (durationSeconds <= 0) return getPracticeHistory();
 
   try {
-    const history = await getPracticeHistory();
+    // 刻意不用 getPracticeHistory()：它在讀取失敗時會回傳空陣列，
+    // 接著下面寫入 [...history, newSession] 就會把整部練習史覆蓋成只剩這一筆。
+    const history = (await readOrThrow<PracticeSession[]>(HISTORY_KEY)) ?? [];
     const today = new Date();
     // Local YYYY-MM-DD string
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -209,8 +277,10 @@ export async function addPracticeSession(
     
     return updatedHistory;
   } catch (error) {
-    console.error('Failed to add practice session:', error);
-    return await getPracticeHistory();
+    // 讀取或寫入任一步失敗，都不要嘗試補寫 —— 寧可這次沒記錄到，
+    // 也不要把既有的練習史覆蓋掉。
+    reportWriteFailure('練習紀錄', error);
+    return [];
   }
 }
 
@@ -257,7 +327,7 @@ export async function getAllRecordings(): Promise<Recording[]> {
     const recordings = await get<Recording[]>(RECORDINGS_KEY);
     return (recordings || []).slice().sort((a, b) => b.timestamp - a.timestamp);
   } catch (error) {
-    console.error('Failed to get all recordings:', error);
+    reportReadFailure('錄影清單', error);
     return [];
   }
 }
@@ -268,7 +338,7 @@ export async function getRecordingsByScoreId(scoreId: string): Promise<Recording
     if (!recordings) return [];
     return recordings.filter(r => r.scoreId === scoreId).sort((a, b) => b.timestamp - a.timestamp);
   } catch (error) {
-    console.error('Failed to get recordings:', error);
+    reportReadFailure('錄影清單', error);
     return [];
   }
 }
@@ -278,7 +348,7 @@ export async function saveRecording(recording: Recording): Promise<void> {
     const recordings = await get<Recording[]>(RECORDINGS_KEY) || [];
     await set(RECORDINGS_KEY, [...recordings, recording]);
   } catch (error) {
-    console.error('Failed to save recording:', error);
+    reportWriteFailure('錄影', error);
     throw new Error('儲存錄音/錄影失敗：設備空間可能不足。', { cause: error });
   }
 }
@@ -287,7 +357,7 @@ export async function saveRecordings(recordings: Recording[]): Promise<void> {
   try {
     await set(RECORDINGS_KEY, recordings);
   } catch (error) {
-    console.error('Failed to save recordings:', error);
+    reportWriteFailure('錄影清單', error);
   }
 }
 
@@ -307,7 +377,7 @@ export async function assignRecordingToScore(
     );
     await set(RECORDINGS_KEY, updated);
   } catch (error) {
-    console.error('Failed to assign recording:', error);
+    reportWriteFailure('錄影的歸屬曲目', error);
     throw new Error('指定曲目失敗，請重試。', { cause: error });
   }
 }
@@ -317,7 +387,7 @@ export async function deleteRecording(id: string): Promise<void> {
     const recordings = await get<Recording[]>(RECORDINGS_KEY) || [];
     await set(RECORDINGS_KEY, recordings.filter(r => r.id !== id));
   } catch (error) {
-    console.error('Failed to delete recording:', error);
+    reportWriteFailure('錄影清單', error);
   }
 }
 
@@ -328,7 +398,7 @@ export async function getRoutines(): Promise<PracticeRoutine[]> {
     const routines = await get<PracticeRoutine[]>(ROUTINES_KEY);
     return routines || [];
   } catch (error) {
-    console.error('Failed to get routines:', error);
+    reportReadFailure('練習計畫', error);
     return [];
   }
 }
@@ -337,7 +407,7 @@ export async function saveRoutines(routines: PracticeRoutine[]): Promise<void> {
   try {
     await set(ROUTINES_KEY, routines);
   } catch (error) {
-    console.error('Failed to save routines:', error);
+    reportWriteFailure('練習計畫', error);
   }
 }
 
@@ -348,7 +418,7 @@ export async function getRewards(): Promise<RewardsState> {
     const state = await get<RewardsState>(REWARDS_KEY);
     return state || { currentNotes: 0, totalNotes: 0, pieces: [], concertmasterUnlocked: false, unrewardedSeconds: 0 };
   } catch (error) {
-    console.error('Failed to get rewards:', error);
+    reportReadFailure('集點卡', error);
     return { currentNotes: 0, totalNotes: 0, pieces: [], concertmasterUnlocked: false, unrewardedSeconds: 0 };
   }
 }
@@ -357,13 +427,21 @@ export async function saveRewards(state: RewardsState): Promise<void> {
   try {
     await set(REWARDS_KEY, state);
   } catch (error) {
-    console.error('Failed to save rewards:', error);
+    reportWriteFailure('集點卡', error);
   }
 }
 
 export async function processPracticeReward(seconds: number): Promise<RewardResult> {
   try {
-    const state = await getRewards();
+    // 同樣不能用 getRewards()：它讀取失敗時會回傳「全新的集點卡」，
+    // 接著寫回去就把使用者累積的音符、拼圖與徽章全部歸零。
+    const state = (await readOrThrow<RewardsState>(REWARDS_KEY)) ?? {
+      currentNotes: 0,
+      totalNotes: 0,
+      pieces: [],
+      concertmasterUnlocked: false,
+      unrewardedSeconds: 0,
+    };
     
     // Accumulate seconds
     const totalUnrewarded = (state.unrewardedSeconds || 0) + seconds;
@@ -415,7 +493,7 @@ export async function processPracticeReward(seconds: number): Promise<RewardResu
 
     return { earnedNotes, earnedPieces, unlockedConcertmaster };
   } catch (error) {
-    console.error('Failed to process rewards:', error);
+    reportWriteFailure('集點卡', error);
     return { earnedNotes: 0, earnedPieces: [], unlockedConcertmaster: false };
   }
 }

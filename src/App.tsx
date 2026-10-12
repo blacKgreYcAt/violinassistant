@@ -16,6 +16,7 @@ import { PracticeRoutine, Score } from './lib/storage';
 import { Video, LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail, Star, Smartphone } from 'lucide-react';
 import { ViolinIcon } from './components/ViolinIcon';
 import { RecordingLibrary } from './components/RecordingLibrary';
+import { StorageErrorToast } from './components/StorageErrorToast';
 import { cn } from './lib/utils';
 
 export default function App() {
@@ -333,6 +334,9 @@ export default function App() {
         isOpen={recordingLibraryOpen}
         onClose={() => setRecordingLibraryOpen(false)}
       />
+
+      {/* 儲存失敗的提示。掛在最外層，所以樂譜檢視器全螢幕時也看得到。 */}
+      <StorageErrorToast />
 
       {/* Reward Card Modal */}
       <RewardCard 
