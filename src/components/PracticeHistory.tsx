@@ -132,7 +132,7 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
         {isAdding && (
           <div className="flex items-center gap-2 bg-white/5 border border-white/10 p-2 rounded-2xl shrink-0 animate-in fade-in slide-in-from-top-2 duration-200">
             <span className="text-xs font-bold text-text-muted px-2 shrink-0">補登練習</span>
-            <input
+            <input aria-label="補登的練習分鐘數" title="補登的練習分鐘數"
               type="number"
               min="1"
               max="600"

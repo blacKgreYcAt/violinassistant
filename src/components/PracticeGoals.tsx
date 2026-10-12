@@ -175,7 +175,7 @@ export const PracticeGoals: React.FC<PracticeGoalsProps> = ({ className }) => {
             <Target size={20} className="text-accent-warm" />
             練習目標
           </h3>
-          <button 
+          <button aria-label="新增練習目標" title="新增練習目標" 
             onClick={() => setShowAddGoal(true)}
             className="p-2 bg-accent-warm text-white rounded-xl hover:opacity-90 transition-all active:scale-95"
           >
@@ -250,7 +250,7 @@ export const PracticeGoals: React.FC<PracticeGoalsProps> = ({ className }) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-text-muted uppercase mb-2">目標名稱</label>
-                <input 
+                <input aria-label="目標名稱" 
                   type="text"
                   value={newGoal.title || ''}
                   onChange={e => setNewGoal({ ...newGoal, title: e.target.value })}
@@ -262,7 +262,7 @@ export const PracticeGoals: React.FC<PracticeGoalsProps> = ({ className }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-text-muted uppercase mb-2">類型</label>
-                  <select 
+                  <select aria-label="目標類型" title="目標類型" 
                     value={newGoal.type}
                     onChange={e => setNewGoal({ ...newGoal, type: e.target.value as PracticeGoal['type'] })}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-text-warm focus:outline-none focus:border-accent-warm transition-all"
@@ -273,7 +273,7 @@ export const PracticeGoals: React.FC<PracticeGoalsProps> = ({ className }) => {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-text-muted uppercase mb-2">目標數值</label>
-                  <input 
+                  <input aria-label="目標數值" title="目標數值" 
                     type="number"
                     value={newGoal.target || ''}
                     onChange={e => setNewGoal({ ...newGoal, target: Number(e.target.value) })}

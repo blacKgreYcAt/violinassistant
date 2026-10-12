@@ -331,7 +331,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
               <EyeOff size={18} />
               <span className="text-xs font-bold tracking-wider hidden sm:inline">靜音小節</span>
             </button>
-            <button 
+            <button aria-label={isMuted ? '取消靜音' : '靜音'} title={isMuted ? '取消靜音' : '靜音'} 
               onClick={() => setIsMuted(!isMuted)}
               className="p-2 hover:bg-white/5 rounded-full transition-colors"
             >
@@ -349,9 +349,9 @@ export const Metronome: React.FC<MetronomeProps> = ({
                   <span className="text-xs font-bold uppercase tracking-wider">目標速度</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setTargetBpm(Math.max(bpm + 1, targetBpm - 5))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Minus size={16} /></button>
+                  <button aria-label="降低目標速度" title="降低目標速度" onClick={() => setTargetBpm(Math.max(bpm + 1, targetBpm - 5))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Minus size={16} /></button>
                   <span className="text-base font-mono font-bold w-10 text-center text-text-warm">{targetBpm}</span>
-                  <button onClick={() => setTargetBpm(Math.min(300, targetBpm + 5))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Plus size={16} /></button>
+                  <button aria-label="提高目標速度" title="提高目標速度" onClick={() => setTargetBpm(Math.min(300, targetBpm + 5))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Plus size={16} /></button>
                 </div>
               </div>
               <div className="flex items-center justify-between">
@@ -360,9 +360,9 @@ export const Metronome: React.FC<MetronomeProps> = ({
                   <span className="text-xs font-bold uppercase tracking-wider">每次增加</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setBpmIncrement(Math.max(1, bpmIncrement - 1))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Minus size={16} /></button>
+                  <button aria-label="減少每次加速的幅度" title="減少每次加速的幅度" onClick={() => setBpmIncrement(Math.max(1, bpmIncrement - 1))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Minus size={16} /></button>
                   <span className="text-base font-mono font-bold w-10 text-center text-text-warm">+{bpmIncrement}</span>
-                  <button onClick={() => setBpmIncrement(Math.min(20, bpmIncrement + 1))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Plus size={16} /></button>
+                  <button aria-label="增加每次加速的幅度" title="增加每次加速的幅度" onClick={() => setBpmIncrement(Math.min(20, bpmIncrement + 1))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Plus size={16} /></button>
                 </div>
               </div>
               <div className="flex items-center justify-between">
@@ -371,9 +371,9 @@ export const Metronome: React.FC<MetronomeProps> = ({
                   <span className="text-xs font-bold uppercase tracking-wider">間隔小節</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setIncrementInterval(Math.max(1, incrementInterval - 1))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Minus size={16} /></button>
+                  <button aria-label="縮短加速間隔" title="縮短加速間隔" onClick={() => setIncrementInterval(Math.max(1, incrementInterval - 1))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Minus size={16} /></button>
                   <span className="text-base font-mono font-bold w-10 text-center text-text-warm">{incrementInterval}</span>
-                  <button onClick={() => setIncrementInterval(Math.min(32, incrementInterval + 1))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Plus size={16} /></button>
+                  <button aria-label="延長加速間隔" title="延長加速間隔" onClick={() => setIncrementInterval(Math.min(32, incrementInterval + 1))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Plus size={16} /></button>
                 </div>
               </div>
               {isPlaying && (
@@ -403,7 +403,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
 
         <div className="flex-1 flex flex-col">
           <div className="flex items-center gap-4 h-12 mb-4">
-            <button 
+            <button aria-label="減慢 1 BPM" title="減慢 1 BPM" 
               onClick={() => handleBpmChange(bpm - 1)}
               className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
             >
@@ -411,7 +411,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
             </button>
             
             <div className="flex-1 flex items-center h-full">
-              <input 
+              <input aria-label="速度 BPM" title="速度 BPM" 
                 type="range" 
                 min="30" 
                 max="300" 
@@ -421,7 +421,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
               />
             </div>
 
-            <button 
+            <button aria-label="加快 1 BPM" title="加快 1 BPM" 
               onClick={() => handleBpmChange(bpm + 1)}
               className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
             >
@@ -487,7 +487,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
                 />
               ))}
             </div>
-            <select 
+            <select aria-label="拍號" title="拍號" 
               value={beatsPerMeasure}
               onChange={(e) => setBeatsPerMeasure(parseInt(e.target.value))}
               className="text-base font-bold bg-white/5 text-text-warm px-4 py-2 rounded-xl outline-none border border-white/5 hover:border-white/10 transition-all cursor-pointer"

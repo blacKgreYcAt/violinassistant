@@ -313,6 +313,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
         "♿ 樂譜檢視器側欄的按鈕補上名稱，螢幕閱讀器現在能正確辨識（原本有 6 顆只有圖示）。",
         "🔇 節拍器新增「靜音小節」：可設定響幾小節後停幾小節，由自己維持速度，再用重新響起的拍子檢驗有沒有跑掉。靜音期間拍點燈號也會一併隱藏。",
         "🐢 影片新增播放速度控制（0.25x～1.5x）：看老師的示範影片或回放自己的錄影都適用，慢速時會保留原本的音高。",
+        "♿ 補齊全 App 的無障礙名稱：節拍器、調音器、計時器、樂譜庫等處共 71 個只有圖示的按鈕與輸入欄位缺少名稱，螢幕閱讀器無法辨識用途，現已全部補上。",
         "💾 修正儲存失敗會被默默吞掉的問題：裝置空間不足時，練習紀錄其實沒有存起來，但畫面上不會有任何提示。現在會明確告知並說明該怎麼處理。",
         "🛡️ 修正兩個可能遺失資料的狀況：資料庫暫時讀取失敗時，記錄練習會把整部練習史覆蓋成只剩最新一筆、發放集點卡則會把累積的音符與拼圖歸零。現在讀取失敗就不會寫入。",
         "⚡ 開啟速度大幅加快：首次載入的程式碼從 972KB 降到 270KB（約少 72%）。樂譜分頁、樂譜檢視器與臉部偵測改成真的要用到時才下載。",
@@ -481,7 +482,7 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
                 <p className="text-text-muted text-xs uppercase tracking-widest font-bold mt-1">User Manual v2.5.0</p>
               </div>
             </div>
-            <button 
+            <button aria-label="關閉使用說明" title="關閉使用說明" 
               onClick={onClose}
               className="w-10 h-10 flex items-center justify-center hover:bg-white/5 rounded-full transition-colors text-text-muted hover:text-text-warm"
             >

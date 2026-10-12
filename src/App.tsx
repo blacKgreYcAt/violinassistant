@@ -133,7 +133,7 @@ export default function App() {
           <div className="group relative">
             {isEditingTitle ? (
               <div className="flex items-center gap-2">
-                <input 
+                <input aria-label="App 標題" title="App 標題" 
                   type="text"
                   value={tempTitle}
                   onChange={(e) => setTempTitle(e.target.value)}

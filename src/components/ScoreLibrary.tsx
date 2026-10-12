@@ -447,7 +447,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
                 <Crop size={20} className="text-accent-warm" />
                 <h3 className="text-lg font-bold text-text-warm">裁切樂譜 - {showCropModal.name}</h3>
               </div>
-              <button onClick={() => setShowCropModal(null)} className="p-2 hover:bg-white/5 rounded-full text-text-muted"><X size={20} /></button>
+              <button aria-label="關閉裁切視窗" title="關閉裁切視窗" onClick={() => setShowCropModal(null)} className="p-2 hover:bg-white/5 rounded-full text-text-muted"><X size={20} /></button>
             </div>
             
             <div className="flex-1 overflow-auto p-6 flex flex-col items-center gap-4">
@@ -588,7 +588,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             {currentFolderId ? (
-              <button 
+              <button aria-label="返回所有樂譜" title="返回所有樂譜" 
                 onClick={() => setCurrentFolderId(null)}
                 className="p-1 -ml-1 hover:bg-white/5 rounded-lg transition-colors text-text-muted hover:text-text-warm"
               >
@@ -614,7 +614,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
 
         {showNewFolder && !currentFolderId && (
           <div className="flex items-center gap-2 bg-white/5 p-2 rounded-xl">
-            <input
+            <input aria-label="新資料夾名稱"
               type="text"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
@@ -623,10 +623,10 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && createFolder()}
             />
-            <button onClick={createFolder} className="p-1 text-accent-warm hover:bg-accent-warm/20 rounded-lg">
+            <button aria-label="建立資料夾" title="建立資料夾" onClick={createFolder} className="p-1 text-accent-warm hover:bg-accent-warm/20 rounded-lg">
               <Check size={16} />
             </button>
-            <button onClick={() => setShowNewFolder(false)} className="p-1 text-text-muted hover:bg-white/10 rounded-lg">
+            <button aria-label="取消建立資料夾" title="取消建立資料夾" onClick={() => setShowNewFolder(false)} className="p-1 text-text-muted hover:bg-white/10 rounded-lg">
               <X size={16} />
             </button>
           </div>
@@ -634,7 +634,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
 
         <div className="relative group shrink-0">
           <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent-warm transition-colors" />
-          <input
+          <input aria-label="搜尋樂譜"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -656,7 +656,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
                 </div>
                 {editingFolderId === folder.id ? (
                   <div className="flex items-center gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
-                    <input
+                    <input aria-label="資料夾名稱" title="資料夾名稱"
                       autoFocus
                       type="text"
                       value={editingFolderName}
@@ -667,13 +667,13 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
                       }}
                       className="flex-1 bg-bg-warm border border-white/10 rounded-lg px-2 py-1.5 text-sm font-bold text-text-warm outline-none focus:ring-2 focus:ring-accent-warm/20"
                     />
-                    <button 
+                    <button aria-label="儲存資料夾名稱" title="儲存資料夾名稱" 
                       onClick={(e) => saveFolderRename(e, folder.id)}
                       className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-colors shrink-0"
                     >
                       <Check size={16} />
                     </button>
-                    <button 
+                    <button aria-label="取消重新命名" title="取消重新命名" 
                       onClick={cancelEditingFolder}
                       className="p-1.5 text-text-muted hover:bg-white/5 rounded-md transition-colors shrink-0"
                     >
@@ -691,14 +691,14 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
               </div>
               <div className="flex items-center gap-1">
                 {editingFolderId !== folder.id && (
-                  <button 
+                  <button aria-label={`重新命名資料夾 ${folder.name}`} title={`重新命名資料夾 ${folder.name}`} 
                     onClick={(e) => startEditingFolder(e, folder)}
                     className="p-2 text-text-muted hover:text-text-warm opacity-60 hover:opacity-100 transition-all rounded-xl hover:bg-white/5"
                   >
                     <Edit2 size={16} />
                   </button>
                 )}
-                <button 
+                <button aria-label={`刪除資料夾 ${folder.name}`} title={`刪除資料夾 ${folder.name}`} 
                   onClick={(e) => deleteFolder(folder.id, e)}
                   className="p-2 text-text-muted hover:text-red-400 opacity-60 hover:opacity-100 transition-all rounded-xl hover:bg-white/5"
                 >
@@ -730,7 +730,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
               <div className="flex-1 min-w-0 flex flex-col justify-center">
                 {editingId === score.id ? (
                   <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
-                    <input
+                    <input aria-label="樂譜名稱"
                       autoFocus
                       type="text"
                       value={editingName}
@@ -740,7 +740,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
                     />
                     <div className="flex items-center gap-2">
                       <Tag size={14} className="text-text-muted shrink-0" />
-                      <input
+                      <input aria-label="標籤"
                         type="text"
                         value={editingTags}
                         onChange={(e) => setEditingTags(e.target.value)}
@@ -751,13 +751,13 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
                         }}
                         className="flex-1 bg-bg-warm border border-white/10 rounded-lg px-2 py-1 text-xs text-text-warm outline-none focus:ring-2 focus:ring-accent-warm/20"
                       />
-                      <button 
+                      <button aria-label="儲存樂譜名稱" title="儲存樂譜名稱" 
                         onClick={(e) => saveRename(e, score.id)}
                         className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-colors shrink-0"
                       >
                         <Check size={16} />
                       </button>
-                      <button 
+                      <button aria-label="取消重新命名" title="取消重新命名" 
                         onClick={cancelEditing}
                         className="p-1.5 text-text-muted hover:bg-white/5 rounded-md transition-colors shrink-0"
                       >
@@ -839,7 +839,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
                               </button>
                             )}
                             {folders.filter(f => f.id !== currentFolderId).map(f => (
-                              <button 
+                              <button aria-label={`移動到 ${f.name}`} title={`移動到 ${f.name}`} 
                                 key={f.id}
                                 onClick={(e) => { moveToFolder(score.id, f.id, e); setActiveMenuId(null); }}
                                 className="w-full text-left px-3 py-2.5 text-sm text-text-warm hover:bg-white/5 rounded-xl transition-colors truncate flex items-center gap-2"
@@ -868,7 +868,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
                     >
                       <Crop size={18} />
                     </button>
-                    <button 
+                    <button aria-label={`編輯 ${score.name}`} title={`編輯 ${score.name}`} 
                       onClick={(e) => startEditing(e, score)}
                       className="p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all opacity-60 hover:opacity-100"
                     >
@@ -876,7 +876,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
                     </button>
                   </>
                 )}
-                <button 
+                <button aria-label={`刪除 ${score.name}`} title={`刪除 ${score.name}`} 
                   onClick={(e) => deleteScore(score.id, e)}
                   className="p-2 text-text-muted hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all opacity-60 hover:opacity-100"
                 >

@@ -264,7 +264,7 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
             </button>
           </div>
           {activeTab === 'tuner' && (
-            <button
+            <button aria-label={isListening ? '停止調音' : '開始調音'} title={isListening ? '停止調音' : '開始調音'}
               onClick={toggleTuner}
               className={cn(
                 "p-2 rounded-xl transition-all",
@@ -288,14 +288,14 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
             </>
           ) : (
             <div className="flex items-center gap-4">
-              <select
+              <select aria-label="參考音音名" title="參考音音名"
                 value={droneNote}
                 onChange={(e) => setDroneNote(e.target.value)}
                 className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-2xl font-bold text-text-warm focus:outline-none focus:border-accent-warm appearance-none text-center"
               >
                 {NOTE_STRINGS.map(n => <option key={n} value={n} className="bg-bg-warm">{n}</option>)}
               </select>
-              <select
+              <select aria-label="參考音八度" title="參考音八度"
                 value={droneOctave}
                 onChange={(e) => setDroneOctave(Number(e.target.value))}
                 className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-2xl font-bold text-text-warm focus:outline-none focus:border-accent-warm appearance-none text-center"
@@ -338,7 +338,7 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
           ) : (
             <>
               <div className="flex items-center gap-4 h-12 mb-4">
-                <button 
+                <button aria-label="降低參考音音量" title="降低參考音音量" 
                   onClick={() => setDroneVolume(Math.max(0, droneVolume - 0.1))}
                   className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
                 >
@@ -346,7 +346,7 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
                 </button>
                 
                 <div className="flex-1 flex items-center h-full">
-                  <input
+                  <input aria-label="參考音音量" title="參考音音量"
                     type="range"
                     min="0"
                     max="1"
@@ -357,7 +357,7 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
                   />
                 </div>
 
-                <button 
+                <button aria-label="提高參考音音量" title="提高參考音音量" 
                   onClick={() => setDroneVolume(Math.min(1, droneVolume + 0.1))}
                   className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
                 >

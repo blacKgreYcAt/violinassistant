@@ -117,7 +117,7 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
           <h2 className="text-lg font-bold tracking-tight text-text-warm">
             {editingId ? '編輯練習計畫' : '新增練習計畫'}
           </h2>
-          <button 
+          <button aria-label="取消編輯" title="取消編輯" 
             onClick={() => { setIsCreating(false); setEditingId(null); }}
             className="p-2 hover:bg-white/5 rounded-full transition-colors text-text-muted hover:text-text-warm"
           >
@@ -126,7 +126,7 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
         </div>
 
         <div className="flex flex-col gap-4">
-          <input
+          <input aria-label="計畫名稱"
             type="text"
             value={newRoutineName}
             onChange={(e) => setNewRoutineName(e.target.value)}
@@ -145,7 +145,7 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
             {newSteps.map((step, index) => (
               <div key={step.id} className="flex items-center gap-2 bg-white/5 p-2 rounded-xl">
                 <span className="text-xs font-bold text-text-muted w-6 text-center">{index + 1}.</span>
-                <input
+                <input aria-label="步驟名稱"
                   type="text"
                   value={step.name}
                   onChange={(e) => handleUpdateStep(step.id, 'name', e.target.value)}
@@ -153,7 +153,7 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
                   className="flex-1 bg-transparent border-none text-sm text-text-warm focus:outline-none px-2 min-w-0"
                 />
                 <div className="flex items-center gap-1 bg-white/5 rounded-lg px-2 py-1 shrink-0">
-                  <input
+                  <input aria-label="步驟時長（分鐘）" title="步驟時長（分鐘）"
                     type="number"
                     min="1"
                     value={stepMinutes(step)}
@@ -162,7 +162,7 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
                   />
                   <span className="text-xs text-text-muted">分鐘</span>
                 </div>
-                <button 
+                <button aria-label="刪除這個步驟" title="刪除這個步驟" 
                   onClick={() => handleRemoveStep(step.id)}
                   className="p-1.5 text-text-muted hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors shrink-0"
                 >
@@ -239,13 +239,13 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
                   >
                     <Play size={16} className="ml-0.5" />
                   </button>
-                  <button 
+                  <button aria-label={`編輯計畫 ${routine.name}`} title={`編輯計畫 ${routine.name}`} 
                     onClick={() => handleEdit(routine)}
                     className="p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
                   >
                     <Edit2 size={16} />
                   </button>
-                  <button 
+                  <button aria-label={`刪除計畫 ${routine.name}`} title={`刪除計畫 ${routine.name}`} 
                     onClick={() => handleDelete(routine.id)}
                     className="p-2 text-text-muted hover:text-red-400 hover:bg-white/5 rounded-xl transition-all"
                   >

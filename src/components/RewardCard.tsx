@@ -74,7 +74,7 @@ export const RewardCard: React.FC<RewardCardProps> = ({ isOpen, onClose }) => {
         
         {/* Header */}
         <div className="bg-accent-warm p-6 text-center relative shrink-0">
-          <button 
+          <button aria-label="關閉集點卡" title="關閉集點卡" 
             onClick={onClose}
             className="absolute top-4 right-4 text-bg-warm hover:bg-black/10 p-2 rounded-full transition-colors"
           >

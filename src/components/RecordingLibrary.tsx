@@ -174,7 +174,7 @@ export const RecordingLibrary: React.FC<RecordingLibraryProps> = ({ isOpen, onCl
                       <label className="flex items-center gap-2 text-[11px] text-text-muted">
                         <Music size={12} className="shrink-0" />
                         <span className="shrink-0">歸屬曲目</span>
-                        <select
+                        <select aria-label="這段錄影的曲目" title="這段錄影的曲目"
                           value={isUnassigned(r) ? UNASSIGNED_SCORE_ID : r.scoreId}
                           onChange={(e) => handleAssign(r.id, e.target.value)}
                           className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-text-warm focus:outline-none focus:border-accent-warm"

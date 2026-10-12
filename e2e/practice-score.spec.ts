@@ -77,7 +77,7 @@ test('計時器預選最近開啟的樂譜，練習時間會算到那首曲子�
   await expect(select).toBeVisible();
   await expect(select).toHaveValue('score-kreutzer');
 
-  await page.getByRole('button', { name: '略過' }).click();
+  await page.getByRole('button', { name: '略過', exact: true }).click();
 
   // 回到那首樂譜，累計練習時間應該出現
   await openLibraryTab(page);
@@ -133,7 +133,7 @@ test('預選的曲目可以清成未指定，清掉後不會又被塞回去', as
   await select.selectOption({ label: '未指定' });
   // 關鍵：清掉之後不能因為重新渲染又跳回預選值
   await expect(select).toHaveValue('');
-  await page.getByRole('button', { name: '略過' }).click();
+  await page.getByRole('button', { name: '略過', exact: true }).click();
 
   await openLibraryTab(page);
   await page.getByText('克萊采爾練習曲').first().click();

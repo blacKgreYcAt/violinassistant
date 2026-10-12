@@ -328,7 +328,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, def
           ) : (
             <>
               <div className="flex items-center gap-4 h-12 mb-4">
-                <button 
+                <button aria-label="減少 1 分鐘" title="減少 1 分鐘" 
                   onClick={() => {
                     const val = Math.max(1, inputMinutes - 1);
                     setInputMinutes(val);
@@ -341,7 +341,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, def
                 </button>
                 
                 <div className="flex-1 flex items-center h-full">
-                  <input 
+                  <input aria-label="練習分鐘數" title="練習分鐘數" 
                     type="range" 
                     min="1" 
                     max="120" 
@@ -356,7 +356,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, def
                   />
                 </div>
 
-                <button 
+                <button aria-label="增加 1 分鐘" title="增加 1 分鐘" 
                   onClick={() => {
                     const val = Math.min(120, inputMinutes + 1);
                     setInputMinutes(val);
@@ -495,7 +495,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, def
                 <Edit3 size={20} />
                 <h3 className="font-bold text-lg text-text-warm">練習筆記</h3>
               </div>
-              <button onClick={handleSkipNote} className="text-text-muted hover:text-text-warm p-1">
+              <button aria-label="略過練習筆記" title="略過練習筆記" onClick={handleSkipNote} className="text-text-muted hover:text-text-warm p-1">
                 <X size={20} />
               </button>
             </div>
@@ -521,7 +521,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, def
                 ))}
               </select>
             </div>
-            <textarea
+            <textarea aria-label="練習筆記"
               value={practiceNote}
               onChange={(e) => setPracticeNote(e.target.value)}
               placeholder="例如：第 45 小節的換弦還要加強..."
