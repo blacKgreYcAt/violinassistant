@@ -16,7 +16,8 @@ import { PracticeRoutine, Score } from './lib/storage';
 import { Video, LayoutDashboard, Library, Edit2, Check, HelpCircle, Mail, Star, Smartphone } from 'lucide-react';
 import { ViolinIcon } from './components/ViolinIcon';
 import { RecordingLibrary } from './components/RecordingLibrary';
-import { StorageErrorToast } from './components/StorageErrorToast';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { StorageErrorToast } from './components/StorageErrorToast';
 import { cn } from './lib/utils';
 
 export default function App() {
@@ -261,21 +262,41 @@ export default function App() {
               {/* 第一次切到這一頁才載入並掛載；之後就一直掛著（上面用 display 隱藏），
                   所以捲動位置與展開狀態不會因為切分頁而重置。 */}
               {libraryVisited && !activeScore && (
-                <Suspense
-                  fallback={
-                    <div className="py-12 text-center text-sm text-text-muted">載入中…</div>
-                  }
+                /* 這一頁是動態載入的，網路不穩或改版後舊快取要的檔案已不存在時會失敗。
+                   包一層讓它只壞掉自己，練習工具分頁仍然可用。 */
+                <ErrorBoundary
+                  fallback={(error, reset) => (
+                    <div role="alert" className="rounded-2xl border border-amber-500/40 bg-surface-warm p-6 text-center">
+                      <p className="mb-1 text-sm text-text-warm">這一頁載入失敗了。</p>
+                      <p className="mb-4 text-xs text-text-muted">
+                        你的樂譜與紀錄沒有遺失。可能是網路不穩，或 App 剛更新過。
+                      </p>
+                      <button
+                        onClick={reset}
+                        className="rounded-xl bg-accent-warm px-5 py-2 text-sm font-bold text-bg-warm transition-opacity hover:opacity-90"
+                      >
+                        重試
+                      </button>
+                      <p className="mt-3 text-[11px] text-text-muted/70">{error.message}</p>
+                    </div>
+                  )}
                 >
-                  <LibraryTab
-                    onSelectScore={openScore}
-                    onStartRoutine={(routine) => {
-                      setActiveRoutine(routine);
-                      // 計畫是由「練習工具」分頁的計時器執行，所以直接切過去，
-                      // 否則使用者按了播放卻看不到任何反應。
-                      setActiveTab('tools');
-                    }}
-                  />
-                </Suspense>
+                  <Suspense
+                    fallback={
+                      <div className="py-12 text-center text-sm text-text-muted">載入中…</div>
+                    }
+                  >
+                    <LibraryTab
+                      onSelectScore={openScore}
+                      onStartRoutine={(routine) => {
+                        setActiveRoutine(routine);
+                        // 計畫是由「練習工具」分頁的計時器執行，所以直接切過去，
+                        // 否則使用者按了播放卻看不到任何反應。
+                        setActiveTab('tools');
+                      }}
+                    />
+                  </Suspense>
+                </ErrorBoundary>
               )}
             </div>
           </div>
@@ -306,22 +327,60 @@ export default function App() {
 
       {/* Score Viewer Modal */}
       {activeScore && (
-        <Suspense
-          fallback={
-            <div className="fixed inset-0 z-50 bg-bg-warm flex items-center justify-center text-text-muted text-sm">
-              載入樂譜中…
+        /* 樂譜檢視器也是動態載入的。包一層的另一個理由：它是整個 App 最複雜的
+           元件，萬一某份樂譜的資料讓它出錯，使用者至少要能關掉它回到主畫面，
+           而不是連 App 都進不去。 */
+        <ErrorBoundary
+          fallback={(error, reset) => (
+            <div
+              role="alert"
+              data-testid="score-viewer-error"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-bg-warm p-6"
+            >
+              <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-surface-warm p-6 text-center">
+                <p className="mb-1 text-sm text-text-warm">這份樂譜打不開。</p>
+                <p className="mb-5 text-xs text-text-muted">
+                  你的樂譜與紀錄沒有遺失，其他功能仍可正常使用。
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      reset();
+                      setActiveScore(null);
+                    }}
+                    className="flex-1 rounded-xl bg-white/5 py-2.5 text-sm font-bold text-text-muted transition-colors hover:bg-white/10"
+                  >
+                    返回
+                  </button>
+                  <button
+                    onClick={reset}
+                    className="flex-1 rounded-xl bg-accent-warm py-2.5 text-sm font-bold text-bg-warm transition-opacity hover:opacity-90"
+                  >
+                    重試
+                  </button>
+                </div>
+                <p className="mt-3 text-[11px] text-text-muted/70">{error.message}</p>
+              </div>
             </div>
-          }
+          )}
         >
-          <ScoreViewer
-            score={activeScore}
-            onClose={() => setActiveScore(null)}
-            bpm={bpm}
-            setBpm={setBpm}
-            isMetronomePlaying={isMetronomePlaying}
-            setIsMetronomePlaying={setIsMetronomePlaying}
-          />
-        </Suspense>
+          <Suspense
+            fallback={
+              <div className="fixed inset-0 z-50 bg-bg-warm flex items-center justify-center text-text-muted text-sm">
+                載入樂譜中…
+              </div>
+            }
+          >
+            <ScoreViewer
+              score={activeScore}
+              onClose={() => setActiveScore(null)}
+              bpm={bpm}
+              setBpm={setBpm}
+              isMetronomePlaying={isMetronomePlaying}
+              setIsMetronomePlaying={setIsMetronomePlaying}
+            />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {/* User Guide Modal */}
