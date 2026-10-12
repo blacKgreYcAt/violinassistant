@@ -144,7 +144,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
-  const requestRef = useRef<number>();
+  // React 19 起 useRef 必須給初始值
+  const requestRef = useRef<number | undefined>(undefined);
   const lastTurnTimeRef = useRef<number>(0);
   const sequenceStateRef = useRef<'IDLE' | 'LOOK_RIGHT' | 'LOOK_RIGHT_DOWN' | 'LOOK_LEFT' | 'LOOK_LEFT_UP'>('IDLE');
   const sequenceTimerRef = useRef<number>(0);

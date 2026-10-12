@@ -85,7 +85,7 @@ export const TempoProgressChart: React.FC<TempoProgressChartProps> = ({ history 
                   fontSize: '12px',
                 }}
                 labelStyle={{ color: '#888888' }}
-                formatter={(value: number) => [`${value} BPM`, '最高速度']}
+                formatter={(value) => [`${Number(value ?? 0)} BPM`, '最高速度']}
               />
               {/* 標出期間內的最佳紀錄，比單看折線更有目標感 */}
               <ReferenceLine

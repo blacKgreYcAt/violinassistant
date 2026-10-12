@@ -61,7 +61,8 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const animationFrameRef = useRef<number>();
+  // React 19 起 useRef 必須給初始值
+  const animationFrameRef = useRef<number | undefined>(undefined);
   const intonationCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Keep video preview in sync with stream - run on every render to catch remounts

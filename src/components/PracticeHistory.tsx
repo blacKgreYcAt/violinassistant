@@ -197,7 +197,7 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                     contentStyle={{ backgroundColor: '#151619', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontWeight: 'bold', fontSize: '14px', padding: '12px' }}
                     itemStyle={{ color: '#F27D26' }}
-                    formatter={(value: number) => [`${value} 分鐘`, '練習時間']}
+                    formatter={(value) => [`${Number(value ?? 0)} 分鐘`, '練習時間']}
                   />
                   <Bar dataKey="minutes" radius={[3, 3, 0, 0]}>
                     {chartData.map((entry, index) => (
