@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    // 沒有開 strict 時，TypeScript 連「可辨識聯集」都不會窄化
+    // （{ok:true}|{ok:false} 存取各自的欄位會直接報錯），等於型別檢查
+    // 比看起來弱很多。實測打開之後整個專案 0 個錯誤，等於免費。
+    "strict": true,
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "module": "ESNext",

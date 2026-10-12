@@ -2,7 +2,23 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, Music, Trash2, Edit2, Check, X, Download, UploadCloud, Share2, Library, Folder as FolderIcon, Plus, ChevronLeft, Search, Tag, Star, Crop, Zap } from 'lucide-react';
 import { cn, isAbortError } from '../lib/utils';
-import { Score, Folder, getScores, saveScores as saveScoresToDb, getFolders, saveFolders as saveFoldersToDb } from '../lib/storage';
+import {
+  Score,
+  Folder,
+  getScores,
+  saveScores as saveScoresToDb,
+  getFolders,
+  saveFolders as saveFoldersToDb,
+  getPracticeHistory,
+  saveHistory,
+  getRoutines,
+  saveRoutines,
+  getRewards,
+  saveRewards,
+  getGoals,
+  saveGoals
+} from '../lib/storage';
+import { createBackup, parseBackup, describeBackup, backupFileName } from '../lib/backup';
 import {
   CropRect,
   CropCorner,
@@ -231,16 +247,42 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
     }
   };
 
-  const exportLibrary = () => {
+  /**
+   * 蒐集所有要備份的資料。
+   *
+   * 原本只有 scores —— 換裝置的人會丟掉練習紀錄、集點卡、練習計畫與目標，
+   * 資料夾不見還會讓樂譜失去分類。錄影刻意不含（影片是 Blob，塞進 JSON
+   * 會做出一個大到打不開的檔案）。
+   */
+  const collectBackup = async () => {
+    const [allScores, allFolders, history, routines, rewards, goals] = await Promise.all([
+      getScores(),
+      getFolders(),
+      getPracticeHistory(),
+      getRoutines(),
+      getRewards(),
+      getGoals()
+    ]);
+    return createBackup({
+      scores: allScores,
+      folders: allFolders,
+      practiceHistory: history,
+      routines,
+      rewards,
+      goals
+    });
+  };
+
+  const exportLibrary = async () => {
     try {
-      const dataStr = JSON.stringify(scores);
+      const dataStr = JSON.stringify(await collectBackup());
       // 必須用 Blob 而不是 data: URI。
       // 樂譜是以 base64 圖片存放的，備份檔很容易就好幾十 MB，
       // 而瀏覽器對 data: URI 的長度有上限，超過就會下載失敗或產生壞檔。
       const blob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
 
-      const exportFileDefaultName = `viola-scores-backup-${new Date().toISOString().split('T')[0]}.json`;
+      const exportFileDefaultName = backupFileName();
 
       const linkElement = document.createElement('a');
       linkElement.href = url;
@@ -260,16 +302,16 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
 
   const shareLibrary = async () => {
     try {
-      const dataStr = JSON.stringify(scores);
+      const dataStr = JSON.stringify(await collectBackup());
       const blob = new Blob([dataStr], { type: 'application/json' });
-      const fileName = `viola-scores-backup-${new Date().toISOString().split('T')[0]}.json`;
+      const fileName = backupFileName();
       const file = new File([blob], fileName, { type: 'application/json' });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: '樂譜圖書館備份',
-          text: '這是我的練琴練習小幫手樂譜備份檔案。',
+          title: '練琴練習小幫手備份',
+          text: '這是我的練琴練習小幫手備份檔案（含樂譜與練習紀錄，不含錄影）。',
         });
       } else {
         // Fallback to download if sharing is not supported
@@ -290,34 +332,45 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
 
     const reader = new FileReader();
     reader.onload = async (event) => {
+      const result = parseBackup(String(event.target?.result ?? ''));
+      if (!result.ok) {
+        alert(`匯入失敗：${result.reason}`);
+        return;
+      }
+
+      const { backup, legacy } = result;
+      const legacyNote = legacy
+        ? `
+
+這是舊版的備份檔，裡面只有樂譜。匯入後練習紀錄、練習計畫、練習目標與集點卡進度會被清空。`
+        : '';
+
+      const confirmed = confirm(
+        `即將匯入：${describeBackup(backup)}。
+
+這會「完全取代」目前裝置上的對應資料，且無法復原。建議先用「下載備份」保存目前的內容。${legacyNote}`
+      );
+      if (!confirmed) return;
+
       try {
-        const importedScores = JSON.parse(event.target?.result as string);
-
-        // 原本只檢查 Array.isArray 就直接取代整個圖書館：
-        // 隨便一個剛好是陣列的 JSON 都會把使用者的樂譜全部洗掉。
-        // 這裡確認每一筆至少具備樂譜該有的欄位。
-        const looksLikeScore = (item: unknown): boolean => {
-          if (!item || typeof item !== 'object') return false;
-          const s = item as Partial<Score>;
-          return typeof s.id === 'string'
-            && typeof s.name === 'string'
-            && (typeof s.data === 'string' || Array.isArray(s.data));
-        };
-
-        if (!Array.isArray(importedScores) || !importedScores.every(looksLikeScore)) {
-          alert("無效的備份檔案格式。請選擇本 App 匯出的備份檔。");
-          return;
-        }
-
-        if (confirm(`確定要匯入 ${importedScores.length} 份樂譜嗎？這將會「完全取代」目前圖書館中的 ${scores.length} 份樂譜，且無法復原。\n\n建議先用「下載備份」保存目前的內容。`)) {
-          await saveScores(importedScores);
-          alert("匯入成功！");
-        }
+        // 一併還原，而不是只還原樂譜。順序無所謂，各自是獨立的 key。
+        await Promise.all([
+          saveScores(backup.scores),
+          saveFolders(backup.folders),
+          saveHistory(backup.practiceHistory),
+          saveRoutines(backup.routines),
+          saveGoals(backup.goals),
+          backup.rewards ? saveRewards(backup.rewards) : Promise.resolve()
+        ]);
+        // 練習紀錄等區塊靠事件更新畫面
+        window.dispatchEvent(new CustomEvent('practice-history-updated'));
+        alert('匯入成功！');
       } catch (error) {
-        console.error("Import failed:", error);
-        alert("匯入失敗：檔案格式錯誤。");
+        console.error('Import failed:', error);
+        alert('匯入過程發生錯誤，部分資料可能沒有還原。');
       }
     };
+
     reader.readAsText(file);
     // Reset input
     e.target.value = '';
