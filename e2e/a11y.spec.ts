@@ -143,3 +143,49 @@ test('使用說明與集點卡裡的每個控制項都有可及名稱', async ({
   unnamed = await unnamedControls(page);
   expect(unnamed, `集點卡：\n${unnamed.join('\n')}`).toEqual([]);
 });
+
+/**
+ * 觸控目標尺寸。
+ *
+ * 這個 App 開場就要求「請將平板直式放置」，但原本的控制項是以滑鼠為前提
+ * 設計的：23 個可見控制項裡有 18 個小於 WCAG 2.5.5 建議的 44×44，
+ * 其中 BPM 與練習時間的滑桿只有 6px 高。
+ */
+async function tooSmallControls(page: Page) {
+  return page.evaluate(() => {
+    const MIN = 43.5; // 容忍 44 的捨入誤差
+    return [...document.querySelectorAll('button, [role="button"], select, input[type="range"]')]
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && (r.width < MIN || r.height < MIN);
+      })
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        const name = (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 14);
+        return `${name} ${Math.round(r.width)}x${Math.round(r.height)}`;
+      })
+      // 計時器的 15/30/45/60 分鐘快選是四欄格線，寬度被卡在 40px。
+      // 要做到 44 得把版面改成兩欄，取捨之後維持現狀
+      // （高度 48，仍遠大於 WCAG 2.5.8 AA 的 24×24 下限）。
+      .filter((d) => !/^\d+m /.test(d));
+  });
+}
+
+test('平板尺寸下的觸控目標都夠大', async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto('/');
+  await seedScore(page);
+  await openApp(page);
+
+  let small = await tooSmallControls(page);
+  expect(small, '練習工具分頁: ' + small.join(' / ')).toEqual([]);
+
+  await openLibraryTab(page);
+  small = await tooSmallControls(page);
+  expect(small, '樂譜與紀錄分頁: ' + small.join(' / ')).toEqual([]);
+
+  await page.getByText('無障礙測試曲').first().click();
+  await page.getByRole('button', { name: '速度與節拍器' }).click();
+  small = await tooSmallControls(page);
+  expect(small, '樂譜檢視器: ' + small.join(' / ')).toEqual([]);
+});

@@ -158,7 +158,7 @@ export default function App() {
                 <button 
                   onClick={startEditing}
                   aria-label="修改標題" title="修改標題"
-                  className="p-2 text-text-muted hover:text-accent-warm transition-all rounded-lg hover:bg-white/5"
+                  className="p-2 min-w-11 min-h-11 flex items-center justify-center text-text-muted hover:text-accent-warm transition-all rounded-lg hover:bg-white/5"
                 >
                   <Edit2 size={16} />
                 </button>
@@ -172,21 +172,21 @@ export default function App() {
           <button
             onClick={() => setRecordingLibraryOpen(true)}
             aria-label="練習錄影"
-            className="p-2 text-text-muted hover:text-text-warm transition-colors rounded-lg hover:bg-white/5 flex items-center gap-2"
+            className="p-2 min-h-11 text-text-muted hover:text-text-warm transition-colors rounded-lg hover:bg-white/5 flex items-center gap-2"
           >
             <Video size={20} />
             <span className="hidden sm:inline text-xs font-bold uppercase tracking-widest">練習錄影</span>
           </button>
           <button 
             onClick={() => setRewardCardOpen(true)} 
-            className="p-2 text-yellow-500 hover:text-yellow-400 transition-colors rounded-lg hover:bg-yellow-500/10 flex items-center gap-2"
+            className="p-2 min-h-11 text-yellow-500 hover:text-yellow-400 transition-colors rounded-lg hover:bg-yellow-500/10 flex items-center gap-2"
           >
             <Star size={20} className="fill-yellow-500" />
             <span className="hidden sm:inline text-xs font-bold uppercase tracking-widest">集點卡</span>
           </button>
           <button 
             onClick={() => setGuideOpen(true)} 
-            className="p-2 text-text-muted hover:text-text-warm transition-colors rounded-lg hover:bg-white/5 flex items-center gap-2"
+            className="p-2 min-h-11 text-text-muted hover:text-text-warm transition-colors rounded-lg hover:bg-white/5 flex items-center gap-2"
           >
             <HelpCircle size={20} />
             <span className="hidden sm:inline text-xs font-bold uppercase tracking-widest">使用說明</span>

@@ -19,7 +19,7 @@ export const PracticeDashboard: React.FC<PracticeDashboardProps> = ({ onStartRou
         <button
           onClick={() => setActiveTab('routines')}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-bold transition-all",
+            "flex-1 flex items-center justify-center gap-2 py-2 min-h-11 rounded-xl text-sm font-bold transition-all",
             activeTab === 'routines' 
               ? "bg-accent-warm text-white shadow-lg" 
               : "text-text-muted hover:text-text-warm hover:bg-white/5"
@@ -31,7 +31,7 @@ export const PracticeDashboard: React.FC<PracticeDashboardProps> = ({ onStartRou
         <button
           onClick={() => setActiveTab('goals')}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-bold transition-all",
+            "flex-1 flex items-center justify-center gap-2 py-2 min-h-11 rounded-xl text-sm font-bold transition-all",
             activeTab === 'goals' 
               ? "bg-accent-warm text-white shadow-lg" 
               : "text-text-muted hover:text-text-warm hover:bg-white/5"

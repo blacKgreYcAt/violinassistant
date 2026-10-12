@@ -69,3 +69,73 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #444;
 }
+
+/*
+ * 觸控友善的滑桿。
+ *
+ * 原本的滑桿只有 6px 高，可點範圍也就只有 6px —— 但這個 App 的使用情境是
+ * 放在譜架上的平板、用手指操作。把可點高度放大到 44px（WCAG 2.5.5 的建議值），
+ * 軌道視覺上仍維持原本的細線，所以外觀幾乎沒變。
+ *
+ * 一旦自己畫 track 與 thumb，瀏覽器的 accent-color 就不再生效，
+ * 所以 thumb 顏色改用 --range-accent 這個變數（預設是主色）。
+ */
+.range-touch {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2.75rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.range-touch::-webkit-slider-runnable-track {
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.1);
+}
+
+.range-touch::-moz-range-track {
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.1);
+}
+
+.range-touch::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: none;
+  border-radius: 9999px;
+  background: var(--range-accent, var(--color-accent-warm));
+  /* 讓 18px 的 thumb 對齊 6px 軌道的中心 */
+  margin-top: -0.375rem;
+}
+
+.range-touch::-moz-range-thumb {
+  width: 1.125rem;
+  height: 1.125rem;
+  border: none;
+  border-radius: 9999px;
+  background: var(--range-accent, var(--color-accent-warm));
+}
+
+.range-touch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/*
+ * 觸控目標的最小尺寸。
+ *
+ * 這個 App 的使用情境是放在譜架上的平板、用手指操作，但不少只有圖示的
+ * 按鈕只有 26~36px。WCAG 2.5.5 建議 44×44。
+ * 用 min-* 而不是改 padding，視覺上的留白維持原樣，只是可點範圍變大。
+ */
+.tap {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

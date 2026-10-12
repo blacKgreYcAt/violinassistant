@@ -111,14 +111,14 @@ export const PracticeHistory: React.FC<PracticeHistoryProps> = ({ className }) =
           <div className="flex items-center gap-1">
             <button 
               onClick={shareHistory}
-              className="p-1.5 hover:bg-white/5 rounded-full transition-colors text-text-muted hover:text-text-warm"
+              className="tap p-1.5 hover:bg-white/5 rounded-full transition-colors text-text-muted hover:text-text-warm"
               title="分享或發送郵件"
             >
               <Share2 size={18} />
             </button>
             <button 
               onClick={() => setIsAdding(!isAdding)}
-              className="p-1.5 hover:bg-accent-warm/10 rounded-full transition-colors text-accent-warm"
+              className="tap p-1.5 hover:bg-accent-warm/10 rounded-full transition-colors text-accent-warm"
               title="手動補登"
             >
               <Pen size={18} />

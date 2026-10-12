@@ -800,7 +800,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
           <button
             onClick={onClose}
             aria-label="關閉樂譜" title="關閉樂譜"
-            className="w-10 h-10 flex items-center justify-center text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
+            className="w-11 h-11 flex items-center justify-center text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
           >
             <X size={24} />
           </button>
@@ -833,7 +833,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                   onClick={() => { setTempName(score.name); setIsEditingName(true); }}
                   aria-label="修改曲名" title="修改曲名"
                   /* 同上。這個鉛筆按鈕在觸控裝置上看不到（雖然點標題本身也能改名，但沒有提示） */
-                  className="p-1.5 text-text-muted hover:text-accent-warm rounded-lg hover-reveal"
+                  className="tap p-1.5 text-text-muted hover:text-accent-warm rounded-lg hover-reveal"
                 >
                   <Edit2 size={14} />
                 </button>
@@ -847,7 +847,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
             onClick={() => setShowBpmPopover(!showBpmPopover)}
             aria-label="節拍速度" title="節拍速度"
             className={cn(
-              "px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
+              "px-4 py-2 min-h-11 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
               isMetronomePlaying ? "bg-accent-warm text-bg-warm shadow-lg shadow-accent-warm/20" : "bg-white/5 text-text-muted hover:text-text-warm"
             )}
           >
@@ -859,7 +859,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
             aria-label={isMetronomePlaying ? "停止節拍器" : "啟動節拍器"}
             title={isMetronomePlaying ? "停止節拍器" : "啟動節拍器"}
             className={cn(
-              "w-10 h-10 flex items-center justify-center rounded-xl transition-all",
+              "w-11 h-11 flex items-center justify-center rounded-xl transition-all",
               isMetronomePlaying ? "bg-red-500 text-white" : "bg-white/5 text-text-muted hover:text-text-warm"
             )}
           >
@@ -878,7 +878,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
             onClick={toggleFullscreen}
             aria-label={isFullscreen ? "離開全螢幕" : "全螢幕"}
             title={isFullscreen ? "離開全螢幕" : "全螢幕"}
-            className="w-10 h-10 flex items-center justify-center text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
+            className="w-11 h-11 flex items-center justify-center text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
           >
             {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
           </button>
@@ -1085,7 +1085,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                 <button 
                   onClick={() => setDisplayMode('fit-page')}
                   className={cn(
-                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    "px-4 py-1.5 min-h-11 rounded-lg text-xs font-bold transition-all",
                     displayMode === 'fit-page' ? "bg-white/10 text-text-warm" : "text-text-muted hover:text-text-warm"
                   )}
                 >
@@ -1094,7 +1094,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
                 <button 
                   onClick={() => setDisplayMode('fit-width')}
                   className={cn(
-                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    "px-4 py-1.5 min-h-11 rounded-lg text-xs font-bold transition-all",
                     displayMode === 'fit-width' ? "bg-white/10 text-text-warm" : "text-text-muted hover:text-text-warm"
                   )}
                 >
@@ -1351,7 +1351,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
             <button 
               onClick={() => setShowBpmPopover(false)}
               aria-label="關閉速度設定" title="關閉速度設定"
-              className="text-text-muted hover:text-text-warm"
+              className="tap text-text-muted hover:text-text-warm"
             >
               <X size={20} />
             </button>
@@ -1365,7 +1365,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
           <div className="flex items-center gap-4 mb-6">
             <button aria-label="減慢 1 BPM" title="減慢 1 BPM" 
               onClick={() => setCurrentBpm(Math.max(30, currentBpm - 1))}
-              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all"
+              className="w-11 h-11 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all"
             >
               <Minus size={20} />
             </button>
@@ -1375,11 +1375,11 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
               max="300" 
               value={currentBpm} 
               onChange={(e) => setCurrentBpm(parseInt(e.target.value))}
-              className="flex-1 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-accent-warm"
+              className="flex-1 range-touch"
             />
             <button aria-label="加快 1 BPM" title="加快 1 BPM" 
               onClick={() => setCurrentBpm(Math.min(300, currentBpm + 1))}
-              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all"
+              className="w-11 h-11 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all"
             >
               <Plus size={20} />
             </button>
@@ -1414,7 +1414,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
               setMastery(parseInt(e.target.value));
               setHasUnsavedChanges(true);
             }}
-            className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-amber-500 mb-6"
+            className="w-full range-touch mb-4" style={{ ["--range-accent" as string]: "#f59e0b" }}
           />
           <div className="flex justify-between text-[10px] text-text-muted font-bold uppercase tracking-tighter">
             <span>剛開始</span>
@@ -1435,7 +1435,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
         <div className={cn(PANEL_BASE, "top-36 sm:w-80")}>
           <div className="flex items-center justify-between mb-6">
             <span className="text-sm font-bold text-text-warm uppercase tracking-widest">速度與節拍器</span>
-            <button onClick={() => setShowTempoHistory(false)} aria-label="關閉速度面板" title="關閉速度面板" className="text-text-muted hover:text-text-warm"><X size={20} /></button>
+            <button onClick={() => setShowTempoHistory(false)} aria-label="關閉速度面板" title="關閉速度面板" className="tap text-text-muted hover:text-text-warm"><X size={20} /></button>
           </div>
           
           <div className="bg-white/5 rounded-2xl p-4 mb-6">
@@ -1446,8 +1446,8 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex flex-col gap-1">
-                  <button aria-label="加快 1 BPM" title="加快 1 BPM" onClick={() => setCurrentBpm(Math.min(300, currentBpm + 1))} className="p-2 hover:bg-white/10 rounded-lg"><ChevronUp size={20} /></button>
-                  <button aria-label="減慢 1 BPM" title="減慢 1 BPM" onClick={() => setCurrentBpm(Math.max(30, currentBpm - 1))} className="p-2 hover:bg-white/10 rounded-lg"><ChevronDown size={20} /></button>
+                  <button aria-label="加快 1 BPM" title="加快 1 BPM" onClick={() => setCurrentBpm(Math.min(300, currentBpm + 1))} className="tap p-2 hover:bg-white/10 rounded-lg"><ChevronUp size={20} /></button>
+                  <button aria-label="減慢 1 BPM" title="減慢 1 BPM" onClick={() => setCurrentBpm(Math.max(30, currentBpm - 1))} className="tap p-2 hover:bg-white/10 rounded-lg"><ChevronDown size={20} /></button>
                 </div>
                 <button aria-label={isMetronomePlaying ? '停止節拍器' : '啟動節拍器'} title={isMetronomePlaying ? '停止節拍器' : '啟動節拍器'} 
                   onClick={() => setIsMetronomePlaying(!isMetronomePlaying)}
@@ -1483,7 +1483,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
             <button
               onClick={() => { setShowSections(false); cancelDraft(); }}
               aria-label="關閉段落面板" title="關閉段落面板"
-              className="text-text-muted hover:text-text-warm"
+              className="tap text-text-muted hover:text-text-warm"
             >
               <X size={20} />
             </button>
@@ -1658,7 +1658,7 @@ export const ScoreViewer: React.FC<ScoreViewerProps> = ({
         <div className={cn(PANEL_BASE, "top-20 sm:w-96")}>
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-bold text-text-warm uppercase tracking-widest">本曲錄影紀錄</span>
-            <button onClick={() => setShowRecordings(false)} aria-label="關閉錄影清單" title="關閉錄影清單" className="text-text-muted hover:text-text-warm"><X size={20} /></button>
+            <button onClick={() => setShowRecordings(false)} aria-label="關閉錄影清單" title="關閉錄影清單" className="tap text-text-muted hover:text-text-warm"><X size={20} /></button>
           </div>
 
           <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">

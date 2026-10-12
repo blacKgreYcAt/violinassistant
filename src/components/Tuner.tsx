@@ -267,7 +267,7 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
             <button aria-label={isListening ? '停止調音' : '開始調音'} title={isListening ? '停止調音' : '開始調音'}
               onClick={toggleTuner}
               className={cn(
-                "p-2 rounded-xl transition-all",
+                "p-2 min-w-11 min-h-11 flex items-center justify-center rounded-xl transition-all",
                 isListening ? "bg-red-500/20 text-red-400" : "bg-white/5 text-text-muted hover:text-text-warm"
               )}
             >
@@ -340,7 +340,7 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
               <div className="flex items-center gap-4 h-12 mb-4">
                 <button aria-label="降低參考音音量" title="降低參考音音量" 
                   onClick={() => setDroneVolume(Math.max(0, droneVolume - 0.1))}
-                  className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
+                  className="w-11 h-11 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
                 >
                   <VolumeX size={18} />
                 </button>
@@ -353,13 +353,13 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
                     step="0.01"
                     value={droneVolume}
                     onChange={(e) => setDroneVolume(Number(e.target.value))}
-                    className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-accent-warm"
+                    className="w-full range-touch"
                   />
                 </div>
 
                 <button aria-label="提高參考音音量" title="提高參考音音量" 
                   onClick={() => setDroneVolume(Math.min(1, droneVolume + 0.1))}
-                  className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
+                  className="w-11 h-11 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
                 >
                   <Volume2 size={18} />
                 </button>

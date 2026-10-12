@@ -333,7 +333,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
             </button>
             <button aria-label={isMuted ? '取消靜音' : '靜音'} title={isMuted ? '取消靜音' : '靜音'} 
               onClick={() => setIsMuted(!isMuted)}
-              className="p-2 hover:bg-white/5 rounded-full transition-colors"
+              className="p-2 min-w-11 min-h-11 flex items-center justify-center hover:bg-white/5 rounded-full transition-colors"
             >
               {isMuted ? <VolumeX size={20} className="text-red-400" /> : <Volume2 size={20} className="text-text-muted" />}
             </button>
@@ -405,7 +405,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
           <div className="flex items-center gap-4 h-12 mb-4">
             <button aria-label="減慢 1 BPM" title="減慢 1 BPM" 
               onClick={() => handleBpmChange(bpm - 1)}
-              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
+              className="w-11 h-11 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
             >
               <Minus size={20} />
             </button>
@@ -417,13 +417,13 @@ export const Metronome: React.FC<MetronomeProps> = ({
                 max="300" 
                 value={bpm} 
                 onChange={(e) => handleBpmChange(parseInt(e.target.value))}
-                className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-accent-warm"
+                className="w-full range-touch"
               />
             </div>
 
             <button aria-label="加快 1 BPM" title="加快 1 BPM" 
               onClick={() => handleBpmChange(bpm + 1)}
-              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
+              className="w-11 h-11 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0"
             >
               <Plus size={20} />
             </button>
@@ -490,7 +490,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
             <select aria-label="拍號" title="拍號" 
               value={beatsPerMeasure}
               onChange={(e) => setBeatsPerMeasure(parseInt(e.target.value))}
-              className="text-base font-bold bg-white/5 text-text-warm px-4 py-2 rounded-xl outline-none border border-white/5 hover:border-white/10 transition-all cursor-pointer"
+              className="text-base font-bold bg-white/5 text-text-warm px-4 py-2 min-h-11 rounded-xl outline-none border border-white/5 hover:border-white/10 transition-all cursor-pointer"
             >
               <option value="2">2/4</option>
               <option value="3">3/4</option>
@@ -504,7 +504,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
               onChange={(e) => setSubdivision(Number(e.target.value) as Subdivision)}
               aria-label="細分拍"
               title="細分拍"
-              className="text-sm font-bold bg-white/5 text-text-warm px-3 py-2 rounded-xl outline-none border border-white/5 hover:border-white/10 transition-all cursor-pointer"
+              className="text-sm font-bold bg-white/5 text-text-warm px-3 py-2 min-h-11 rounded-xl outline-none border border-white/5 hover:border-white/10 transition-all cursor-pointer"
             >
               {SUBDIVISIONS.map((s) => (
                 <option key={s} value={s}>

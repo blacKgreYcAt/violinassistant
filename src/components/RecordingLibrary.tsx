@@ -106,7 +106,7 @@ export const RecordingLibrary: React.FC<RecordingLibraryProps> = ({ isOpen, onCl
           <button
             onClick={onClose}
             aria-label="關閉"
-            className="w-10 h-10 flex items-center justify-center text-text-muted hover:text-text-warm hover:bg-white/5 rounded-full transition-colors"
+            className="w-11 h-11 flex items-center justify-center text-text-muted hover:text-text-warm hover:bg-white/5 rounded-full transition-colors"
           >
             <X size={24} />
           </button>

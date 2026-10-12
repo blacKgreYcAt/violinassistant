@@ -335,7 +335,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, def
                     setRemainingSeconds(val * 60);
                   }}
                   disabled={isActive}
-                  className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0 disabled:opacity-30"
+                  className="w-11 h-11 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0 disabled:opacity-30"
                 >
                   <Minus size={20} />
                 </button>
@@ -352,7 +352,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, def
                       setRemainingSeconds(val * 60);
                     }}
                     disabled={isActive}
-                    className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-accent-warm disabled:opacity-50"
+                    className="w-full range-touch"
                   />
                 </div>
 
@@ -363,7 +363,7 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, def
                     setRemainingSeconds(val * 60);
                   }}
                   disabled={isActive}
-                  className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0 disabled:opacity-30"
+                  className="w-11 h-11 flex items-center justify-center bg-white/5 hover:bg-white/10 text-text-warm rounded-xl transition-all active:scale-95 shrink-0 disabled:opacity-30"
                 >
                   <Plus size={20} />
                 </button>

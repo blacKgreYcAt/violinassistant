@@ -119,7 +119,7 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
           </h2>
           <button aria-label="取消編輯" title="取消編輯" 
             onClick={() => { setIsCreating(false); setEditingId(null); }}
-            className="p-2 hover:bg-white/5 rounded-full transition-colors text-text-muted hover:text-text-warm"
+            className="tap p-2 hover:bg-white/5 rounded-full transition-colors text-text-muted hover:text-text-warm"
           >
             <X size={20} />
           </button>
@@ -201,7 +201,7 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
         </div>
         <button 
           onClick={handleCreateNew}
-          className="p-2 hover:bg-white/5 rounded-full transition-colors text-text-muted hover:text-text-warm"
+          className="tap p-2 hover:bg-white/5 rounded-full transition-colors text-text-muted hover:text-text-warm"
           title="新增練習計畫"
         >
           <Plus size={20} />
@@ -241,7 +241,7 @@ export const PracticeRoutines: React.FC<PracticeRoutinesProps> = ({ onStartRouti
                   </button>
                   <button aria-label={`編輯計畫 ${routine.name}`} title={`編輯計畫 ${routine.name}`} 
                     onClick={() => handleEdit(routine)}
-                    className="p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
+                    className="tap p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all"
                   >
                     <Edit2 size={16} />
                   </button>

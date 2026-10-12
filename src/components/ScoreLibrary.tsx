@@ -538,14 +538,14 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
             <h2 className="text-lg font-bold tracking-tight text-text-warm whitespace-nowrap">新增樂譜</h2>
           </div>
           <div className="flex items-center gap-2 flex-1 max-w-[300px]">
-            <label className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all cursor-pointer">
+            <label className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 min-h-11 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all cursor-pointer">
               <UploadCloud size={16} />
               <span>匯入</span>
               <input type="file" accept=".json" onChange={importLibrary} className="hidden" />
             </label>
             <button 
               onClick={shareLibrary}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-accent-warm/10 hover:bg-accent-warm/20 text-accent-warm rounded-xl text-xs font-bold transition-all"
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 min-h-11 bg-accent-warm/10 hover:bg-accent-warm/20 text-accent-warm rounded-xl text-xs font-bold transition-all"
               title="分享備份"
             >
               <Share2 size={16} />
@@ -553,7 +553,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
             </button>
             <button 
               onClick={exportLibrary}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all"
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 min-h-11 bg-white/5 hover:bg-white/10 text-text-muted hover:text-text-warm rounded-xl text-xs font-bold transition-all"
             >
               <Download size={16} />
               <span>下載</span>
@@ -604,7 +604,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
           {!currentFolderId && (
             <button 
               onClick={() => setShowNewFolder(true)}
-              className="p-2 hover:bg-white/5 rounded-full transition-colors text-text-muted hover:text-text-warm"
+              className="tap p-2 hover:bg-white/5 rounded-full transition-colors text-text-muted hover:text-text-warm"
               title="新增資料夾"
             >
               <Plus size={20} />
@@ -863,14 +863,14 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
                         setCropPage(0);
                         setCropRect(normalizeCrop(score.cropData?.[0]));
                       }}
-                      className="p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all opacity-60 hover:opacity-100"
+                      className="tap p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all opacity-60 hover:opacity-100"
                       title="裁切樂譜"
                     >
                       <Crop size={18} />
                     </button>
                     <button aria-label={`編輯 ${score.name}`} title={`編輯 ${score.name}`} 
                       onClick={(e) => startEditing(e, score)}
-                      className="p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all opacity-60 hover:opacity-100"
+                      className="tap p-2 text-text-muted hover:text-text-warm hover:bg-white/5 rounded-xl transition-all opacity-60 hover:opacity-100"
                     >
                       <Edit2 size={18} />
                     </button>
@@ -878,7 +878,7 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
                 )}
                 <button aria-label={`刪除 ${score.name}`} title={`刪除 ${score.name}`} 
                   onClick={(e) => deleteScore(score.id, e)}
-                  className="p-2 text-text-muted hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all opacity-60 hover:opacity-100"
+                  className="tap p-2 text-text-muted hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all opacity-60 hover:opacity-100"
                 >
                   <Trash2 size={18} />
                 </button>
