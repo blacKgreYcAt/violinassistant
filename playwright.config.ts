@@ -35,6 +35,14 @@ export default defineConfig({
       name: 'desktop-chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      // 這個 App 的主要使用情境是 iPad，但先前的自動測試只跑 Chromium ——
+      // 程式裡針對 iOS 的處理（webkitAudioContext、iPhone 不支援元素全螢幕、
+      // 相簿的 MP4/mov 相容）沒有一行被測過。WebKit 不等於真正的 Safari，
+      // 但能攔下大部分引擎層級的差異。
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
   ],
 
   webServer: {

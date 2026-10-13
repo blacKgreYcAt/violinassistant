@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { EyeOff, Play, Square, Plus, Minus, Volume2, VolumeX, Activity, TrendingUp, Target, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { createAudioContext } from '../lib/audio';
+import { createAudioContext, isAudioSupported } from '../lib/audio';
 
 import {
   MIN_BPM,
@@ -45,6 +45,8 @@ export const Metronome: React.FC<MetronomeProps> = ({
   const [silentBars, setSilentBars] = useState(2);
   const [silentCountdown, setSilentCountdown] = useState(0);
   const [currentBeat, setCurrentBeat] = useState(0);
+  // 這個瀏覽器沒有 Web Audio 時，節拍器單獨停用並說明原因
+  const [audioUnavailable, setAudioUnavailable] = useState(() => !isAudioSupported());
 
   // Progressive Mode States
   const [isProgressiveMode, setIsProgressiveMode] = useState(false);
@@ -202,7 +204,16 @@ export const Metronome: React.FC<MetronomeProps> = ({
   useEffect(() => {
     if (isPlaying) {
       if (!audioContext.current) {
-        audioContext.current = createAudioContext();
+        try {
+          audioContext.current = createAudioContext();
+        } catch (error) {
+          // 沒有 Web Audio 就只停用節拍器，不要讓例外往上冒把整個 App
+          // 變成錯誤畫面 —— 其他功能（樂譜、計時、紀錄）都還能用。
+          console.error('Metronome unavailable:', error);
+          setAudioUnavailable(true);
+          setIsPlaying(false);
+          return;
+        }
       }
       if (audioContext.current.state === 'suspended') {
         audioContext.current.resume();
@@ -228,7 +239,7 @@ export const Metronome: React.FC<MetronomeProps> = ({
       }
       notesInQueue.current = [];
     }
-  }, [isPlaying, scheduler]);
+  }, [isPlaying, scheduler, setIsPlaying]);
 
   // 畫面更新迴圈：只有當某一拍的排定時間真的到了（以 audioContext 的時鐘為準），
   // 才把它顯示出來。這樣燈號才會跟耳朵聽到的聲音對齊。
@@ -522,10 +533,20 @@ export const Metronome: React.FC<MetronomeProps> = ({
         </div>
 
         <div className="mt-auto pt-6">
+          {audioUnavailable && (
+            <p
+              role="alert"
+              data-testid="metronome-unavailable"
+              className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-text-warm"
+            >
+              這個瀏覽器不支援 Web Audio，節拍器無法使用。其他功能不受影響。
+            </p>
+          )}
           <button 
             onClick={togglePlay}
+            disabled={audioUnavailable}
             className={cn(
-              "w-full h-16 rounded-2xl flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-[0.98]",
+              "w-full h-16 rounded-2xl flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100",
               isPlaying 
                 ? "bg-white/10 text-text-warm" 
                 : "bg-accent-warm text-bg-warm shadow-lg shadow-accent-warm/20 hover:bg-accent-warm/90"

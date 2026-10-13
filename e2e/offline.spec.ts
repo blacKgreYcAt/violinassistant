@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, openLibraryTab } from './helpers';
+import { openApp, openLibraryTab, skipWithoutWebAudio } from './helpers';
 
 /**
  * 離線行為與程式碼分割。
@@ -87,6 +87,7 @@ test('第一次載入不會下載樂譜分頁與臉部偵測的程式碼', async
 });
 
 test('完全離線時 App 仍能開啟並使用', async ({ page, context }) => {
+  await skipWithoutWebAudio(page);
   // 先正常載入一次，讓 service worker 把檔案快取起來
   await openApp(page);
   await page.waitForFunction(() => navigator.serviceWorker?.controller != null, null, {
@@ -111,6 +112,7 @@ test('完全離線時 App 仍能開啟並使用', async ({ page, context }) => {
 });
 
 test('節拍器長時間執行時拍數不會飄掉', async ({ page }) => {
+  await skipWithoutWebAudio(page);
   // 這個測試本身就要跑 30 秒，超過預設的 30 秒上限
   test.slow();
   await openApp(page);

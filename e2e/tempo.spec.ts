@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, openLibraryTab } from './helpers';
+import { openApp, openLibraryTab, skipWithoutWebAudio } from './helpers';
 
 /**
  * 曲目速度進展圖與節拍器細分拍。
@@ -92,6 +92,7 @@ test('沒有速度紀錄時顯示說明而不是空白', async ({ page }) => {
 });
 
 test('節拍器可以切換細分拍', async ({ page }) => {
+  await skipWithoutWebAudio(page);
   await openApp(page);
 
   // 迴歸測試：細分拍是慢練最常用的功能之一，先前完全沒有
@@ -148,6 +149,7 @@ test('樂譜檢視器的側欄按鈕都有可及名稱', async ({ page }) => {
 });
 
 test('靜音小節：啟用後節拍器會週期性停止，且不顯示拍點位置', async ({ page }) => {
+  await skipWithoutWebAudio(page);
   await openApp(page);
 
   const metronome = page.getByTestId('metronome');

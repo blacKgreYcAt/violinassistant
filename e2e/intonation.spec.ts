@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { openApp, openLibraryTab } from './helpers';
+import { openApp, openLibraryTab, skipWithoutMediaRecorder } from './helpers';
 
 /**
  * 音準回放分析。
@@ -75,6 +75,7 @@ async function seedRecording(page: Page) {
 }
 
 test('錄影的音準資料會被分析並呈現出來', async ({ page }) => {
+  await skipWithoutMediaRecorder(page);
   await page.goto('/');
   await seedRecording(page);
   await openApp(page);
@@ -102,6 +103,7 @@ test('錄影的音準資料會被分析並呈現出來', async ({ page }) => {
 });
 
 test('點擊問題片段會把播放位置跳到該時間點', async ({ page }) => {
+  await skipWithoutMediaRecorder(page);
   await page.goto('/');
   await seedRecording(page);
   await openApp(page);
@@ -122,6 +124,7 @@ test('點擊問題片段會把播放位置跳到該時間點', async ({ page }) 
 
 
 test('未指定曲目的錄影可以在「練習錄影」總覽中查看與分析', async ({ page }) => {
+  await skipWithoutMediaRecorder(page);
   await page.goto('/');
 
   // 寫入一段沒有歸屬曲目的錄影 —— 從「樂譜與紀錄」分頁直接錄的就是這種。

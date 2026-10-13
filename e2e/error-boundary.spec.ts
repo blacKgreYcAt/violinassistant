@@ -76,3 +76,31 @@ test('樂譜分頁載不進來時，練習工具分頁仍然可用', async ({ pa
   await expect(page.getByTestId('metronome')).toBeVisible();
   await expect(page.getByTestId('timer')).toBeVisible();
 });
+
+test('瀏覽器沒有 Web Audio 時，只停用節拍器而不是整個 App 掛掉', async ({ page }) => {
+  // 這不是假設性的情境：Playwright 的 WebKit 建置就沒有 Web Audio，
+  // 原本節拍器一啟動就丟出例外、被最外層的錯誤邊界接走，整個 App 變成
+  // 錯誤畫面 —— 連樂譜和練習紀錄都用不了。
+  await page.addInitScript(() => {
+    // @ts-expect-error 刻意移除，模擬不支援的瀏覽器
+    delete window.AudioContext;
+    // @ts-expect-error 同上
+    delete window.webkitAudioContext;
+  });
+
+  await openApp(page);
+
+  // App 本身要正常
+  await expect(page.getByTestId('app-error')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '樂譜與紀錄' })).toBeVisible();
+
+  // 節拍器單獨停用，並說明原因
+  const notice = page.getByTestId('metronome-unavailable');
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText('其他功能不受影響');
+  await expect(page.getByTestId('metronome').getByRole('button', { name: '開始' })).toBeDisabled();
+
+  // 其他分頁仍然進得去
+  await openLibraryTab(page);
+  await expect(page.getByTestId('practice-history')).toBeVisible();
+});

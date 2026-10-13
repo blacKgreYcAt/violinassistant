@@ -17,3 +17,19 @@ export function createAudioContext(): AudioContext {
   }
   return new Ctor();
 }
+
+/**
+ * 這個瀏覽器有沒有 Web Audio。
+ *
+ * 用來讓依賴音訊的功能「單獨停用」，而不是讓例外往上冒、害整個 App
+ * 掛掉變成錯誤畫面。實際遇過：Playwright 的 WebKit 建置就沒有 Web Audio，
+ * 節拍器一啟動整個 App 就被錯誤邊界接走。真正的 Safari 有，但舊版瀏覽器
+ * 或精簡環境不保證。
+ */
+export function isAudioSupported(): boolean {
+  if (typeof window === 'undefined') return false;
+  return Boolean(
+    window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext
+  );
+}

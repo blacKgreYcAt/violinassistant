@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, openLibraryTab, collectPageErrors, createRoutine } from './helpers';
+import { openApp, openLibraryTab, collectPageErrors, createRoutine, skipWithoutWebAudio } from './helpers';
 
 test.describe('基本運作', () => {
   test('App 能開起來，且沒有 console 錯誤', async ({ page }) => {
@@ -29,6 +29,7 @@ test.describe('基本運作', () => {
 
 test.describe('節拍器', () => {
   test('可以啟動，且拍點燈號會隨拍子前進', async ({ page }) => {
+  await skipWithoutWebAudio(page);
     await openApp(page);
 
     const metronome = page.getByTestId('metronome');

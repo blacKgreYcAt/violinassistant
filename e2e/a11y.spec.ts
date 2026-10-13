@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { openApp, openLibraryTab } from './helpers';
+import { openApp, openLibraryTab, skipWithoutWebAudio } from './helpers';
 
 /**
  * 全 App 的可及名稱掃描。
@@ -257,6 +257,7 @@ test('沒有開啟「減少動態效果」時動畫照常', async ({ page }) => 
 });
 
 test('動態變化的狀態有提供給螢幕閱讀器', async ({ page }) => {
+  await skipWithoutWebAudio(page);
   await openApp(page);
 
   // 這些區域刻意不播報每一拍、每一秒或 Hz —— 那會把螢幕閱讀器洗版到

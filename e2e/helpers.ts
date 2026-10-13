@@ -1,4 +1,4 @@
-import { Page, expect } from '@playwright/test';
+import { Page, expect, test } from '@playwright/test';
 
 /**
  * 開啟 App 並跳過開場動畫。
@@ -53,4 +53,36 @@ export async function createRoutine(
 
   await page.getByRole('button', { name: '儲存計畫' }).click();
   await expect(page.getByTestId('routine-card').filter({ hasText: name })).toBeVisible();
+}
+
+/**
+ * 這個瀏覽器有沒有 Web Audio / MediaRecorder。
+ *
+ * Playwright 的 WebKit 建置（至少 Windows 上）兩者都沒有，真正的 Safari 有。
+ * 依賴它們的測試在這種環境會整片紅，淹掉真正的失敗 —— 所以改成按能力跳過，
+ * 而不是按瀏覽器名稱跳過（瀏覽器名稱不代表能力）。
+ */
+export async function hasWebAudio(page: Page): Promise<boolean> {
+  return page.evaluate(
+    () =>
+      typeof window.AudioContext !== 'undefined' ||
+      typeof (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext !==
+        'undefined'
+  );
+}
+
+export async function hasMediaRecorder(page: Page): Promise<boolean> {
+  return page.evaluate(() => typeof window.MediaRecorder !== 'undefined');
+}
+
+/** 需要 Web Audio 的測試用這個開頭；缺少時跳過並說明原因 */
+export async function skipWithoutWebAudio(page: Page) {
+  const ok = await hasWebAudio(page);
+  test.skip(!ok, '這個瀏覽器沒有 Web Audio，節拍器與調音器測不了');
+}
+
+/** 需要 MediaRecorder 的測試用這個開頭 */
+export async function skipWithoutMediaRecorder(page: Page) {
+  const ok = await hasMediaRecorder(page);
+  test.skip(!ok, '這個瀏覽器沒有 MediaRecorder，錄影相關測不了');
 }
