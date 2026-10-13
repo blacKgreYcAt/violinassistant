@@ -189,3 +189,69 @@ test('平板尺寸下的觸控目標都夠大', async ({ page }) => {
   small = await tooSmallControls(page);
   expect(small, '樂譜檢視器: ' + small.join(' / ')).toEqual([]);
 });
+
+test('鍵盤焦點看得見', async ({ page }) => {
+  await openApp(page);
+
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+
+  // .transition-colors 把 outline-color 也列入過場屬性，
+  // 立刻量會拿到過場中的瞬時值
+  await page.waitForTimeout(400);
+
+  const focus = await page.evaluate(() => {
+    const el = document.activeElement;
+    if (!el || el === document.body) return null;
+    const cs = getComputedStyle(el);
+    return {
+      name: (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 20),
+      style: cs.outlineStyle,
+      width: parseFloat(cs.outlineWidth),
+      color: cs.outlineColor,
+    };
+  });
+
+  expect(focus, '按 Tab 之後沒有任何元素取得焦點').not.toBeNull();
+  expect(focus!.style, `${focus!.name} 的焦點沒有外框`).not.toBe('none');
+  expect(focus!.width).toBeGreaterThanOrEqual(2);
+  // 用主色而不是瀏覽器預設的細灰框，深色主題下才看得清楚
+  expect(focus!.color).toBe('rgb(242, 125, 38)');
+});
+
+test('開啟「減少動態效果」時不會有長時間的動畫', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openApp(page);
+
+  // 前庭敏感的使用者會因為這些動畫不適；不是整個關掉而是縮到極短，
+  // 因為有些元件依賴動畫結束的時間點
+  const durations = await page.evaluate(() =>
+    [...document.querySelectorAll('button, [class*="animate-"]')]
+      .slice(0, 40)
+      .map((el) => {
+        const cs = getComputedStyle(el);
+        return Math.max(
+          ...cs.transitionDuration.split(',').map((d) => parseFloat(d) || 0),
+          ...cs.animationDuration.split(',').map((d) => parseFloat(d) || 0)
+        );
+      })
+  );
+
+  const longest = Math.max(...durations);
+  expect(longest, `最長的動畫是 ${longest}s`).toBeLessThan(0.05);
+});
+
+test('沒有開啟「減少動態效果」時動畫照常', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await openApp(page);
+
+  // 確認上面那個測試不是因為根本沒有動畫而假性通過
+  const longest = await page.evaluate(() =>
+    Math.max(
+      ...[...document.querySelectorAll('button')].map((el) =>
+        Math.max(...getComputedStyle(el).transitionDuration.split(',').map((d) => parseFloat(d) || 0))
+      )
+    )
+  );
+  expect(longest).toBeGreaterThan(0.05);
+});

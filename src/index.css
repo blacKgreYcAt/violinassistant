@@ -139,3 +139,36 @@
   align-items: center;
   justify-content: center;
 }
+
+/*
+ * 鍵盤焦點必須看得見。
+ *
+ * 量測發現焦點樣式是 `outline: none` —— 不少元素寫了 Tailwind 的
+ * `focus:outline-none`，深色主題下瀏覽器預設的焦點框也幾乎分辨不出來。
+ * 只用 :focus-visible，所以滑鼠點擊不會留下外框，只有鍵盤操作才顯示。
+ *
+ * 這條規則刻意不放進 @layer：CSS 的層疊層規則裡，沒有分層的樣式會贏過
+ * 分層的樣式，所以它能蓋掉 Tailwind utilities 的 focus:outline-none。
+ */
+html :focus-visible {
+  outline: 2px solid var(--color-accent-warm);
+  outline-offset: 2px;
+}
+
+/*
+ * 尊重系統的「減少動態效果」設定。
+ *
+ * 這個 App 有不少動畫（開場畫面、彈窗的 zoom-in、節拍器的拍點、
+ * 平板旋轉提示的無限循環動畫）。對前庭敏感的使用者，這些會造成不適。
+ * 不是整個關掉而是縮到極短，因為有些元件依賴動畫結束的時間點。
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
