@@ -1,0 +1,66 @@
+# 這個檔案要放到 .github/workflows/ci.yml 才會生效，見同資料夾的 README.md。
+#
+# 為什麼需要它：專案有 243 個單元測試與 60 個 E2E，但完全沒有 CI ——
+# 它們只在有人記得手動跑的時候才會執行，推上去壞掉的程式碼沒有任何東西會攔。
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # 讓你可以在 GitHub 的 Actions 頁面手動觸發一次
+  workflow_dispatch:
+
+# 同一個分支連續推送時，取消還在跑的舊的那次
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 型別、Lint 與單元測試
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # 用 ci 而不是 install：嚴格照 package-lock.json 安裝，
+      # 確保 CI 測到的版本跟本機一致
+      - run: npm ci
+
+      - run: npm run check
+
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # 只裝 chromium。playwright.config.ts 也只設定這一個 project，
+      # 裝其他瀏覽器只會讓每次 CI 多花好幾分鐘。
+      - run: npx playwright install --with-deps chromium
+
+      # playwright.config.ts 的 webServer 會自己跑 build + preview
+      - run: npm run test:e2e
+
+      # 失敗時把報告留下來，才查得出當下發生什麼事
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
