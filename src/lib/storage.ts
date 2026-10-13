@@ -353,14 +353,6 @@ export async function saveRecording(recording: Recording): Promise<void> {
   }
 }
 
-export async function saveRecordings(recordings: Recording[]): Promise<void> {
-  try {
-    await set(RECORDINGS_KEY, recordings);
-  } catch (error) {
-    reportWriteFailure('錄影清單', error);
-  }
-}
-
 /**
  * 把錄影指定給某一份樂譜（或改回未指定）。
  *

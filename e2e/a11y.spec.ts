@@ -255,3 +255,24 @@ test('沒有開啟「減少動態效果」時動畫照常', async ({ page }) => 
   );
   expect(longest).toBeGreaterThan(0.05);
 });
+
+test('動態變化的狀態有提供給螢幕閱讀器', async ({ page }) => {
+  await openApp(page);
+
+  // 這些區域刻意不播報每一拍、每一秒或 Hz —— 那會把螢幕閱讀器洗版到
+  // 無法使用。只播報「狀態改變」這種真正需要知道的事。
+  const regions = await page.evaluate(() =>
+    [...document.querySelectorAll('[role="status"], [aria-live]')].map((el) => ({
+      role: el.getAttribute('role'),
+      srOnly: el.className.includes('sr-only'),
+    }))
+  );
+  expect(regions.length, '全站沒有任何狀態播報區域').toBeGreaterThanOrEqual(3);
+
+  // 節拍器：開始後要播報
+  const metronome = page.getByTestId('metronome');
+  await metronome.getByRole('button', { name: '開始' }).click();
+  await expect(metronome.locator('[role="status"]')).toHaveText('節拍器播放中');
+  await metronome.getByRole('button', { name: '停止' }).click();
+  await expect(metronome.locator('[role="status"]')).toHaveText('');
+});

@@ -296,6 +296,12 @@ export const Metronome: React.FC<MetronomeProps> = ({
       isPlaying && currentBeat === 0 ? "ring-2 ring-accent-warm/50 scale-[1.01]" : "",
       className
     )}>
+      {/* 只播報開始／停止。不播報拍點或 BPM 變化 —— 節拍器每分鐘上百下，
+          逐拍播報會讓螢幕閱讀器完全無法使用。 */}
+      <p className="sr-only" role="status">
+        {isPlaying ? '節拍器播放中' : ''}
+      </p>
+
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between shrink-0 h-10 mb-6">
           <div className="flex items-center gap-2">

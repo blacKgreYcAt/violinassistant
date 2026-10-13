@@ -290,6 +290,19 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, def
           )}
         </div>
 
+        {/* 給螢幕閱讀器的狀態播報。
+            刻意不播報每一秒的剩餘時間 —— 那會把閱讀器洗版到無法使用；
+            只在「開始／暫停／完成」與整分鐘變化時說一次。 */}
+        <p className="sr-only" role="status">
+          {isFinished
+            ? '練習完成'
+            : isActive
+              ? `計時中，剩餘約 ${Math.ceil(remainingSeconds / 60)} 分鐘`
+              : practicedSeconds > 0
+                ? '計時已暫停'
+                : ''}
+        </p>
+
         <div className="flex flex-col items-center justify-center h-40 shrink-0 mb-6 relative">
           <div
             data-testid="timer-remaining"

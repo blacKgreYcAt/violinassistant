@@ -276,6 +276,11 @@ export const Tuner: React.FC<{ className?: string }> = ({ className }) => {
           )}
         </div>
 
+        {/* 偵測到的音名。不播報 Hz —— 那個數字一直在跳，唸出來沒有意義。 */}
+        <p className="sr-only" role="status">
+          {activeTab === 'tuner' && isListening && note !== '-' ? `偵測到 ${note}` : ''}
+        </p>
+
         <div className="flex flex-col items-center justify-center h-40 shrink-0 mb-6">
           {activeTab === 'tuner' ? (
             <>
