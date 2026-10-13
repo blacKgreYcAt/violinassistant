@@ -104,6 +104,49 @@ const GOALS_KEY = 'viola-goals-idb';
 // 這是會掉資料的：寫入失敗時使用者以為存好了，其實沒有；而配額用盡
 // （平板裝滿樂譜照片與錄影時很實際）正是最可能發生的情況。
 
+// --- 跨分頁同步 ---
+//
+// 所有寫入都是「讀出整個陣列 → 改 → 整個寫回」。兩個分頁同時開著時，
+// 後寫的那個會用自己較早讀到的資料覆蓋掉另一個分頁剛新增的東西，
+// 而且完全沒有提示（實測過：A 分頁新增的樂譜會直接消失）。
+//
+// 這裡用 BroadcastChannel 在寫入後通知其他分頁，讓它們重新載入。
+// 這不能消除「同一瞬間各寫一次」的競爭，但能把過期資料的時間窗縮到極小。
+
+const SYNC_CHANNEL = 'violinassistant-data';
+
+let syncChannel: BroadcastChannel | null = null;
+
+function getSyncChannel(): BroadcastChannel | null {
+  if (typeof BroadcastChannel === 'undefined') return null;
+  if (!syncChannel) {
+    syncChannel = new BroadcastChannel(SYNC_CHANNEL);
+    syncChannel.onmessage = (event: MessageEvent<string>) => {
+      // 把其他分頁的通知轉成本分頁原本就在聽的事件，
+      // 這樣既有的元件不需要任何改動就會跟著更新
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new CustomEvent(event.data, { detail: { fromOtherTab: true } }));
+      }
+    };
+  }
+  return syncChannel;
+}
+
+// 載入時就建立頻道並開始接收。
+// 原本是在第一次「發送」時才懶載入 —— 但只接收不發送的那個分頁因此
+// 永遠不會訂閱，同步等於沒作用（E2E 一開始就是這樣失敗的）。
+getSyncChannel();
+
+/** 通知其他分頁資料變了。本分頁自己的事件仍由各呼叫點負責發出。 */
+function broadcastChange(eventName: string) {
+  try {
+    getSyncChannel()?.postMessage(eventName);
+  } catch (error) {
+    // 同步失敗不該讓寫入看起來像失敗
+    console.error('Cross-tab sync failed:', error);
+  }
+}
+
 /** 讓 UI 顯示儲存問題用的事件名稱 */
 export const STORAGE_ERROR_EVENT = 'storage-error';
 
@@ -215,6 +258,7 @@ export async function saveScores(scores: Score[]): Promise<void> {
   try {
     await set(SCORES_KEY, scores);
     window.dispatchEvent(new CustomEvent('scores-updated'));
+    broadcastChange('scores-updated');
   } catch (error) {
     reportWriteFailure('樂譜', error);
     // 仍然往外丟：呼叫端可能需要回復畫面狀態。廣播只保證使用者一定看得到。
@@ -274,6 +318,7 @@ export async function addPracticeSession(
     
     // Dispatch a custom event so other components can update
     window.dispatchEvent(new CustomEvent('practice-history-updated'));
+    broadcastChange('practice-history-updated');
     
     return updatedHistory;
   } catch (error) {

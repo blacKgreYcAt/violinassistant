@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useEscapeKey } from '../lib/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { Timer as TimerIcon, Play, Pause, RotateCcw, Bell, Edit3, Check, X, ListMusic, SkipForward, Minus, Plus, Music } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -222,6 +223,9 @@ export const Timer: React.FC<TimerProps> = ({ activeRoutine, onClearRoutine, def
   const handleSkipNote = () => {
     logPracticeSession();
   };
+
+  // 練習筆記視窗按 Esc 等同「略過」—— 只用鍵盤的人否則出不來
+  useEscapeKey(showNoteModal && !rewardResult, handleSkipNote);
 
   const formatTime = (totalSeconds: number) => {
     const hrs = Math.floor(totalSeconds / 3600);

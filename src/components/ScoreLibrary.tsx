@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useEscapeKey } from '../lib/useEscapeKey';
 import { useDropzone } from 'react-dropzone';
 import { Upload, Music, Trash2, Edit2, Check, X, Download, UploadCloud, Share2, Library, Folder as FolderIcon, Plus, ChevronLeft, Search, Tag, Star, Crop, Zap } from 'lucide-react';
 import { cn, isAbortError } from '../lib/utils';
@@ -56,6 +57,9 @@ export const ScoreLibrary: React.FC<ScoreLibraryProps> = ({ onSelectScore }) => 
   // 正在拖曳哪一個角；'move' 代表整塊平移
   const cropDragRef = useRef<{ mode: CropCorner | 'move'; lastX: number; lastY: number } | null>(null);
   const cropPreviewRef = useRef<HTMLDivElement | null>(null);
+
+  // 裁切視窗按 Esc 關閉
+  useEscapeKey(!!showCropModal, () => setShowCropModal(null));
   
   useEffect(() => {
     const loadData = async () => {

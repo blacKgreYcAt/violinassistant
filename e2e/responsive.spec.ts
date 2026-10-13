@@ -120,3 +120,30 @@ test.describe('窄螢幕下的樂譜檢視器面板', () => {
     }
   });
 });
+
+test.describe('放大到 200%（等同 384×512 的可視寬度）', () => {
+  test.use({ viewport: { width: 384, height: 512 } });
+
+  test('標題列的按鈕不會被切掉', async ({ page }) => {
+    await openApp(page);
+
+    // 迴歸測試：原本標題佔住寬度不讓，「使用說明」會超出可視範圍 13px，
+    // 而且沒有橫向捲軸可以捲過去，等於按不到。
+    const clipped = await page.evaluate(() => {
+      const vw = document.documentElement.clientWidth;
+      return [...document.querySelectorAll('button')]
+        .filter((b) => {
+          const r = b.getBoundingClientRect();
+          return r.width > 0 && (r.right > vw + 1 || r.left < -1);
+        })
+        .map((b) => (b.getAttribute('aria-label') || b.textContent || '').trim().slice(0, 12));
+    });
+
+    expect(clipped, `被切到的按鈕：${clipped.join('、')}`).toEqual([]);
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth
+    );
+    expect(overflow, '出現了橫向捲動').toBe(false);
+  });
+});

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useEscapeKey } from '../lib/useEscapeKey';
 import { X, Video, Mic, ChevronDown, ChevronRight, Music, Activity } from 'lucide-react';
 import {
   Recording,
@@ -29,6 +30,7 @@ interface RecordingLibraryProps {
  * 特地去上傳一份譜。所以錄影不應該被強制綁定樂譜。
  */
 export const RecordingLibrary: React.FC<RecordingLibraryProps> = ({ isOpen, onClose }) => {
+  useEscapeKey(isOpen, onClose);
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [scores, setScores] = useState<Score[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);

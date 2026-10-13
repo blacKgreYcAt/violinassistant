@@ -125,13 +125,13 @@ export default function App() {
     <div className="h-screen bg-bg-warm text-text-warm font-sans selection:bg-accent-warm selection:text-bg-warm flex flex-col overflow-hidden animate-in fade-in duration-1000">
       {/* Top Header */}
       <header className="h-16 shrink-0 border-b border-white/5 flex items-center justify-between px-4 md:px-6 bg-surface-warm/80 backdrop-blur-md z-10">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           {/* 與 PWA 主畫面圖示使用同一組輪廓（見 ViolinIcon / generate-icons.py），
               讓 App 內的識別和安裝後看到的圖示一致 */}
           <div className="w-10 h-10 bg-accent-warm rounded-xl flex items-center justify-center text-bg-warm shrink-0 shadow-lg shadow-accent-warm/20">
             <ViolinIcon size={22} />
           </div>
-          <div className="group relative">
+          <div className="group relative min-w-0">
             {isEditingTitle ? (
               <div className="flex items-center gap-2">
                 <input aria-label="App 標題" title="App 標題" 
@@ -166,7 +166,7 @@ export default function App() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           {/* 放在全域標題列而不是某個分頁裡：錄影可以在樂譜檢視器內錄，
               也可以不開任何樂譜直接錄，不屬於特定分頁 */}
           <button

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useEscapeKey } from '../lib/useEscapeKey';
 import { X, Music, Star, Award, Sparkles } from 'lucide-react';
 import { getRewards, RewardsState } from '../lib/storage';
 import { cn } from '../lib/utils';
@@ -53,6 +54,7 @@ const INSTRUMENTS = [
 ];
 
 export const RewardCard: React.FC<RewardCardProps> = ({ isOpen, onClose }) => {
+  useEscapeKey(isOpen, onClose);
   const [rewards, setRewards] = useState<RewardsState | null>(null);
 
   useEffect(() => {

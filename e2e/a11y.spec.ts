@@ -276,3 +276,23 @@ test('動態變化的狀態有提供給螢幕閱讀器', async ({ page }) => {
   await metronome.getByRole('button', { name: '停止' }).click();
   await expect(metronome.locator('[role="status"]')).toHaveText('');
 });
+
+test('彈窗按 Esc 可以關閉', async ({ page }) => {
+  await openApp(page);
+
+  // 原本所有彈窗都只能用滑鼠點關閉鈕，只用鍵盤的人進得去出不來
+  const modals: [string, string][] = [
+    ['使用說明', '關閉使用說明'],
+    ['集點卡', '關閉集點卡'],
+    ['練習錄影', '關閉'],
+  ];
+
+  for (const [open, closeLabel] of modals) {
+    await page.getByRole('button', { name: open, exact: true }).click();
+    const close = page.getByRole('button', { name: closeLabel }).first();
+    await expect(close, `${open} 沒有打開`).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(close, `${open} 按 Esc 後沒有關閉`).toHaveCount(0);
+  }
+});

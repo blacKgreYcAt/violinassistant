@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEscapeKey } from '../lib/useEscapeKey';
 import {
   Gauge,
   EyeOff,
@@ -112,6 +113,7 @@ interface UserGuideProps {
 }
 
 export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
+  useEscapeKey(isOpen, onClose);
   const [activeTab, setActiveTab] = useState<'guide' | 'changelog'>('guide');
 
   if (!isOpen) return null;
