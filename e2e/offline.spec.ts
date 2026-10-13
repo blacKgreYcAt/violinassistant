@@ -85,3 +85,56 @@ test('第一次載入不會下載樂譜分頁與臉部偵測的程式碼', async
     .poll(() => scripts.map((u) => u.split('/').pop() ?? '').some((n) => n.startsWith('LibraryTab')))
     .toBe(true);
 });
+
+test('完全離線時 App 仍能開啟並使用', async ({ page, context }) => {
+  // 先正常載入一次，讓 service worker 把檔案快取起來
+  await openApp(page);
+  await page.waitForFunction(() => navigator.serviceWorker?.controller != null, null, {
+    timeout: 20_000,
+  });
+
+  // 斷網
+  await context.setOffline(true);
+  await page.reload();
+
+  // 這是個可離線的 PWA：主要功能都不該依賴網路
+  await expect(page.getByRole('button', { name: '練習工具' })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('metronome')).toBeVisible();
+  await expect(page.getByTestId('timer')).toBeVisible();
+
+  // 節拍器要能實際跑起來
+  const metronome = page.getByTestId('metronome');
+  await metronome.getByRole('button', { name: '開始' }).click();
+  await expect(metronome.getByRole('button', { name: '停止' })).toBeVisible();
+
+  await context.setOffline(false);
+});
+
+test('節拍器長時間執行時拍數不會飄掉', async ({ page }) => {
+  // 這個測試本身就要跑 30 秒，超過預設的 30 秒上限
+  test.slow();
+  await openApp(page);
+
+  // 用 audioContext 的時鐘對照實際發出的小節數。
+  // 這是長時間穩定性的替代驗證 —— 真的跑一小時在 CI 不實際。
+  await page.evaluate(() => {
+    const w = window as unknown as { __bars: number };
+    w.__bars = 0;
+    window.addEventListener('metronome-bar', (e) => {
+      w.__bars += (e as CustomEvent<{ completedBars: number }>).detail.completedBars;
+    });
+  });
+
+  const metronome = page.getByTestId('metronome');
+  await metronome.getByRole('button', { name: '開始' }).click();
+
+  // 100 BPM、4/4 → 每小節 2.4 秒。跑 30 秒約 12 小節。
+  await page.waitForTimeout(30_000);
+  await metronome.getByRole('button', { name: '停止' }).click();
+
+  const bars = await page.evaluate(() => (window as unknown as { __bars: number }).__bars);
+
+  // 允許前後各一小節的誤差（開始的前置延遲與停止的時間點）
+  expect(bars, `30 秒內收到 ${bars} 個小節，預期約 12`).toBeGreaterThanOrEqual(10);
+  expect(bars).toBeLessThanOrEqual(14);
+});
