@@ -196,27 +196,31 @@ test('鍵盤焦點看得見', async ({ page }) => {
   await page.keyboard.press('Tab');
   await page.keyboard.press('Tab');
 
-  // .transition-colors 把 outline-color 也列入過場屬性，
-  // 立刻量會拿到過場中的瞬時值
-  await page.waitForTimeout(400);
+  const readFocus = () =>
+    page.evaluate(() => {
+      const el = document.activeElement;
+      if (!el || el === document.body) return null;
+      const cs = getComputedStyle(el);
+      return {
+        name: (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 20),
+        style: cs.outlineStyle,
+        width: parseFloat(cs.outlineWidth),
+        color: cs.outlineColor,
+      };
+    });
 
-  const focus = await page.evaluate(() => {
-    const el = document.activeElement;
-    if (!el || el === document.body) return null;
-    const cs = getComputedStyle(el);
-    return {
-      name: (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 20),
-      style: cs.outlineStyle,
-      width: parseFloat(cs.outlineWidth),
-      color: cs.outlineColor,
-    };
-  });
+  expect(await readFocus(), '按 Tab 之後沒有任何元素取得焦點').not.toBeNull();
 
-  expect(focus, '按 Tab 之後沒有任何元素取得焦點').not.toBeNull();
-  expect(focus!.style, `${focus!.name} 的焦點沒有外框`).not.toBe('none');
-  expect(focus!.width).toBeGreaterThanOrEqual(2);
-  // 用主色而不是瀏覽器預設的細灰框，深色主題下才看得清楚
-  expect(focus!.color).toBe('rgb(242, 125, 38)');
+  // .transition-colors 把 outline-color 也列入過場屬性，所以剛按下 Tab 時
+  // 量到的是過場中的瞬時值（舊的灰色）。不要用固定秒數等 ——
+  // WebKit 安定得比 Chromium 慢得多，固定 400ms 在 CI 上會紅。
+  await expect.poll(async () => (await readFocus())?.color, { timeout: 5000 }).toBe(
+    'rgb(242, 125, 38)'
+  );
+
+  const focus = (await readFocus())!;
+  expect(focus.style, `${focus.name} 的焦點沒有外框`).not.toBe('none');
+  expect(focus.width).toBeGreaterThanOrEqual(2);
 });
 
 test('開啟「減少動態效果」時不會有長時間的動畫', async ({ page }) => {
